@@ -65,7 +65,7 @@ the whole SKILL.md and follow it.**
   Vitest + Testing Library, ESLint, Prettier.
 - **Auth** — email + password stored (bcrypt) in Postgres, JWT in an httpOnly cookie. Five roles:
   `developer`, `verifier`, `registry_staff`, `buyer`, `admin`.
-- **Local dev** — `docker compose up` (db, backend, frontend). **CI** — GitHub Actions.
+- **Local dev** — `sh scripts/start.sh` (db, backend, frontend via Docker Compose). **CI** — GitHub Actions.
   **Production (later)** — Docker on Google Cloud Run.
 
 ## Layout
@@ -91,7 +91,8 @@ docs/                         architecture, conventions, feature docs, decisions
 ## Commands (from the repo root)
 
 ```bash
-docker compose up -d                                   # start everything
+sh scripts/start.sh                                    # check machine, build, start, wait until up
+sh scripts/start.sh --check                            # diagnose only — prints what to fix
 docker compose exec backend pytest                     # backend tests
 docker compose exec backend ruff check . && docker compose exec backend ruff format .
 docker compose exec frontend npm test                  # frontend tests

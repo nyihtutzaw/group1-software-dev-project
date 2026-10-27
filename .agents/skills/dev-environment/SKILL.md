@@ -1,6 +1,6 @@
 ---
 name: dev-environment
-description: Run the CRVR stack in Docker — start/stop, logs, run backend and frontend tests and linters, add a Python or npm dependency, reset the database, and fix common Docker problems. Use before running any project command; nothing except Docker and git is installed on the host.
+description: Run the CRVR stack in Docker — start it with sh scripts/start.sh (checks the machine and says what is missing), stop, logs, run backend and frontend tests and linters, add a Python or npm dependency, reset the database, and fix common Docker problems. Use before running any project command; nothing except Docker and git is installed on the host.
 ---
 
 # Dev environment (Docker only)
@@ -14,10 +14,31 @@ run them inside the container with `docker compose exec <service> …` from the 
 | `backend` | http://localhost:8000/api/docs | FastAPI with `--reload`; runs migrations + seed on start |
 | `db` | localhost:5432 | PostgreSQL 17 + PostGIS; user/password/db `crvr`; tests use `crvr_test` |
 
-## Start, stop, look
+## Start
 
 ```bash
-docker compose up -d              # start (builds the first time, ~2–3 min)
+sh scripts/start.sh               # check machine → build what changed → start → wait until up
+sh scripts/start.sh --check       # only the checks; exits 1 and prints what to fix
+sh scripts/start.sh --fresh --yes # wipe DB + evidence, then start (no prompt — for agents)
+```
+
+`start.sh` is idempotent: if everything is already running it finishes in ~2 s without
+restarting anything; after a pull it rebuilds only changed images and renews the frontend's
+`node_modules` volume when `package.json` changed. It exits non-zero when something is wrong.
+
+**If it fails, read its output and act on the `→` lines** — they name the fix:
+
+| It says | What to do |
+|---|---|
+| Docker is not installed / not running | You cannot fix this from the shell — tell the user the exact `→` advice (install link or "start Docker Desktop") and stop. |
+| Your user is not allowed to use Docker | Tell the user to run the printed `usermod` command and log in again. |
+| Port N (service) is in use by X | Don't stop the other program without asking the user. Either ask, or `cp .env.example .env`, set the suggested port there and rerun. |
+| CRLF line endings | Tell the user; re-cloning with `core.autocrlf false` is the fix. Do not commit CRLF files. |
+| `<service>` stopped while starting / did not answer | The last 40 log lines are printed — fix the error (usually a migration or import), then rerun. |
+
+## Stop, look
+
+```bash
 docker compose ps                 # what is running
 docker compose logs -f backend    # follow logs (frontend / db likewise)
 docker compose restart backend    # after changing env vars or entrypoint
@@ -49,15 +70,15 @@ Run one backend test: `docker compose exec backend pytest tests/test_auth.py -k 
 ```bash
 # Python (writes pyproject.toml + uv.lock)
 docker compose exec backend uv add shapely          # dev-only: uv add --dev <pkg>
-docker compose up -d --build backend
+sh scripts/start.sh                                 # rebuilds the backend image
 
 # npm (writes package.json + package-lock.json)
 docker compose exec frontend npm install leaflet    # dev-only: npm install -D <pkg>
-docker compose up -d --build -V frontend            # -V renews the node_modules volume
+sh scripts/start.sh                                 # rebuilds the image + renews node_modules
 ```
 
 Commit the lock file together with the manifest. Tell the team in the PR — everyone needs to
-rebuild after pulling (`docker compose up -d --build -V`).
+rerun `sh scripts/start.sh` after pulling.
 
 ## Database
 
@@ -65,7 +86,7 @@ rebuild after pulling (`docker compose up -d --build -V`).
 docker compose exec db psql -U crvr crvr                       # SQL shell
 docker compose exec backend alembic upgrade head               # apply migrations
 docker compose exec backend alembic downgrade -1               # undo the last one
-docker compose down -v && docker compose up -d                 # WIPE everything and start fresh
+sh scripts/start.sh --fresh --yes                              # WIPE everything and start fresh
 ```
 
 Demo accounts (`developer@`, `verifier@`, `staff@`, `buyer@`, `admin@crvr.local`, password
@@ -73,11 +94,13 @@ Demo accounts (`developer@`, `verifier@`, `staff@`, `buyer@`, `admin@crvr.local`
 
 ## When something is wrong
 
+First run `sh scripts/start.sh --check` — it detects most of these and prints the fix.
+
 | Symptom | Fix |
 |---|---|
 | Port already in use | Another app has 5173/8000/5432. Set `FRONTEND_PORT` / `BACKEND_PORT` / `DB_PORT` in `.env` (copy `.env.example`). |
-| `Cannot find module` / import errors after pulling | Dependencies changed: `docker compose up -d --build -V` |
-| Code changes not picked up (Windows/WSL) | In `.env`: `WATCHFILES_FORCE_POLLING=true` and `CHOKIDAR_USEPOLLING=true`, then `docker compose up -d` |
+| `Cannot find module` / import errors after pulling | Dependencies changed: `sh scripts/start.sh` |
+| Code changes not picked up (Windows/WSL) | In `.env`: `WATCHFILES_FORCE_POLLING=true` and `CHOKIDAR_USEPOLLING=true`, then `sh scripts/start.sh` |
 | Backend exits on start | `docker compose logs backend` — usually a migration error; fix it or `alembic downgrade -1` |
-| Weird DB state | `docker compose down -v && docker compose up -d` (deletes local data) |
+| Weird DB state | `sh scripts/start.sh --fresh` (deletes local data) |
 | `exec format error` / script errors on Windows | Line endings: `git config core.autocrlf false`, then re-clone (`.gitattributes` keeps LF) |

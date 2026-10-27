@@ -13,7 +13,9 @@ The full design is in `docs/project/CRVR-Project-Design-Report-v0.1.pdf`.
 
 ## Local development
 
-`docker compose up` starts three containers; source folders are bind-mounted, so edits reload live.
+`sh scripts/start.sh` checks the machine (Docker, ports, line endings), then runs Docker Compose,
+which starts three containers; source folders are bind-mounted, so edits reload live. Plain
+`docker compose up` works too.
 
 | Service | Image | Port | Notes |
 |---|---|---|---|

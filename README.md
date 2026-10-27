@@ -16,10 +16,28 @@ You need **Docker Desktop** and **git** — nothing else.
 ```bash
 git clone https://github.com/nyihtutzaw/group1-software-dev-project.git
 cd group1-software-dev-project
-docker compose up
+sh scripts/start.sh
 ```
 
-The first start builds the images (a few minutes). Then open:
+The script first checks your machine — Docker installed and running, ports 5173/8000/5432 free,
+script line endings — and if something is missing it tells you exactly what to do (install link,
+command to run, or which `.env` setting to change). Then it builds the images (a few minutes the
+first time), starts everything, waits until the app answers and prints the links below.
+
+Run the same command again whenever you like — after a `git pull` it rebuilds only what changed and
+picks up new dependencies; if everything is already running it finishes in seconds.
+
+| Command | Does |
+|---|---|
+| `sh scripts/start.sh` | check, build what changed, start, wait, print links |
+| `sh scripts/start.sh --check` | only check the machine — run this first if something seems wrong |
+| `sh scripts/start.sh --fresh` | wipe your local database and evidence files, then start (asks first) |
+| `sh scripts/start.sh --logs` | start, then follow the logs |
+
+On Windows, run it in **Git Bash** (installed with Git for Windows) or a WSL terminal. Plain
+`docker compose up` still works too; the script just adds the checks and the waiting.
+
+Then open:
 
 | | |
 |---|---|
@@ -36,7 +54,7 @@ Sign in with a demo account (password **`crvr-demo`**), or click one on the sign
 | Buyer | `buyer@crvr.local` |
 | Registry admin | `admin@crvr.local` |
 
-Stop with `Ctrl+C` (or `docker compose down`). Start in the background with `docker compose up -d`.
+Stop with `docker compose down` (your data is kept).
 
 ## Team and features
 
@@ -70,7 +88,7 @@ docker compose exec backend pytest               # backend tests
 docker compose exec frontend npm test            # frontend tests
 docker compose exec backend alembic revision --autogenerate -m "describe change"
 docker compose logs -f backend                   # logs
-docker compose down -v                           # wipe the database and start fresh
+sh scripts/start.sh --fresh                      # wipe the database and start fresh
 ```
 
 More (dependencies, troubleshooting, Windows): [.agents/skills/dev-environment/SKILL.md](.agents/skills/dev-environment/SKILL.md).
