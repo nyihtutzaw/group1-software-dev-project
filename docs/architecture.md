@@ -79,7 +79,7 @@ src/index.css           design tokens (light + dark) → Tailwind utilities
 ## CI and deployment
 
 - **CI** (`.github/workflows/ci.yml`, every PR and push to main): backend ruff + migrations check +
-  pytest against a PostGIS service; frontend lint, typecheck, tests, build; agent-skill stubs in sync.
+  pytest against the same `infra/db` PostGIS image used locally; frontend lint, typecheck, tests, build; agent-skill stubs in sync.
 - **Production (planned)**: backend and frontend as Docker images on Google Cloud Run, Cloud SQL
   for PostgreSQL + PostGIS, Cloud Storage with a retention lock for evidence. Deploy workflow to be
   added once a GCP project exists.
