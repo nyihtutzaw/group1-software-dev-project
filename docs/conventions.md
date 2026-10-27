@@ -18,6 +18,7 @@ Short version of how we work. The detailed, step-by-step versions are the agent 
   - types: `feat` `fix` `test` `refactor` `docs` `style` `chore` `ci` `perf`
   - scopes: `F1`…`F5`, `backend`, `frontend`, `auth`, `ui`, `db`, `infra`, `docs`, `agents`
 - Model changes and their migration go in the same commit.
+- No AI attribution in commits or PRs (no `Co-Authored-By:` trailers or "Generated with …" lines).
 
 ## Pull requests
 

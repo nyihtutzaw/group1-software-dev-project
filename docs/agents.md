@@ -52,6 +52,17 @@ You:   open a PR
 Agent: sync-branch → open-pr
 ```
 
+## No AI attribution
+
+Commits and PRs carry no AI attribution (no `Co-Authored-By:` trailers, no "Generated with …"
+lines). The skills tell every agent this, but some tools add a trailer by default, so also switch it
+off in your tool:
+
+- **Claude Code:** in `.claude/settings.local.json` or `~/.claude/settings.json`, set
+  `"includeCoAuthoredBy": false` (newer versions: `"attribution": { "commit": "", "pr": "" }`).
+- **Cursor, Codex, OpenCode:** turn off any commit co-author / attribution option in the tool's
+  settings if it has one.
+
 ## Optional: fewer permission prompts in Claude Code
 
 Claude Code asks before running shell commands. To pre-approve the routine ones for this repo,
