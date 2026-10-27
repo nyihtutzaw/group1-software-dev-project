@@ -6,6 +6,7 @@
 | | |
 |---|---|
 | **Owner** | Pyae Phyo Hein (supports: Jingqing) |
+| **Issue** | [#5](https://github.com/nyihtutzaw/group1-software-dev-project/issues/5) — requirements and acceptance checklist |
 | **Requirements** | Charter §5.3 (structured verification workflow) · FR-10 maker-checker · WBS 7.0 |
 | **Code** | `backend/app/features/verification/` · `frontend/src/features/verification/` |
 | **Mock-up** | *Verify* (Verification queue + open review) |

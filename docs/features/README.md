@@ -3,13 +3,13 @@
 Five features make up the web application we build this term. Each has one owner who builds it end
 to end (data model, API, UI, tests) and keeps its context doc current.
 
-| Feature | Owner | Supports | Doc |
-|---|---|---|---|
-| F1 Project registration & evidence | Jingqing | Zay Yar Phyo, Nyi Htut Zaw | [F1-registration.md](F1-registration.md) |
-| F2 Geospatial boundary & overlap detection | Nyi Htut Zaw | Pyae Phyo Hein | [F2-boundary.md](F2-boundary.md) |
-| F3 Verification workflow | Pyae Phyo Hein | Jingqing | [F3-verification.md](F3-verification.md) |
-| F4 Public registry & buyer transparency | Zay Yar Phyo | — | [F4-registry.md](F4-registry.md) |
-| F5 Security & auditability | Put Thitisawat | Nyi Htut Zaw (CI/CD) | [F5-security-audit.md](F5-security-audit.md) |
+| Feature | Owner | Supports | Issue | Doc |
+|---|---|---|---|---|
+| F1 Project registration & evidence | Jingqing | Zay Yar Phyo, Nyi Htut Zaw | [#3](https://github.com/nyihtutzaw/group1-software-dev-project/issues/3) | [F1-registration.md](F1-registration.md) |
+| F2 Geospatial boundary & overlap detection | Nyi Htut Zaw | Pyae Phyo Hein | [#4](https://github.com/nyihtutzaw/group1-software-dev-project/issues/4) | [F2-boundary.md](F2-boundary.md) |
+| F3 Verification workflow | Pyae Phyo Hein | Jingqing | [#5](https://github.com/nyihtutzaw/group1-software-dev-project/issues/5) | [F3-verification.md](F3-verification.md) |
+| F4 Public registry & buyer transparency | Zay Yar Phyo | — | [#6](https://github.com/nyihtutzaw/group1-software-dev-project/issues/6) | [F4-registry.md](F4-registry.md) |
+| F5 Security & auditability | Put Thitisawat | Nyi Htut Zaw (CI/CD) | [#7](https://github.com/nyihtutzaw/group1-software-dev-project/issues/7) | [F5-security-audit.md](F5-security-audit.md) |
 
 Cross-cutting work: shared UI kit and responsive layout (Zay Yar Phyo), PostGIS schema and spatial
 queries (Nyi Htut Zaw), Docker / GitHub Actions / Cloud Run (Put Thitisawat, Nyi Htut Zaw).

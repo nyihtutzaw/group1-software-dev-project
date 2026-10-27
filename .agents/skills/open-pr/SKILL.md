@@ -28,6 +28,8 @@ With the GitHub CLI:
 
 ```bash
 gh pr create --base main --title "feat(F2): overlap detection with tolerance gate" --body-file - <<'MD'
+Part of #4
+
 ## What
 Detects overlaps between a submitted boundary and every registered boundary; blocks submission
 above 0.5% of the project area.
@@ -50,6 +52,8 @@ MD
 ```
 
 The body follows `.github/pull_request_template.md`. Add screenshots for UI changes when you can.
+**Link the feature issue** (number in the `AGENTS.md` feature table) at the top of the body:
+`Part of #4` for a partial step; `Closes #4` only in the PR that completes the whole feature.
 **No AI attribution** in the title or body — no "Generated with …" footer, no co-author lines.
 
 Without `gh`: print the compare URL for the user —
@@ -59,7 +63,8 @@ Without `gh`: print the compare URL for the user —
 
 - CI runs automatically; fix anything red with new commits on the same branch.
 - Ask one teammate to review (at least one approval is needed to merge).
-- After the squash-merge, clean up locally:
+- After the squash-merge, tick the acceptance criteria this PR completed in the feature issue
+  (`gh issue view <number>` / edit on GitHub), and clean up locally:
 
 ```bash
 git switch main && git pull --ff-only

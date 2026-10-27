@@ -6,6 +6,7 @@
 | | |
 |---|---|
 | **Owner** | Jingqing (supports: Zay Yar Phyo, Nyi Htut Zaw) |
+| **Issue** | [#3](https://github.com/nyihtutzaw/group1-software-dev-project/issues/3) — requirements and acceptance checklist |
 | **Requirements** | FR-01 Project registration · FR-02 Evidence submission · WBS 4.0 |
 | **Code** | `backend/app/features/registration/` · `frontend/src/features/registration/` |
 | **Mock-up** | *Home* (My projects) and *Submit* (Register a project) |

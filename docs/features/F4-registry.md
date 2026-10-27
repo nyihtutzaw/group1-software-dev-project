@@ -6,6 +6,7 @@
 | | |
 |---|---|
 | **Owner** | Zay Yar Phyo (also: shared UI kit and responsive layout) |
+| **Issue** | [#6](https://github.com/nyihtutzaw/group1-software-dev-project/issues/6) — requirements and acceptance checklist |
 | **Requirements** | FR-08 Buyer access · WBS 8.0 |
 | **Code** | `backend/app/features/registry/` · `frontend/src/features/registry/` |
 | **Mock-up** | *Registry* (Public registry + traceability panel) |

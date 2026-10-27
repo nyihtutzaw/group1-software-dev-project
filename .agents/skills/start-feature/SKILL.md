@@ -39,10 +39,14 @@ Branch names: `<type>/<scope>-<slug>`, lowercase, hyphens, ≤ 5 words.
 
 Read, in order — they are short:
 
-1. `docs/features/F<n>-*.md` — scope, acceptance criteria, decisions so far, progress log
-2. `docs/architecture.md` — how the pieces fit
-3. The mock-up section for this feature in `docs/project/CRVR-Mock-UI-v0.1.html`
-4. The existing code in `backend/app/features/<name>/` and `frontend/src/features/<name>/`
+1. The feature's GitHub issue (number in the `AGENTS.md` feature table) — the full requirements,
+   user stories and acceptance checklist: `gh issue view <number>` (or open it on GitHub)
+2. `docs/features/F<n>-*.md` — status, decisions so far, progress log
+3. `docs/architecture.md` — how the pieces fit
+4. The mock-up section for this feature in `docs/project/CRVR-Mock-UI-v0.1.html`
+5. The existing code in `backend/app/features/<name>/` and `frontend/src/features/<name>/`
+
+Pick the next unticked acceptance criteria from the issue as this branch's goal.
 
 ## 4. Plan in the doc, then commit it
 
