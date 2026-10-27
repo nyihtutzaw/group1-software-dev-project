@@ -13,7 +13,7 @@
 
 ## Status
 
-Not started — placeholder page at `/boundary`; `GET /api/boundaries` returns `[]`.
+In progress on `feature/F2-boundary-overlap` — see the progress log.
 
 ## Scope
 
@@ -74,3 +74,17 @@ From WBS 5.x and the design report:
 - Is the tolerance per project or a registry-wide setting?
 
 ## Progress log
+
+### 2026-10-28 · feature/F2-boundary-overlap
+- Goal: the whole of F2 (issue #4) on one branch, one PR.
+- Plan:
+  1. Minimal `projects` stub in F1's folder (id, code, name, owner, status) so boundaries have
+     something to belong to — Jinkin extends it later.
+  2. `record_action()` stub in F5's folder as the ledger call site — Put replaces the body later.
+  3. `boundaries` + `overlap_flags` tables and migration.
+  4. Service: validate geometry and compute area in PostGIS; find overlaps with tolerance.
+  5. Import GeoJSON, KML and zipped shapefiles.
+  6. API: check, save, list, get, dispute, resolve; `issuance_blocked()` for F3/F4.
+  7. Demo projects and boundaries reproducing the mock-up (CRVR-0147 overlapping CRVR-0092).
+  8. Map page: Leaflet + Geoman draw/edit, file upload, overlap alert and summary, phone-first.
+  9. Update this doc (API, data model, decisions) and open the PR.
