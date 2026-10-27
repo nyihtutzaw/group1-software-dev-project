@@ -6,6 +6,7 @@
 | | |
 |---|---|
 | **Owner** | Nyi Htut Zaw (supports: Pyae Phyo Hein) |
+| **Issue** | [#4](https://github.com/nyihtutzaw/group1-software-dev-project/issues/4) — requirements and acceptance checklist |
 | **Requirements** | FR-03 Geospatial boundary management · FR-04 Overlap detection · WBS 5.0 |
 | **Code** | `backend/app/features/boundary/` · `frontend/src/features/boundary/` |
 | **Mock-up** | *Map* (Boundary) — desktop and 420 px phone |

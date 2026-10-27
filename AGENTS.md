@@ -10,13 +10,13 @@ carbon-removal projects and their land boundaries, independent verifiers review 
 staff approve them, and buyers trace every issued credit back to its evidence. A group project for
 ITCS514 (Mahidol), five students, each owning one feature end to end.
 
-| Feature | What | Owner | Branch prefix | Context doc |
-|---|---|---|---|---|
-| F1 | Project registration & evidence | Jingqing | `feature/F1-…` | `docs/features/F1-registration.md` |
-| F2 | Geospatial boundary & overlap detection | Nyi Htut Zaw | `feature/F2-…` | `docs/features/F2-boundary.md` |
-| F3 | Verification workflow (maker-checker) | Pyae Phyo Hein | `feature/F3-…` | `docs/features/F3-verification.md` |
-| F4 | Public registry & buyer transparency | Zay Yar Phyo | `feature/F4-…` | `docs/features/F4-registry.md` |
-| F5 | Security & auditability (RBAC, ledger) | Put Thitisawat | `feature/F5-…` | `docs/features/F5-security-audit.md` |
+| Feature | What | Owner | Issue | Branch prefix | Context doc |
+|---|---|---|---|---|---|
+| F1 | Project registration & evidence | Jingqing | #3 | `feature/F1-…` | `docs/features/F1-registration.md` |
+| F2 | Geospatial boundary & overlap detection | Nyi Htut Zaw | #4 | `feature/F2-…` | `docs/features/F2-boundary.md` |
+| F3 | Verification workflow (maker-checker) | Pyae Phyo Hein | #5 | `feature/F3-…` | `docs/features/F3-verification.md` |
+| F4 | Public registry & buyer transparency | Zay Yar Phyo | #6 | `feature/F4-…` | `docs/features/F4-registry.md` |
+| F5 | Security & auditability (RBAC, ledger) | Put Thitisawat | #7 | `feature/F5-…` | `docs/features/F5-security-audit.md` |
 
 Deferred (designed, **not** built this term — do not implement): satellite monitoring (FR-05) and
 the inter-registry flagging hook (FR-11). See `docs/features/README.md`.

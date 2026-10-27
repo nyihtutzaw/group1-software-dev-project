@@ -6,6 +6,7 @@
 | | |
 |---|---|
 | **Owner** | Name (supports: Name) |
+| **Issue** | #N |
 | **Requirements** | FR-xx · WBS x.x |
 | **Code** | `backend/app/features/<name>/` · `frontend/src/features/<name>/` |
 | **Mock-up** | Screen name in `docs/project/CRVR-Mock-UI-v0.1.html` |

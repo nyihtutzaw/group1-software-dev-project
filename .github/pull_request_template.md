@@ -1,3 +1,5 @@
+Part of #<!-- feature issue: F1 #3 · F2 #4 · F3 #5 · F4 #6 · F5 #7 (use "Closes" only when the feature is complete) -->
+
 ## What
 
 <!-- One or two sentences. PR title = Conventional Commit, e.g. feat(F2): overlap detection -->
