@@ -1,9 +1,9 @@
+import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router'
 
 import { Guarded } from '@/auth/Guarded'
 import { LedgerPage } from '@/features/audit/LedgerPage'
 import { UsersPage } from '@/features/audit/UsersPage'
-import { BoundaryPage } from '@/features/boundary/BoundaryPage'
 import { HomePage } from '@/features/registration/HomePage'
 import { SubmitPage } from '@/features/registration/SubmitPage'
 import { RegistryPage } from '@/features/registry/RegistryPage'
@@ -11,6 +11,11 @@ import { VerifyPage } from '@/features/verification/VerifyPage'
 import { AppShell } from '@/layout/AppShell'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+
+// Map libraries are large; load the boundary page only when it is opened.
+const BoundaryPage = lazy(() =>
+  import('@/features/boundary/BoundaryPage').then((m) => ({ default: m.BoundaryPage })),
+)
 
 // Every page route is guarded by its entry in layout/nav.ts (roles + public flag).
 // Feature sub-pages (e.g. /projects/:id) go here too, guarded by their parent's id.
@@ -39,7 +44,9 @@ export function App() {
           path="/boundary"
           element={
             <Guarded page="map">
-              <BoundaryPage />
+              <Suspense fallback={<p className="text-sm text-faint">Loading map…</p>}>
+                <BoundaryPage />
+              </Suspense>
             </Guarded>
           }
         />
