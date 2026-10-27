@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     seed_demo_users: bool = True
     storage_dir: str = "/data/evidence"
 
+    # F2: an overlap larger than this % of the new project's area blocks submission and issuance.
+    # Absorbs GPS error along shared edges (UI mock-up: 0.5%).
+    overlap_tolerance_pct: float = 0.5
+    # F2: largest boundary file accepted for import
+    boundary_upload_max_bytes: int = 5 * 1024 * 1024
+
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
