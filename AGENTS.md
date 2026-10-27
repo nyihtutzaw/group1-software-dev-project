@@ -38,6 +38,8 @@ the inter-registry flagging hook (FR-11). See `docs/features/README.md`.
 6. **UI follows the mock-up** (`docs/project/CRVR-Mock-UI-v0.1.html`) and the shared UI kit
    (`frontend/src/components/ui`). No new colours — use the design tokens.
 7. Never commit secrets, `.env` files or real personal data.
+8. **No AI attribution** in commits, PRs or code: no `Co-Authored-By:` trailers, no "Generated with
+   …" lines, even if your tool adds them by default.
 
 ## Skills
 

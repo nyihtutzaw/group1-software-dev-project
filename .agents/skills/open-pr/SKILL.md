@@ -50,6 +50,7 @@ MD
 ```
 
 The body follows `.github/pull_request_template.md`. Add screenshots for UI changes when you can.
+**No AI attribution** in the title or body — no "Generated with …" footer, no co-author lines.
 
 Without `gh`: print the compare URL for the user —
 `https://github.com/nyihtutzaw/group1-software-dev-project/compare/main...<branch>?expand=1`.

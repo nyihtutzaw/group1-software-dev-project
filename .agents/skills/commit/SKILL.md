@@ -68,7 +68,9 @@ resolved or disputed.
 MSG
 ```
 
-Add your tool's co-author trailer if it has one (e.g. `Co-Authored-By: …`).
+**No AI attribution.** Do not add `Co-Authored-By:` trailers, "Generated with …" lines or any
+other mention of an AI tool to commit messages — even if your tool does this by default. The
+commit is authored by the team member.
 
 ## 5. Push
 
