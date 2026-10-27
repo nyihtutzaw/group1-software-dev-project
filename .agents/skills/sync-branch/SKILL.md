@@ -60,8 +60,8 @@ docker compose exec backend pytest
 
 ## 3. Re-run the checks
 
-Run the full checks (`dev-environment` → *Checks*). If dependencies changed on main:
-`docker compose up -d --build -V`.
+Run the full checks (`dev-environment` → *Checks*). If dependencies changed on main, run
+`sh scripts/start.sh` — it rebuilds the changed images and refreshes `node_modules`.
 
 ## 4. Push
 
