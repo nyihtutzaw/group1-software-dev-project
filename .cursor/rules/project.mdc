@@ -1,0 +1,10 @@
+---
+description: CRVR project rules
+alwaysApply: true
+---
+
+Follow `AGENTS.md` at the repository root: project overview, rules (never commit to main, commit
+after every working step, keep `docs/features/F<n>-*.md` current), stack, layout and commands.
+
+Task-specific instructions are skills in `.agents/skills/<name>/SKILL.md` (stubs in
+`.cursor/skills/`). When a task matches a skill, read the full SKILL.md and follow it.
