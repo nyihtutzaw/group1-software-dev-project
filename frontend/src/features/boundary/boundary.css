@@ -1,0 +1,32 @@
+/* Leaflet inside the Tailwind app. Preflight's `img { max-width: 100% }` breaks map tiles. */
+.crvr-map img {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.crvr-map {
+  font-family: var(--font-sans);
+  background: var(--surface-2);
+}
+
+/* Project code labels on the map, as in the mock-up (CRVR-0147 / CRVR-0092 pills) */
+.crvr-map .crvr-map-label {
+  background: var(--label-bg, var(--accent));
+  color: #fff;
+  border: 0;
+  border-radius: 4px;
+  box-shadow: none;
+  padding: 2px 7px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+}
+.crvr-map .crvr-map-label::before {
+  display: none;
+}
+.crvr-map .crvr-map-label.is-context {
+  --label-bg: var(--muted);
+}
+.crvr-map .crvr-map-label.is-conflict {
+  --label-bg: var(--warn);
+}
