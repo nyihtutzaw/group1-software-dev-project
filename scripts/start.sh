@@ -299,8 +299,8 @@ ${green}${bold}CRVR is running.${reset}
   API docs   http://localhost:$backend_port/api/docs
 
   Demo accounts (password ${bold}crvr-demo${reset}):
-    developer@crvr.local   verifier@crvr.local   staff@crvr.local
-    buyer@crvr.local       admin@crvr.local
+    developer@crvr.local   developer2@crvr.local   verifier@crvr.local
+    staff@crvr.local       buyer@crvr.local        admin@crvr.local
 
   Logs       docker compose logs -f backend      (or frontend, db)
   Stop       docker compose down                 (your data is kept)
