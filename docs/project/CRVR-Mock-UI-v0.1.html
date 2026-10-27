@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CRVR Registry Mock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
+<style>
+:root{
+  --bg:#F2F5F4; --surface:#FFFFFF; --surface-2:#F3F7F6; --surface-3:#E7EEEC;
+  --ink:#0B1412; --muted:#46564F; --faint:#6E7F7A;
+  --line:#D5DEDB; --line-strong:#9FB0AB;
+  --accent:#0A5F53; --accent-ink:#083F37; --accent-soft:#DDEDE9;
+  --warn:#9E4514; --warn-soft:#FBEADF;
+  --ok:#1F6B3B; --ok-soft:#DFF0E4;
+  --wait:#8A5A00; --wait-soft:#FAEFD6;
+  --purple:#5B3F97;
+  --shadow:0 1px 2px rgba(11,20,18,.05),0 6px 18px rgba(11,20,18,.06);
+  --nav-h:62px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A100F; --surface:#141C1A; --surface-2:#1B2523; --surface-3:#222E2B;
+    --ink:#E8F0ED; --muted:#A9BAB4; --faint:#7E8F8A;
+    --line:#2A3835; --line-strong:#3D4E4A;
+    --accent:#4FBFA8; --accent-ink:#8FE0CE; --accent-soft:#16332D;
+    --warn:#E0885A; --warn-soft:#3A2418;
+    --ok:#6DC98C; --ok-soft:#14301F;
+    --wait:#D9AC55; --wait-soft:#33270F;
+    --purple:#A88BDD;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A100F; --surface:#141C1A; --surface-2:#1B2523; --surface-3:#222E2B;
+  --ink:#E8F0ED; --muted:#A9BAB4; --faint:#7E8F8A;
+  --line:#2A3835; --line-strong:#3D4E4A;
+  --accent:#4FBFA8; --accent-ink:#8FE0CE; --accent-soft:#16332D;
+  --warn:#E0885A; --warn-soft:#3A2418;
+  --ok:#6DC98C; --ok-soft:#14301F;
+  --wait:#D9AC55; --wait-soft:#33270F;
+  --purple:#A88BDD;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+
+/* ---------- demo banner ---------- */
+.demo{background:var(--ink);color:var(--bg);font-size:12px;letter-spacing:.04em;
+  padding:7px 16px;text-align:center;font-family:"IBM Plex Mono",monospace}
+.demo b{color:var(--bg)}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:1fr;min-height:100vh}
+.side{display:none}
+.main{min-width:0;padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom))}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:12px;padding:12px 16px}
+.top .who{flex:1;min-width:0}
+.top .who b{display:block;font-family:"Source Serif 4",Georgia,serif;font-size:19px;line-height:1.15;
+  letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .who span{font-size:12px;color:var(--faint)}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--accent-soft);color:var(--accent);
+  display:grid;place-items:center;font-size:12.5px;font-weight:700;flex:none;
+  font-family:"IBM Plex Mono",monospace}
+.tbtn{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);display:grid;place-items:center;
+  color:var(--muted);flex:none}
+.tbtn svg{width:17px;height:17px}
+
+/* role switcher */
+.roles{display:flex;gap:7px;overflow-x:auto;padding:11px 16px;background:var(--surface);
+  border-bottom:1px solid var(--line);scrollbar-width:none}
+.roles::-webkit-scrollbar{display:none}
+.role{flex:none;padding:6px 13px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;
+  color:var(--muted);white-space:nowrap;font-weight:500}
+.role[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .role[aria-pressed="true"]{color:#06201B}}
+:root[data-theme="dark"] .role[aria-pressed="true"]{color:#06201B}
+
+.page{padding:18px 16px 30px;max-width:1080px;margin:0 auto}
+.ph{margin:0 0 4px;font-family:"Source Serif 4",Georgia,serif;font-size:24px;font-weight:700;
+  letter-spacing:-.015em;text-wrap:balance}
+.psub{margin:0 0 18px;color:var(--faint);font-size:13.5px}
+.sh{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:26px 0 11px}
+.sh h3{margin:0;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);
+  font-weight:600;font-family:"IBM Plex Mono",monospace}
+.sh a{font-size:12.5px;color:var(--accent);text-decoration:none;font-weight:600}
+.sec:first-of-type .sh{margin-top:6px}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+.stack{display:grid;gap:11px}
+.grid{display:grid;gap:11px;grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr))}
+
+/* stat tiles */
+.tiles{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(min(140px,45%),1fr))}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 14px}
+.tile b{display:block;font-family:"Source Serif 4",serif;font-size:27px;line-height:1;font-weight:700;
+  font-variant-numeric:tabular-nums}
+.tile span{display:block;font-size:11.5px;color:var(--faint);margin-top:6px;line-height:1.35}
+.tile.w b{color:var(--warn)} .tile.g b{color:var(--ok)} .tile.a b{color:var(--accent)}
+
+/* project row */
+.prow{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;
+  padding:13px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  text-align:left;width:100%;box-shadow:var(--shadow)}
+.prow:hover{border-color:var(--line-strong)}
+.thumb{width:44px;height:44px;border-radius:9px;flex:none;background:var(--surface-3);
+  display:grid;place-items:center;overflow:hidden}
+.thumb svg{width:44px;height:44px;display:block}
+.pinfo{min-width:0}
+.pinfo b{display:block;font-size:14.5px;font-weight:600;line-height:1.25}
+.pinfo span{display:block;font-size:12px;color:var(--faint);margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chev{color:var(--faint);flex:none}
+.chev svg{width:16px;height:16px;display:block}
+
+/* status chips */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;
+  padding:3px 8px;border-radius:999px;letter-spacing:.02em;white-space:nowrap;
+  font-family:"IBM Plex Mono",monospace}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+.c-ok{background:var(--ok-soft);color:var(--ok)}
+.c-wait{background:var(--wait-soft);color:var(--wait)}
+.c-warn{background:var(--warn-soft);color:var(--warn)}
+.c-draft{background:var(--surface-3);color:var(--faint)}
+.c-acc{background:var(--accent-soft);color:var(--accent)}
+
+/* progress */
+.steps{display:flex;gap:4px;margin-top:9px}
+.pinfo .steps{display:flex;overflow:visible;white-space:normal}
+.steps i{height:4px;flex:1;border-radius:2px;background:var(--surface-3)}
+.steps i.on{background:var(--accent)}
+.steps i.warn{background:var(--warn)}
+
+/* form */
+.field{padding:12px 14px;border-bottom:1px solid var(--line)}
+.field:last-child{border-bottom:0}
+.field label{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--faint);font-weight:600;margin-bottom:5px;font-family:"IBM Plex Mono",monospace}
+.field input,.field select,.field textarea{width:100%;border:0;background:none;font:inherit;color:var(--ink);
+  font-size:15px;padding:0;resize:vertical}
+.field input::placeholder,.field textarea::placeholder{color:var(--faint)}
+.two{display:grid;grid-template-columns:1fr 1fr}
+.two .field{border-right:1px solid var(--line)}
+.two .field:last-child{border-right:0}
+.hint{font-size:12px;color:var(--faint);margin-top:5px}
+
+/* upload */
+.drop{border:1.5px dashed var(--line-strong);border-radius:12px;padding:20px 16px;text-align:center;
+  background:var(--surface-2);color:var(--muted);font-size:13.5px}
+.drop svg{width:26px;height:26px;color:var(--accent);margin-bottom:6px}
+.drop b{display:block;color:var(--ink);font-size:14.5px;margin-bottom:3px}
+.file{display:flex;align-items:center;gap:11px;padding:11px 14px;border-bottom:1px solid var(--line);font-size:13.5px}
+.file:last-child{border-bottom:0}
+.file svg{width:18px;height:18px;color:var(--faint);flex:none}
+.file .fn{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file .fs{font-size:11.5px;color:var(--faint);flex:none}
+
+/* buttons */
+.btn{display:block;width:100%;text-align:center;padding:13px;border-radius:11px;background:var(--accent);
+  color:#fff;font-weight:600;font-size:15px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn{color:#06201B}}
+:root[data-theme="dark"] .btn{color:#06201B}
+.btn.ghost{background:none;border:1px solid var(--line-strong);color:var(--muted)}
+.btn.danger{background:var(--warn);color:#fff}
+.btnrow{display:grid;gap:9px;grid-template-columns:1fr 1fr;margin-top:14px}
+@media (max-width:420px){.btnrow{grid-template-columns:1fr}}
+
+/* map */
+.mapwrap{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--line);
+  background:var(--surface-2);box-shadow:var(--shadow)}
+.mapwrap svg{display:block;width:100%;height:auto}
+.mapbadge{position:absolute;left:10px;top:10px;background:var(--surface);border:1px solid var(--line);
+  border-radius:8px;padding:5px 9px;font-size:11px;color:var(--muted);
+  font-family:"IBM Plex Mono",monospace;letter-spacing:.04em}
+.maptools{position:absolute;right:10px;top:10px;display:grid;gap:6px}
+.maptools button{width:34px;height:34px;border-radius:9px;background:var(--surface);border:1px solid var(--line);
+  display:grid;place-items:center;color:var(--muted);box-shadow:var(--shadow)}
+.maptools svg{width:16px;height:16px}
+
+/* alert */
+.alert{display:grid;grid-template-columns:auto 1fr;gap:11px;padding:13px 14px;border-radius:12px;
+  background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 30%,transparent);font-size:13.5px;color:var(--muted)}
+.alert.ok{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 30%,transparent)}
+.alert svg{width:19px;height:19px;color:var(--warn);margin-top:1px}
+.alert.ok svg{color:var(--ok)}
+.alert b{display:block;color:var(--ink);font-size:14px;margin-bottom:2px}
+
+/* key-value */
+.kv{display:grid;grid-template-columns:auto 1fr;gap:0 16px}
+.kv dt{padding:10px 14px;font-size:12px;color:var(--faint);border-bottom:1px solid var(--line);
+  font-family:"IBM Plex Mono",monospace;letter-spacing:.04em;white-space:nowrap}
+.kv dd{margin:0;padding:10px 14px 10px 0;font-size:14px;border-bottom:1px solid var(--line);
+  text-align:right;font-weight:500;min-width:0;overflow-wrap:anywhere}
+.kv dt:last-of-type,.kv dd:last-of-type{border-bottom:0}
+
+/* checklist */
+.check{display:flex;gap:11px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--line);
+  width:100%;text-align:left}
+.check:last-child{border-bottom:0}
+.box{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--line-strong);flex:none;
+  display:grid;place-items:center;margin-top:1px;color:transparent}
+.check[aria-checked="true"] .box{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .check[aria-checked="true"] .box{color:#06201B}}
+:root[data-theme="dark"] .check[aria-checked="true"] .box{color:#06201B}
+.box svg{width:13px;height:13px;display:block}
+.check .ct{flex:1;min-width:0}
+.check .ct b{display:block;font-size:14px;font-weight:500}
+.check .ct span{display:block;font-size:12px;color:var(--faint);margin-top:2px}
+
+/* search */
+.search{display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--line);
+  border-radius:11px;padding:11px 13px;box-shadow:var(--shadow)}
+.search svg{width:17px;height:17px;color:var(--faint);flex:none}
+.search input{flex:1;min-width:0;border:0;background:none;font:inherit;font-size:15px;color:var(--ink)}
+.search input::placeholder{color:var(--faint)}
+
+/* credit card */
+.credit{padding:14px}
+.credit .ch{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.credit .cn{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--accent);font-weight:600}
+.credit .ct{font-family:"Source Serif 4",serif;font-size:17px;font-weight:700;margin-top:3px;line-height:1.2}
+.credit .cm{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:12px;color:var(--faint)}
+.credit .cm b{color:var(--muted);font-weight:600}
+.tons{text-align:right;flex:none}
+.tons b{display:block;font-family:"Source Serif 4",serif;font-size:22px;font-weight:700;line-height:1;
+  font-variant-numeric:tabular-nums}
+.tons span{font-size:10.5px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase}
+
+/* ledger */
+.led{display:grid;grid-template-columns:auto 1fr;gap:0 13px;padding:0 14px}
+.led .rail{position:relative;width:12px}
+.led .rail::before{content:"";position:absolute;left:5px;top:0;bottom:0;width:2px;background:var(--line)}
+.led .node{position:absolute;left:0;top:15px;width:11px;height:11px;border-radius:50%;
+  background:var(--surface);border:2px solid var(--accent)}
+.led .body{padding:12px 0;border-bottom:1px solid var(--line);min-width:0}
+.led .row:last-child .body{border-bottom:0}
+.led .row{display:contents}
+.ledgrid{display:grid;grid-template-columns:auto 1fr}
+.ledrow{display:grid;grid-template-columns:auto 1fr;gap:13px;padding:0 14px}
+.ledrail{position:relative;width:12px;flex:none}
+.ledrail::before{content:"";position:absolute;left:5px;top:0;bottom:0;width:2px;background:var(--line)}
+.ledrow:first-child .ledrail::before{top:16px}
+.ledrow:last-child .ledrail::before{bottom:calc(100% - 16px)}
+.ledrail i{position:absolute;left:0;top:14px;width:11px;height:11px;border-radius:50%;
+  background:var(--surface);border:2px solid var(--accent);box-sizing:border-box}
+.ledbody{padding:11px 0;border-bottom:1px solid var(--line);min-width:0}
+.ledrow:last-child .ledbody{border-bottom:0}
+.ledbody .lt{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.ledbody b{font-size:14px;font-weight:600}
+.ledbody time{font-size:11.5px;color:var(--faint);font-family:"IBM Plex Mono",monospace}
+.ledbody .lw{font-size:12.5px;color:var(--muted);margin-top:2px}
+.hash{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);margin-top:6px;
+  background:var(--surface-2);border-radius:6px;padding:4px 7px;display:inline-block;overflow-wrap:anywhere}
+
+/* bottom nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);
+  border-top:1px solid var(--line);display:grid;grid-auto-flow:column;grid-auto-columns:1fr;
+  padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -2px 14px rgba(11,20,18,.06)}
+.nav button{height:var(--nav-h);display:grid;place-items:center;gap:3px;color:var(--faint);font-size:10.5px;
+  font-weight:500;position:relative}
+.nav button svg{width:21px;height:21px}
+.nav button[aria-current="page"]{color:var(--accent);font-weight:600}
+.badge{position:absolute;top:9px;left:calc(50% + 6px);min-width:16px;height:16px;border-radius:8px;
+  background:var(--warn);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;
+  padding:0 4px;font-family:"IBM Plex Mono",monospace}
+
+/* desktop */
+@media (min-width:880px){
+  .shell{grid-template-columns:232px 1fr}
+  .side{display:block;background:var(--surface);border-right:1px solid var(--line);
+    position:sticky;top:0;height:100vh;padding:20px 14px;overflow-y:auto}
+  .brand{display:flex;align-items:center;gap:10px;padding:0 8px 18px;margin-bottom:12px;
+    border-bottom:1px solid var(--line)}
+  .brand .mark{width:32px;height:32px;border-radius:9px;background:var(--accent);display:grid;place-items:center;flex:none}
+  .brand .mark svg{width:18px;height:18px;color:#fff}
+  .brand b{font-family:"Source Serif 4",serif;font-size:17px;line-height:1.1}
+  .brand span{display:block;font-size:10.5px;color:var(--faint);letter-spacing:.1em;
+    font-family:"IBM Plex Mono",monospace}
+  .snav{display:grid;gap:2px}
+  .snav button{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:9px;
+    color:var(--muted);font-size:14px;text-align:left;font-weight:500}
+  .snav button svg{width:18px;height:18px;flex:none}
+  .snav button:hover{background:var(--surface-2)}
+  .snav button[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+  .snav .cnt{margin-left:auto;font-size:11px;font-family:"IBM Plex Mono",monospace;
+    background:var(--warn);color:#fff;border-radius:999px;padding:1px 6px}
+  .nav{display:none}
+  .main{padding-bottom:0}
+  .page{padding:26px 28px 44px}
+  .ph{font-size:29px}
+  .top{padding:14px 28px}
+  .roles{padding:12px 28px}
+}
+@media (prefers-reduced-motion:no-preference){
+  .page{animation:fade .18s ease-out}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+}
+[hidden]{display:none !important}
+</style>
+</head>
+<body>
+
+<div class="demo">MOCK-UP &middot; <b>ITCS514 Group 1</b> &middot; screens only, no live data</div>
+
+<div class="shell">
+
+  <!-- ===== desktop sidebar ===== -->
+  <aside class="side">
+    <div class="brand">
+      <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a9 9 0 0 1 9 9c0 5-4 8-9 11C7 19 3 16 3 11a9 9 0 0 1 9-9z"/><path d="M9 12l2 2 4-4"/></svg></span>
+      <span><b>CRVR</b><span>REGISTRY</span></span>
+    </div>
+    <nav class="snav" id="snav"></nav>
+  </aside>
+
+  <div class="main">
+    <!-- ===== top bar ===== -->
+    <header class="top">
+      <div class="who">
+        <b id="whoName">Somchai Prasert</b>
+        <span id="whoRole">Project developer &middot; Nan Reforestation Co.</span>
+      </div>
+      <button class="tbtn" title="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></button>
+      <div class="avatar" id="whoInit">SP</div>
+    </header>
+
+    <!-- ===== role switcher ===== -->
+    <div class="roles" role="group" aria-label="Demo role">
+      <button class="role" data-role="dev" aria-pressed="true">Developer</button>
+      <button class="role" data-role="ver" aria-pressed="false">Verifier</button>
+      <button class="role" data-role="buy" aria-pressed="false">Buyer</button>
+      <button class="role" data-role="adm" aria-pressed="false">Registry admin</button>
+    </div>
+
+    <!-- ================= HOME ================= -->
+    <main class="page" id="p-home">
+      <h1 class="ph">My projects</h1>
+      <p class="psub">Three registered &middot; one waiting on you</p>
+
+      <div class="tiles">
+        <div class="tile a"><b>3</b><span>Projects registered</span></div>
+        <div class="tile g"><b>18,400</b><span>tCO&#8322;e verified</span></div>
+        <div class="tile w"><b>1</b><span>Needs your action</span></div>
+        <div class="tile"><b>7</b><span>Evidence files</span></div>
+      </div>
+
+      <section class="sec">
+        <div class="sh"><h3>Active</h3><a href="#" onclick="return false">Filter</a></div>
+        <div class="stack" id="projList"></div>
+      </section>
+
+      <section class="sec">
+        <div class="sh"><h3>Latest satellite check</h3></div>
+        <div class="card" style="padding:14px">
+          <div class="alert">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+            <div><b>Canopy loss detected &mdash; 2.1 ha</b>
+            Northern parcel of Nan Reforestation, imagery dated 14 Sep 2026. A verifier has been notified automatically. Upload an explanation within 14 days.</div>
+          </div>
+          <button class="btn" style="margin-top:12px">Respond to alert</button>
+        </div>
+      </section>
+    </main>
+
+    <!-- ================= SUBMIT ================= -->
+    <main class="page" id="p-submit" hidden>
+      <h1 class="ph">Register a project</h1>
+      <p class="psub">Step 2 of 4 &middot; Project details</p>
+
+      <div class="steps" style="margin-bottom:20px"><i class="on"></i><i class="on"></i><i></i><i></i></div>
+
+      <div class="card">
+        <div class="field">
+          <label for="f1">Project name</label>
+          <input id="f1" value="Nan Reforestation Phase II">
+        </div>
+        <div class="two">
+          <div class="field">
+            <label for="f2">Methodology</label>
+            <select id="f2"><option>VM0047 Reforestation</option><option>VM0042 Agriculture</option><option>ACM0003 Soil carbon</option></select>
+          </div>
+          <div class="field">
+            <label for="f3">Crediting period</label>
+            <input id="f3" value="2027 &ndash; 2047">
+          </div>
+        </div>
+        <div class="two">
+          <div class="field">
+            <label for="f4">Area (ha)</label>
+            <input id="f4" class="mono" value="1,240">
+          </div>
+          <div class="field">
+            <label for="f5">Est. removal</label>
+            <input id="f5" class="mono" value="24,800 tCO&#8322;e">
+          </div>
+        </div>
+        <div class="field">
+          <label for="f6">Baseline summary</label>
+          <textarea id="f6" rows="3">Degraded grazing land, no natural regeneration recorded 2019&ndash;2026. Baseline stock 8.4 tC/ha from the 2026 field survey.</textarea>
+        </div>
+      </div>
+
+      <div class="sh"><h3>Evidence</h3><a href="#" onclick="return false">Requirements</a></div>
+      <div class="drop">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5-5 5 5"/><path d="M12 5v12"/></svg>
+        <b>Add evidence</b>
+        Photos, land title, survey PDF. Files are sealed on upload &mdash; they can never be edited or replaced.
+      </div>
+      <div class="card" style="margin-top:11px" id="fileList"></div>
+
+      <div class="alert ok" style="margin-top:14px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        <div><b>Boundary drawn &mdash; no overlap</b>
+        Checked against 1,842 registered boundaries. Nothing conflicts.</div>
+      </div>
+
+      <div class="btnrow">
+        <button class="btn ghost">Save draft</button>
+        <button class="btn">Continue</button>
+      </div>
+    </main>
+
+    <!-- ================= MAP ================= -->
+    <main class="page" id="p-map" hidden>
+      <h1 class="ph">Boundary</h1>
+      <p class="psub">Nan Reforestation Phase II &middot; 1,240 ha &middot; WGS&nbsp;84</p>
+
+      <div class="mapwrap">
+        <span class="mapbadge">18.78&deg;N &nbsp;100.77&deg;E &nbsp;&middot;&nbsp; z14</span>
+        <div class="maptools">
+          <button title="Draw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/></svg></button>
+          <button title="Layers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg></button>
+          <button title="Locate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+        </div>
+        <svg viewBox="0 0 400 300" role="img" aria-label="Map showing the project boundary and one overlapping parcel">
+          <defs>
+            <pattern id="hatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+              <line x1="0" y1="0" x2="0" y2="7" stroke="#9E4514" stroke-width="2.5" opacity=".55"/>
+            </pattern>
+          </defs>
+          <rect width="400" height="300" fill="#E3EBE7"/>
+          <g stroke="#CBD8D2" stroke-width="1">
+            <path d="M0 60H400M0 120H400M0 180H400M0 240H400M70 0V300M150 0V300M230 0V300M310 0V300"/>
+          </g>
+          <path d="M-10 210 Q 80 185 150 205 T 300 190 T 410 215 L410 300 L-10 300Z" fill="#CFDFD8"/>
+          <path d="M-10 95 Q 90 60 170 92 T 330 70 T 410 96" fill="none" stroke="#8FB6C9" stroke-width="5" opacity=".8"/>
+          <polygon points="95,95 215,72 268,140 232,222 118,235 80,160" fill="#0A5F53" fill-opacity=".18" stroke="#0A5F53" stroke-width="2.5"/>
+          <polygon points="232,222 268,140 340,158 322,238" fill="url(#hatch)" stroke="#9E4514" stroke-width="2.5" stroke-dasharray="6 4"/>
+          <g fill="#0A5F53">
+            <circle cx="95" cy="95" r="4.5" stroke="#fff" stroke-width="2"/>
+            <circle cx="215" cy="72" r="4.5" stroke="#fff" stroke-width="2"/>
+            <circle cx="268" cy="140" r="4.5" stroke="#fff" stroke-width="2"/>
+            <circle cx="232" cy="222" r="4.5" stroke="#fff" stroke-width="2"/>
+            <circle cx="118" cy="235" r="4.5" stroke="#fff" stroke-width="2"/>
+            <circle cx="80" cy="160" r="4.5" stroke="#fff" stroke-width="2"/>
+          </g>
+          <g font-family="IBM Plex Mono, monospace" font-size="10" font-weight="600">
+            <rect x="120" y="140" width="86" height="19" rx="4" fill="#0A5F53"/>
+            <text x="163" y="153.5" fill="#fff" text-anchor="middle">CRVR-0147</text>
+            <rect x="262" y="180" width="80" height="19" rx="4" fill="#9E4514"/>
+            <text x="302" y="193.5" fill="#fff" text-anchor="middle">CRVR-0092</text>
+          </g>
+          <g font-family="IBM Plex Mono, monospace" font-size="9" fill="#46564F">
+            <rect x="12" y="272" width="72" height="4" fill="none" stroke="#46564F" stroke-width="1"/>
+            <line x1="12" y1="270" x2="12" y2="278" stroke="#46564F"/>
+            <line x1="84" y1="270" x2="84" y2="278" stroke="#46564F"/>
+            <text x="48" y="266" text-anchor="middle">2 km</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="alert" style="margin-top:13px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        <div><b>Overlap found &mdash; 38.6 ha</b>
+        Your south-east corner sits inside <b>CRVR-0092 (Phrae Agroforestry)</b>, registered 3 Mar 2026. That is 3.1% of your area &mdash; above the 0.5% tolerance, so the submission is blocked until it is resolved.</div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <dl class="kv">
+          <dt>Your area</dt><dd class="mono">1,240.0 ha</dd>
+          <dt>Overlap</dt><dd class="mono" style="color:var(--warn)">38.6 ha &middot; 3.1%</dd>
+          <dt>Tolerance</dt><dd class="mono">0.5%</dd>
+          <dt>Vertices</dt><dd class="mono">6</dd>
+          <dt>Checked against</dt><dd class="mono">1,842 boundaries</dd>
+        </dl>
+      </div>
+
+      <div class="btnrow">
+        <button class="btn ghost">Re-draw corner</button>
+        <button class="btn danger">Dispute overlap</button>
+      </div>
+    </main>
+
+    <!-- ================= VERIFY ================= -->
+    <main class="page" id="p-verify" hidden>
+      <h1 class="ph">Verification queue</h1>
+      <p class="psub">4 assigned to you &middot; 2 overdue</p>
+
+      <div class="tiles" style="margin-bottom:6px">
+        <div class="tile a"><b>4</b><span>Assigned</span></div>
+        <div class="tile w"><b>2</b><span>Overdue</span></div>
+        <div class="tile g"><b>31</b><span>Signed off this year</span></div>
+      </div>
+
+      <section class="sec">
+        <div class="sh"><h3>Queue</h3><a href="#" onclick="return false">Sort: oldest</a></div>
+        <div class="stack" id="queueList"></div>
+      </section>
+
+      <section class="sec">
+        <div class="sh"><h3>Open review &mdash; CRVR-0147</h3></div>
+        <div class="card">
+          <button class="check" aria-checked="true" onclick="tog(this)"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="ct"><b>Land title matches applicant</b><span>Deed 442/2561 &middot; checked against Land Dept. extract</span></span></button>
+          <button class="check" aria-checked="true" onclick="tog(this)"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="ct"><b>Boundary has no overlap</b><span>Auto-checked 12 Sep 2026 &middot; 1,842 boundaries</span></span></button>
+          <button class="check" aria-checked="true" onclick="tog(this)"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="ct"><b>Baseline evidence is complete</b><span>Field survey + 24 geo-tagged photos</span></span></button>
+          <button class="check" aria-checked="false" onclick="tog(this)"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="ct"><b>Methodology applied correctly</b><span>VM0047 &mdash; growth curve and buffer pool</span></span></button>
+          <button class="check" aria-checked="false" onclick="tog(this)"><span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="ct"><b>Site visit completed</b><span>Scheduled 28 Sep 2026</span></span></button>
+        </div>
+        <div class="card" style="margin-top:11px">
+          <div class="field">
+            <label for="vn">Verifier note</label>
+            <textarea id="vn" rows="2" placeholder="Visible to the developer and recorded in the ledger&hellip;"></textarea>
+          </div>
+        </div>
+        <div class="btnrow">
+          <button class="btn ghost">Request changes</button>
+          <button class="btn">Sign off</button>
+        </div>
+        <p class="hint" style="text-align:center">Sign-off is irreversible and written to the audit ledger with your credential.</p>
+      </section>
+    </main>
+
+    <!-- ================= REGISTRY ================= -->
+    <main class="page" id="p-registry" hidden>
+      <h1 class="ph">Public registry</h1>
+      <p class="psub">Every issued credit, traceable to the evidence behind it</p>
+
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input placeholder="Search project, serial or country" value="Thailand">
+      </div>
+
+      <section class="sec">
+        <div class="sh"><h3>3 results</h3><a href="#" onclick="return false">Vintage &darr;</a></div>
+        <div class="stack" id="creditList"></div>
+      </section>
+
+      <section class="sec">
+        <div class="sh"><h3>Traceability &mdash; TH-0147-2027-A</h3></div>
+        <div class="card">
+          <dl class="kv">
+            <dt>Project</dt><dd>Nan Reforestation Phase II</dd>
+            <dt>Serial</dt><dd class="mono">TH-0147-2027-A-00001&ndash;08400</dd>
+            <dt>Vintage</dt><dd class="mono">2027</dd>
+            <dt>Verifier</dt><dd>TUV Nord (VVB-114)</dd>
+            <dt>Signed off</dt><dd class="mono">02 Feb 2027</dd>
+            <dt>Status</dt><dd><span class="chip c-ok">ACTIVE</span></dd>
+            <dt>Monitoring</dt><dd class="mono">Clear &middot; last 12 Sep 2026</dd>
+          </dl>
+        </div>
+        <div class="btnrow">
+          <button class="btn ghost">Evidence pack</button>
+          <button class="btn">Verify authenticity</button>
+        </div>
+        <p class="hint" style="text-align:center">Personal data in the evidence pack is filtered out before a buyer sees it.</p>
+      </section>
+    </main>
+
+    <!-- ================= LEDGER ================= -->
+    <main class="page" id="p-ledger" hidden>
+      <h1 class="ph">Audit ledger</h1>
+      <p class="psub">Every action, in order &middot; each entry seals the one before it</p>
+
+      <div class="alert ok">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a9 9 0 0 1 9 9c0 5-4 8-9 11C7 19 3 16 3 11a9 9 0 0 1 9-9z"/><path d="M9 12l2 2 4-4"/></svg>
+        <div><b>Chain intact &mdash; 41,208 entries</b>
+        Last integrity sweep 21 Sep 2026, 04:00 ICT. No broken seals.</div>
+      </div>
+
+      <div class="card" style="margin-top:13px" id="ledger"></div>
+
+      <p class="hint" style="text-align:center;margin-top:12px">Entries cannot be edited or deleted &mdash; corrections are appended as new entries.</p>
+    </main>
+
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<!-- ===== mobile bottom nav ===== -->
+<nav class="nav" id="bnav" aria-label="Sections"></nav>
+
+<script>
+const I = {
+  home:'<path d="m3 10 9-7 9 7v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 21V12h6v9"/>',
+  submit:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15h6"/>',
+  map:'<path d="m9 3-6 3v15l6-3 6 3 6-3V3l-6 3z"/><path d="M9 3v15M15 6v15"/>',
+  verify:'<path d="M9 11l2 2 4-4"/><path d="M12 2a9 9 0 0 1 9 9c0 5-4 8-9 11C7 19 3 16 3 11a9 9 0 0 1 9-9z"/>',
+  registry:'<path d="M3 7v13h18V7"/><path d="M3 7 12 2l9 5"/><path d="M8 20v-6h8v6"/>',
+  ledger:'<path d="M4 4a2 2 0 0 1 2-2h12v18H6a2 2 0 0 0-2 2z"/><path d="M4 20a2 2 0 0 0 2 2h12"/><path d="M9 7h6M9 11h6"/>'
+};
+const svg = p => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>';
+
+const NAV = [
+  {id:'home',     lbl:'Home',     page:'p-home',     roles:['dev','ver','buy','adm']},
+  {id:'submit',   lbl:'Submit',   page:'p-submit',   roles:['dev','adm']},
+  {id:'map',      lbl:'Map',      page:'p-map',      roles:['dev','ver','adm'], badge:1},
+  {id:'verify',   lbl:'Verify',   page:'p-verify',   roles:['ver','adm'], badge:4},
+  {id:'registry', lbl:'Registry', page:'p-registry', roles:['dev','ver','buy','adm']},
+  {id:'ledger',   lbl:'Ledger',   page:'p-ledger',   roles:['ver','adm','buy']}
+];
+
+const WHO = {
+  dev:{n:'Somchai Prasert', r:'Project developer &middot; Nan Reforestation Co.', i:'SP', start:'home'},
+  ver:{n:'Dr. Anna Weber',  r:'Independent verifier &middot; TUV Nord (VVB-114)', i:'AW', start:'verify'},
+  buy:{n:'Maya Lindqvist',  r:'Buyer &middot; Nordic Airways sustainability', i:'ML', start:'registry'},
+  adm:{n:'Kittipong R.',    r:'Registry admin &middot; CRVR operations',        i:'KR', start:'ledger'}
+};
+
+let role = 'dev', active = 'home';
+
+/* ---- data ---- */
+const PROJECTS = [
+  ['CRVR-0147','Nan Reforestation Phase II','1,240 ha &middot; VM0047 &middot; submitted 12 Sep','c-warn','OVERLAP',2,'warn'],
+  ['CRVR-0131','Chiang Rai Mangrove Restore','340 ha &middot; VM0033 &middot; verified 04 Aug','c-ok','VERIFIED',4,'on'],
+  ['CRVR-0118','Loei Soil Carbon Pilot','2,050 ha &middot; VM0042 &middot; monitoring','c-acc','ISSUED',4,'on'],
+  ['CRVR-0156','Phetchabun Agroforestry','&mdash; &middot; draft, not submitted','c-draft','DRAFT',1,'on']
+];
+const QUEUE = [
+  ['CRVR-0147','Nan Reforestation Phase II','Due 26 Sep &middot; 4 days overdue','c-warn','OVERDUE'],
+  ['CRVR-0152','Kanchanaburi Bamboo Sink','Due 02 Oct &middot; site visit booked','c-wait','IN REVIEW'],
+  ['CRVR-0149','Surat Thani Mangrove','Due 05 Oct &middot; evidence complete','c-wait','IN REVIEW'],
+  ['CRVR-0155','Udon Thani Biochar','Due 11 Oct &middot; just assigned','c-acc','NEW']
+];
+const CREDITS = [
+  ['TH-0147-2027-A','Nan Reforestation Phase II','8,400','2027','TUV Nord','c-ok','ACTIVE'],
+  ['TH-0131-2026-B','Chiang Rai Mangrove Restore','4,150','2026','SCS Global','c-ok','ACTIVE'],
+  ['TH-0118-2025-C','Loei Soil Carbon Pilot','5,850','2025','TUV Nord','c-draft','RETIRED']
+];
+const FILES = [
+  ['land-title-442-2561.pdf','1.2 MB'],
+  ['baseline-survey-2026.xlsx','840 KB'],
+  ['site-photos-geotagged.zip','18.4 MB']
+];
+const LEDGER = [
+  ['Boundary overlap detected','system &middot; geospatial service','21 Sep 2026 09:14','a4f9&hellip;2c71'],
+  ['Evidence sealed &mdash; 3 files','somchai.p &middot; developer','21 Sep 2026 09:02','8b31&hellip;e07d'],
+  ['Project submitted for review','somchai.p &middot; developer','21 Sep 2026 08:58','c2de&hellip;9a14'],
+  ['Verifier assigned &mdash; VVB-114','k.rattana &middot; registry admin','20 Sep 2026 16:40','71a0&hellip;bb63'],
+  ['Canopy-loss alert raised &mdash; 2.1 ha','system &middot; satellite monitoring','14 Sep 2026 03:20','ff58&hellip;104e']
+];
+
+const chev = '<span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>';
+const miniMap = c => '<svg viewBox="0 0 44 44"><rect width="44" height="44" fill="#DCE7E2"/><path d="M0 30 Q12 25 22 29 T44 27 L44 44 L0 44Z" fill="#C7D8D1"/><polygon points="10,10 26,8 33,19 27,31 13,30 8,19" fill="'+c+'" fill-opacity=".3" stroke="'+c+'" stroke-width="2"/></svg>';
+
+/* ---- render ---- */
+document.getElementById('projList').innerHTML = PROJECTS.map(([id,nm,meta,cls,st,done,kind])=>
+  '<button class="prow"><span class="thumb">'+miniMap(cls==='c-warn'?'#9E4514':'#0A5F53')+'</span>'+
+  '<span class="pinfo"><b>'+nm+'</b><span class="mono">'+id+'</span><span>'+meta+'</span>'+
+  '<span class="steps">'+[0,1,2,3].map(i=>'<i class="'+(i<done?(i===done-1&&kind==='warn'?'warn':'on'):'')+'"></i>').join('')+'</span></span>'+
+  '<span style="display:grid;gap:8px;justify-items:end"><span class="chip '+cls+'">'+st+'</span>'+chev+'</span></button>').join('');
+
+document.getElementById('queueList').innerHTML = QUEUE.map(([id,nm,meta,cls,st])=>
+  '<button class="prow"><span class="thumb">'+miniMap(cls==='c-warn'?'#9E4514':'#0A5F53')+'</span>'+
+  '<span class="pinfo"><b>'+nm+'</b><span class="mono">'+id+'</span><span>'+meta+'</span></span>'+
+  '<span style="display:grid;gap:8px;justify-items:end"><span class="chip '+cls+'">'+st+'</span>'+chev+'</span></button>').join('');
+
+document.getElementById('creditList').innerHTML = CREDITS.map(([sn,nm,t,v,vb,cls,st])=>
+  '<div class="card credit"><div class="ch"><div style="min-width:0">'+
+  '<div class="cn">'+sn+'</div><div class="ct">'+nm+'</div></div>'+
+  '<div class="tons"><b>'+t+'</b><span>tCO&#8322;e</span></div></div>'+
+  '<div class="cm"><span>Vintage <b>'+v+'</b></span><span>Verifier <b>'+vb+'</b></span>'+
+  '<span class="chip '+cls+'">'+st+'</span></div></div>').join('');
+
+document.getElementById('fileList').innerHTML = FILES.map(([n,s])=>
+  '<div class="file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>'+
+  '<span class="fn">'+n+'</span><span class="fs mono">'+s+'</span>'+
+  '<span class="chip c-ok">SEALED</span></div>').join('');
+
+document.getElementById('ledger').innerHTML = LEDGER.map(([w,who,t,h])=>
+  '<div class="ledrow"><span class="ledrail"><i></i></span><div class="ledbody">'+
+  '<div class="lt"><b>'+w+'</b><time>'+t+'</time></div>'+
+  '<div class="lw">'+who+'</div><span class="hash">sha256 '+h+'</span></div></div>').join('');
+
+/* ---- nav ---- */
+function buildNav(){
+  const items = NAV.filter(n=>n.roles.includes(role));
+  document.getElementById('bnav').innerHTML = items.map(n=>
+    '<button data-go="'+n.id+'"'+(n.id===active?' aria-current="page"':'')+'>'+svg(I[n.id])+
+    (n.badge&&n.id!==active?'<span class="badge">'+n.badge+'</span>':'')+'<span>'+n.lbl+'</span></button>').join('');
+  document.getElementById('snav').innerHTML = items.map(n=>
+    '<button data-go="'+n.id+'"'+(n.id===active?' aria-current="page"':'')+'>'+svg(I[n.id])+'<span>'+n.lbl+'</span>'+
+    (n.badge?'<span class="cnt">'+n.badge+'</span>':'')+'</button>').join('');
+  document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
+}
+function go(id){
+  active = id;
+  NAV.forEach(n=>{const el=document.getElementById(n.page); if(el) el.hidden = (n.id!==id);});
+  buildNav();
+  window.scrollTo({top:0,behavior:'instant'});
+}
+function setRole(r){
+  role = r;
+  const w = WHO[r];
+  document.getElementById('whoName').innerHTML = w.n;
+  document.getElementById('whoRole').innerHTML = w.r;
+  document.getElementById('whoInit').textContent = w.i;
+  document.querySelectorAll('.role').forEach(b=>b.setAttribute('aria-pressed', b.dataset.role===r));
+  go(w.start);
+}
+document.querySelectorAll('.role').forEach(b=>b.onclick=()=>setRole(b.dataset.role));
+function tog(el){ el.setAttribute('aria-checked', el.getAttribute('aria-checked')!=='true'); }
+setRole('dev');
+</script>
+</body>
+</html>
