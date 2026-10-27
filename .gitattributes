@@ -1,0 +1,13 @@
+# Normalise line endings so the repo behaves the same on macOS, Linux and Windows.
+* text=auto eol=lf
+
+# Shell scripts run inside Linux containers — a CRLF here breaks them.
+*.sh text eol=lf
+
+# Binary project documents
+*.pdf binary
+*.png binary
+*.jpg binary
+*.docx binary
+*.xlsx binary
+*.pptx binary
