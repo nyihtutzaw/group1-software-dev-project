@@ -1,0 +1,40 @@
+[project]
+name = "crvr-backend"
+version = "0.1.0"
+description = "Carbon Removal Verification Registry — API"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.162",
+    "uvicorn[standard]>=0.54",
+    "sqlalchemy>=2.1",
+    "geoalchemy2>=0.20",
+    "alembic>=1.20",
+    "psycopg[binary]>=3.3",
+    "pydantic-settings>=2.16",
+    "email-validator>=2.3",
+    "pyjwt>=2.15",
+    "bcrypt>=5.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1",
+    "httpx>=0.28",
+    "ruff>=0.17",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "N"]
+# FastAPI's Depends() in default arguments is the intended pattern
+ignore = ["B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
