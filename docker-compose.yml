@@ -1,0 +1,61 @@
+# Local development: `docker compose up` — nothing else needs to be installed.
+#   frontend  http://localhost:5173   (Vite dev server, proxies /api to the backend)
+#   backend   http://localhost:8000   (FastAPI, docs at /api/docs)
+#   db        localhost:5432          (PostgreSQL 17 + PostGIS)
+name: crvr
+
+services:
+  db:
+    build: ./infra/db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-crvr}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crvr}
+      POSTGRES_DB: ${POSTGRES_DB:-crvr}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./infra/db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crvr} -d ${POSTGRES_DB:-crvr}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-crvr}:${POSTGRES_PASSWORD:-crvr}@db:5432/${POSTGRES_DB:-crvr}
+      TEST_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-crvr}:${POSTGRES_PASSWORD:-crvr}@db:5432/crvr_test
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-in-production}
+      ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-480}
+      SEED_DEMO_USERS: ${SEED_DEMO_USERS:-true}
+      STORAGE_DIR: /data/evidence
+      WATCHFILES_FORCE_POLLING: ${WATCHFILES_FORCE_POLLING:-false}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app
+      - evidence:/data/evidence
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    environment:
+      API_PROXY_TARGET: http://backend:8000
+      CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-false}
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app
+      # keep the container's own node_modules (Linux build), not the host's
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  db-data:
+  evidence:
