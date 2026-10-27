@@ -89,8 +89,9 @@ docker compose exec backend alembic downgrade -1               # undo the last o
 sh scripts/start.sh --fresh --yes                              # WIPE everything and start fresh
 ```
 
-Demo accounts (`developer@`, `verifier@`, `staff@`, `buyer@`, `admin@crvr.local`, password
-`crvr-demo`) are recreated on every backend start if missing.
+Demo data is recreated on every backend start if missing: accounts (`developer@`, `developer2@`,
+`verifier@`, `staff@`, `buyer@`, `admin@crvr.local`, password `crvr-demo`), five projects and four
+boundaries near Nan (CRVR-0147 overlaps CRVR-0092 by 3.1%).
 
 ## When something is wrong
 

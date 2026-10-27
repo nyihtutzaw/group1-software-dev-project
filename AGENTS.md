@@ -101,4 +101,4 @@ docker compose exec backend alembic revision --autogenerate -m "add boundaries t
 ```
 
 App: http://localhost:5173 · API docs: http://localhost:8000/api/docs ·
-Demo accounts: `developer@`, `verifier@`, `staff@`, `buyer@`, `admin@crvr.local` — password `crvr-demo`.
+Demo accounts: `developer@`, `developer2@`, `verifier@`, `staff@`, `buyer@`, `admin@crvr.local` — password `crvr-demo`.
