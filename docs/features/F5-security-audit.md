@@ -45,7 +45,8 @@ From WBS 9.x and the design report:
 - 2026-10-28 — **F2 added a `record_action()` stub** in `backend/app/features/audit/ledger.py`
   (`record_action(db, *, actor, action, entity, entity_id, payload)`, logs only). Replace the body
   with the hash-chained insert; keep the signature. F2 already calls it (`boundary.saved`,
-  `boundary.overlap_detected`, `boundary.overlap_disputed`, `boundary.overlap_resolved`).
+  `boundary.overlap_detected`, `boundary.overlap_cleared`, `boundary.overlap_disputed`,
+  `boundary.overlap_resolved`).
 
 - 2026-10-27 — Credentials in our own Postgres (bcrypt hashes), not Keycloak/Auth0, for now —
   see [ADR 0002](../decisions/0002-database-backed-authentication.md).

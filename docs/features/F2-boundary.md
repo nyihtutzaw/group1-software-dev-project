@@ -35,7 +35,8 @@ From WBS 5.x and the design report — all done:
 2. ✅ Stored as validated geometry; area **computed** by PostGIS on the geography, never claimed (5.1.2).
 3. ✅ GeoJSON, KML/KMZ and zipped shapefile imports, validated; non-WGS 84 rejected (5.1.3).
 4. ✅ Phone drawing: pen tool, tap corners, drag to adjust; map fills the width at 420 px (5.2.1).
-5. ✅ Overlaps detected across all registered projects with a 0.5% tolerance (5.3.1).
+5. ✅ Overlaps detected across all registered projects with a 0.5% tolerance — of either
+   project's area, and of all overlaps combined (5.3.1).
 6. ✅ Overlaps above tolerance are flagged and block issuance until resolved — `issuance_blocked()` (5.3.2).
 7. ✅ Result shows conflicting project (code, name, registration date), overlap ha and % of area.
 
@@ -43,12 +44,22 @@ From WBS 5.x and the design report — all done:
 
 - 2026-10-27 — Overlap check runs in PostGIS (`ST_Intersects` / `ST_Intersection` / `ST_Area` on
   geography), not in Python (design report, platform section).
-- 2026-10-28 — Tolerance 0.5% of the **new** project's area (mock-up), setting
-  `OVERLAP_TOLERANCE_PCT`. Compared at the 2 decimals shown, so exactly "0.50%" never blocks.
-  Overlaps within tolerance are reported but not flagged; touching edges are not overlaps.
-- 2026-10-28 — One current boundary per project; redrawing replaces it and marks the old open or
-  disputed flags `superseded` (history kept, fresh screening wins).
-- 2026-10-28 — The **later** registration is the one flagged — the earlier project is not touched.
+- 2026-10-28 — Tolerance 0.5% (mock-up), setting `OVERLAP_TOLERANCE_PCT`. An overlap exceeds it
+  if it is above 0.5% of **either** project's area (so a large boundary cannot swallow a small
+  project), or if **all overlaps together** are above 0.5% of the new area (so many slivers cannot
+  add up unnoticed). Compared at the 2 decimals shown, so exactly "0.50%" never blocks. Overlaps
+  within tolerance are reported but not flagged; touching edges are not overlaps. *(Tightened after
+  code review of #10.)*
+- 2026-10-28 — One current boundary per project; redrawing replaces it and marks **all** its
+  earlier flags `superseded` — including resolved ones, which keep their note and date. The fresh
+  screening wins, so a redraw that still overlaps needs staff to resolve it again.
+- 2026-10-28 — The project whose boundary is **being saved** gets the flag; the boundary it hits is
+  not touched. In practice that is the later registration, or whoever redraws into a neighbour.
+- 2026-10-28 — When a project redraws, blocking flags **other** projects hold against it are
+  re-measured: still above tolerance → flag (and any dispute) kept with new figures; now within →
+  superseded with a note and `boundary.overlap_cleared` in the ledger. Pairwise only.
+- 2026-10-28 — Boundary saves take a PostgreSQL transaction-level advisory lock, so concurrent
+  saves are screened one after the other and cannot miss each other.
 - 2026-10-28 — Flag lifecycle `open → disputed → resolved` (+ `superseded`). The project's developer
   disputes; registry staff/admin resolve; nobody resolves a flag on their own project (FR-10).
   Open and disputed flags block issuance.
@@ -75,7 +86,8 @@ From WBS 5.x and the design report — all done:
 | POST | `/api/boundaries/flags/{id}/resolve` | registry_staff, admin (not on own project) | `{note ≥ 5 chars}` open/disputed → resolved |
 
 Ledger actions written via `record_action()`: `boundary.saved`, `boundary.overlap_detected`
-(actor = system), `boundary.overlap_disputed`, `boundary.overlap_resolved`.
+and `boundary.overlap_cleared` (actor = system), `boundary.overlap_disputed`,
+`boundary.overlap_resolved`.
 
 **For other features:** `from app.features.boundary.service import issuance_blocked` →
 `issuance_blocked(db, project_id)` returns a reason string or `None`.
@@ -105,8 +117,6 @@ Migrations: `…_add_projects_table_f1_stub.py`, `…_add_boundaries_and_overlap
 
 ## Open questions
 
-- Should a resolved overlap be re-flagged if the developer later redraws and the overlap grows?
-  (Today: any redraw re-screens and re-flags above tolerance.)
 - Tolerance registry-wide (current) or per methodology?
 - `projects` shape: agree the stub's columns with Jinkin (F1) before F1 adds its fields.
 
@@ -131,3 +141,8 @@ Migrations: `…_add_projects_table_f1_stub.py`, `…_add_boundaries_and_overlap
   Tests: 56 new backend tests (geometry, import, API), 7 new frontend tests; end-to-end check in a
   real browser (draw → check → save, dispute → resolve).
 - Next: F1/F3/F4 call `issuance_blocked()`; F5 replaces the `record_action()` stub.
+- Code review (2026-10-28): fixed stale resolved flags masking new ones, 500s on malformed
+  GeoJSON, double check on save, endless "Loading…" on errors, unknown `?project=` links, a
+  hard-coded label colour; then closed the double-counting gaps (either-area and combined
+  tolerance), re-measured other projects' flags on redraw, and serialised saves with a lock.
+  Backend 77 tests, frontend 16.
