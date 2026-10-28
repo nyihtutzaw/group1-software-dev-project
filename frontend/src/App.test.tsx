@@ -13,6 +13,7 @@ describe('App routing', () => {
   })
 
   it('lets anyone open the public registry', () => {
+    mockFetch({ items: [], total: 0, page: 1, page_size: 20 })
     renderWithProviders(<App />, { route: '/registry' })
 
     expect(screen.getByRole('heading', { name: 'Public registry' })).toBeInTheDocument()
