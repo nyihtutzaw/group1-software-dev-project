@@ -13,7 +13,8 @@ export type Overlap = {
   registered_at: string
   overlap_m2: number
   overlap_ha: number
-  overlap_pct: number
+  overlap_pct: number // % of the checked boundary's area
+  other_overlap_pct: number // % of the other project's area
   exceeds_tolerance: boolean
   intersection: Geometry
 }

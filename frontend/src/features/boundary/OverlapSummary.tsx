@@ -25,6 +25,17 @@ export function OverlapSummary({
   const disputed =
     blocking.length > 0 && blocking.every((o) => flagFor(o.project_id)?.status === 'disputed')
   const [worst] = check.overlaps
+  const tolerance = check.tolerance_pct
+  const first = blocking[0]
+  const blockingPct = blocking.reduce((sum, o) => sum + o.overlap_pct, 0)
+  // Say which rule was broken: share of this area, share of theirs, or all overlaps together.
+  const reason = !first
+    ? ''
+    : Number(first.overlap_pct.toFixed(2)) > tolerance
+      ? `That is ${formatPct(first.overlap_pct)} of ${own ? 'your' : 'its'} area`
+      : Number(first.other_overlap_pct.toFixed(2)) > tolerance
+        ? `That is ${formatPct(first.other_overlap_pct)} of ${first.project_code}'s area`
+        : `Together the overlaps cover ${formatPct(blockingPct)} of ${own ? 'your' : 'its'} area`
   const totalHa = check.overlaps.reduce((sum, o) => sum + o.overlap_ha, 0)
   const totalPct = check.overlaps.reduce((sum, o) => sum + o.overlap_pct, 0)
 
@@ -39,8 +50,7 @@ export function OverlapSummary({
           <b className="inline font-semibold text-ink">
             {blocking[0].project_code} ({blocking[0].project_name})
           </b>
-          , registered {formatDate(blocking[0].registered_at)}. That is{' '}
-          {formatPct(blocking[0].overlap_pct)} of {own ? 'your' : 'its'} area — above the{' '}
+          , registered {formatDate(blocking[0].registered_at)}. {reason} — above the{' '}
           {formatPct(check.tolerance_pct)} tolerance, so the submission is blocked until it is
           resolved.
           {disputed && ' The dispute is with registry staff for investigation.'}

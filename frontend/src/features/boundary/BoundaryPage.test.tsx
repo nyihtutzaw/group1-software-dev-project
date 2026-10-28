@@ -52,6 +52,7 @@ const OVERLAP_CHECK: BoundaryCheck = {
       overlap_m2: 384_000,
       overlap_ha: 38.4,
       overlap_pct: 3.1,
+      other_overlap_pct: 9.9,
       exceeds_tolerance: true,
       intersection: DRAWN,
     },
@@ -141,6 +142,22 @@ describe('BoundaryPage', () => {
     expect(screen.getByRole('button', { name: 'Re-draw boundary' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Dispute overlap' })).toBeInTheDocument()
     expect(screen.getByText(/Credit issuance is blocked/)).toBeInTheDocument()
+  })
+
+  it('explains when a boundary swallows a smaller project', async () => {
+    const [overlap] = OVERLAP_CHECK.overlaps
+    const swallowed = { ...overlap, overlap_pct: 0.16, other_overlap_pct: 100 }
+    mockApi({
+      'GET /projects': PROJECTS,
+      'GET /boundaries': COLLECTION,
+      'GET /boundaries/4': saved({ check: { ...OVERLAP_CHECK, overlaps: [swallowed] } }),
+    })
+    renderWithProviders(<BoundaryPage />, {
+      route: '/boundary?project=4',
+      user: makeUser('developer'),
+    })
+
+    expect(await screen.findByText(/That is 100.0% of CRVR-0092's area/)).toBeInTheDocument()
   })
 
   it('gives verifiers a read-only view', async () => {
