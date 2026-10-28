@@ -13,8 +13,8 @@
 
 ## Status
 
-Not started — placeholder page at `/registry` (public, no sign-in); `GET /api/registry/credits`
-returns `[]`.
+In progress — implementing searchable publication records, traceability, buyer permissions and
+approved evidence summaries. F1/F3/F5 are placeholders; their integrations remain explicit.
 
 ## Scope
 
@@ -69,3 +69,14 @@ From WBS 8.x and the design report:
 - Who issues credits, and is issuance part of F3 approval or a separate step?
 
 ## Progress log
+
+### 2026-10-28 · feature/F4-public-registry
+- Goal: implement F4 acceptance criteria using persisted, explicitly published registry records.
+- Plan: 1) publication models + migration 2) public search/detail and buyer evidence authorization
+  3) responsive registry and traceability UI 4) database/API/UI tests and integration notes.
+- Dependencies: F1, F3 and F5 are placeholders. F4 will expose a trusted publication service, not
+  a public issuance API or fabricated verification/ledger data. Evidence packs contain only
+  explicitly approved summaries, never raw source files or private developer fields.
+- Environment: original database image build needs blocked apt.postgresql.org; use the PostGIS
+  project PostgreSQL 17 image for real database validation if available. GitHub issue API blocked;
+  use the acceptance criteria recorded above.
