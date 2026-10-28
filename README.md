@@ -49,6 +49,7 @@ Sign in with a demo account (password **`crvr-demo`**), or click one on the sign
 | Role | Email |
 |---|---|
 | Project developer | `developer@crvr.local` |
+| Project developer (neighbouring projects) | `developer2@crvr.local` |
 | Independent verifier | `verifier@crvr.local` |
 | Registry staff | `staff@crvr.local` |
 | Buyer | `buyer@crvr.local` |

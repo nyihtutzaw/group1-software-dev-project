@@ -40,6 +40,11 @@ From WBS 4.x and the design report:
 
 ## Decisions
 
+- 2026-10-28 — **F2 added a minimal `projects` table** (`backend/app/features/registration/models.py`:
+  id, code `CRVR-0147`, name, owner_id, status, created_at), a real `GET /api/projects` (developers:
+  own, staff/admin: all) and demo projects in `registration/seed.py`. Extend it — keep id, code, name,
+  owner_id, created_at (F2 relies on them). Before submitting, call F2's `issuance_blocked()`.
+
 - 2026-10-27 — Multi-step form with 4 steps as in the mock-up ("Step 2 of 4"); exact steps TBD.
 - 2026-10-27 — Local evidence storage is a Docker volume at `STORAGE_DIR` (`/data/evidence`);
   production will use a Cloud Storage bucket with a retention lock. Write-once is enforced in the
@@ -49,7 +54,7 @@ From WBS 4.x and the design report:
 
 | Method | Path | Roles | Purpose |
 |---|---|---|---|
-| GET | `/api/projects` | developer, registry_staff, admin | List projects (placeholder) |
+| GET | `/api/projects` | developer (own), registry_staff, admin | List projects (`ProjectOut`: id, code, name, status, created_at) |
 
 ## Pages
 
@@ -62,7 +67,8 @@ From WBS 4.x and the design report:
 
 | Table | Key columns | Notes |
 |---|---|---|
-| — | | `projects` and `evidence_files` to be designed; agree `projects` with F2–F4 first |
+| `projects` | code (unique), name, owner_id, status, created_at | minimal stub from F2 — extend with registration fields |
+| — | | `evidence_files` to be designed |
 
 ## Depends on / used by
 

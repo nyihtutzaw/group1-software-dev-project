@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session  # noqa: E402
 from app.auth.models import Role, User  # noqa: E402
 from app.core.db import engine, get_db  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
+from app.features.registration.models import Project  # noqa: E402
 from app.main import app  # noqa: E402
 
 PASSWORD = "test-password"
@@ -79,3 +80,20 @@ def login(client: TestClient, make_user: Callable[..., User]) -> Callable[[Role]
         return user
 
     return _login
+
+
+@pytest.fixture
+def make_project(db: Session, make_user: Callable[..., User]) -> Callable[..., Project]:
+    """Create a project; owned by a new developer unless `owner` is given."""
+    counter = iter(range(9000, 10000))
+
+    def _make(owner: User | None = None, name: str = "Test project") -> Project:
+        n = next(counter)
+        if owner is None:
+            owner = make_user(Role.DEVELOPER, email=f"owner{n}@test.local")
+        project = Project(code=f"CRVR-{n}", name=name, owner_id=owner.id)
+        db.add(project)
+        db.flush()
+        return project
+
+    return _make
