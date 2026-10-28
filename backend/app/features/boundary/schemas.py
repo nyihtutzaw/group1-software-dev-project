@@ -37,7 +37,8 @@ class OverlapOut(BaseModel):
     registered_at: datetime
     overlap_m2: float
     overlap_ha: float
-    overlap_pct: float
+    overlap_pct: float  # % of the checked boundary's area
+    other_overlap_pct: float  # % of the other project's area
     exceeds_tolerance: bool
     intersection: GeoJSON
 
@@ -51,6 +52,7 @@ class OverlapOut(BaseModel):
             overlap_m2=o.overlap_m2,
             overlap_ha=o.overlap_m2 / M2_PER_HA,
             overlap_pct=o.overlap_pct,
+            other_overlap_pct=o.other_overlap_pct,
             exceeds_tolerance=o.exceeds_tolerance,
             intersection=o.intersection,
         )

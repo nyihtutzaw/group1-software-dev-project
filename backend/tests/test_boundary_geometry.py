@@ -162,3 +162,39 @@ def test_overlaps_are_sorted_largest_first_and_exclude_own_project(db, register)
 )
 def test_tolerance_edge(pct, blocked):
     assert exceeds_tolerance(pct, 0.5) is blocked
+
+
+def test_swallowing_a_small_project_exceeds_tolerance(db, register):
+    # 0.002° square: 0.16% of the big new boundary, but 100% of its own area
+    small = register(square(BASE[0] + 0.02, BASE[1] + 0.02, size=0.002))
+
+    checked = check_geometry(db, square(*BASE, size=0.05))
+    [overlap] = find_overlaps(db, checked, tolerance_pct=TOLERANCE)
+
+    assert overlap.project_id == small.id
+    assert overlap.overlap_pct == pytest.approx(0.16, abs=0.01)
+    assert overlap.other_overlap_pct == pytest.approx(100, abs=0.01)
+    assert overlap.exceeds_tolerance
+
+
+def test_many_small_slivers_exceed_tolerance_together(db, register):
+    # four neighbours, each overlapping a 0.3% strip on one side: 1.2% in total
+    d = 0.00997
+    for dx, dy in [(d, 0), (-d, 0), (0, d), (0, -d)]:
+        register(square(BASE[0] + dx, BASE[1] + dy))
+
+    checked = check_geometry(db, square(*BASE))
+    overlaps = find_overlaps(db, checked, tolerance_pct=TOLERANCE)
+
+    assert len(overlaps) == 4
+    assert all(o.overlap_pct == pytest.approx(0.3, abs=0.01) for o in overlaps)
+    assert all(o.exceeds_tolerance for o in overlaps)
+
+
+def test_a_single_small_sliver_stays_within_tolerance(db, register):
+    register(square(BASE[0] + 0.00997, BASE[1]))
+
+    checked = check_geometry(db, square(*BASE))
+    [overlap] = find_overlaps(db, checked, tolerance_pct=TOLERANCE)
+
+    assert not overlap.exceeds_tolerance

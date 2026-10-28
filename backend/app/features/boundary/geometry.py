@@ -40,6 +40,7 @@ class Overlap:
     registered_at: datetime
     overlap_m2: float
     overlap_pct: float  # % of the checked boundary's area
+    other_overlap_pct: float  # % of the other project's area
     exceeds_tolerance: bool
     intersection: dict[str, Any]  # GeoJSON geometry of the shared area
 
@@ -117,6 +118,10 @@ def find_overlaps(
     """Every registered boundary that shares area with `geometry`, largest overlap first.
 
     Boundaries that only touch along an edge share no area and are not returned.
+
+    An overlap exceeds the tolerance if it is more than `tolerance_pct` of **either** project's
+    area (a large new boundary swallowing a small project), or if all overlaps **together** are
+    more than `tolerance_pct` of the new area (many slivers that are each small).
     """
     g = func.ST_GeomFromEWKT(geometry.ewkt)
     shared = func.ST_Intersection(Boundary.geom, g)
@@ -128,6 +133,7 @@ def find_overlaps(
             Project.code,
             Project.name,
             Project.created_at,
+            Boundary.area_m2,
             shared_m2,
             func.ST_AsGeoJSON(shared),
         )
@@ -137,11 +143,14 @@ def find_overlaps(
     if exclude_project_id is not None:
         stmt = stmt.where(Boundary.project_id != exclude_project_id)
 
+    rows = [row for row in db.execute(stmt) if row[5] >= 1]  # skip touching edges / corners
+    total_pct = sum(m2 for *_, m2, _ in rows) / geometry.area_m2 * 100
+    combined_too_large = exceeds_tolerance(total_pct, tolerance_pct)
+
     overlaps = []
-    for project_id, code, name, created_at, m2, intersection in db.execute(stmt):
-        if m2 < 1:  # touching edges / corners only
-            continue
+    for project_id, code, name, created_at, other_area_m2, m2, intersection in rows:
         pct = m2 / geometry.area_m2 * 100
+        other_pct = m2 / other_area_m2 * 100
         overlaps.append(
             Overlap(
                 project_id=project_id,
@@ -150,7 +159,10 @@ def find_overlaps(
                 registered_at=created_at,
                 overlap_m2=m2,
                 overlap_pct=pct,
-                exceeds_tolerance=exceeds_tolerance(pct, tolerance_pct),
+                other_overlap_pct=other_pct,
+                exceeds_tolerance=combined_too_large
+                or exceeds_tolerance(pct, tolerance_pct)
+                or exceeds_tolerance(other_pct, tolerance_pct),
                 intersection=json.loads(intersection),
             )
         )

@@ -6,6 +6,7 @@ from app.auth.models import Role
 from app.core.config import get_settings
 from app.features.boundary import service
 from app.features.boundary.models import BoundarySource, FlagStatus, OverlapFlag
+from app.features.registration.models import Project
 from tests.geo import BASE, square
 
 OVERLAPPING = square(BASE[0] + 0.0097, BASE[1])  # 3% of its area inside BASE
@@ -286,3 +287,40 @@ def test_import_rejects_large_files(client, login, monkeypatch):
 
 def test_issuance_is_blocked_without_a_boundary(db, make_project):
     assert "No boundary" in service.issuance_blocked(db, make_project().id)
+
+
+# --- the other project changes its boundary -------------------------------------------
+
+
+@pytest.fixture
+def admin(make_user):
+    return make_user(Role.ADMIN, email="admin2@test.local")
+
+
+def test_flag_clears_when_the_other_project_moves_away(client, db, flagged, admin, ledger):
+    project, flag = flagged
+    other = db.get(OverlapFlag, flag["id"]).other_project_id
+
+    service.save_boundary(db, db.get(Project, other), CLEAR, BoundarySource.DRAWN, admin)
+
+    cleared = db.get(OverlapFlag, flag["id"])
+    assert cleared.status == FlagStatus.SUPERSEDED
+    assert "changed its boundary" in cleared.resolution_note
+    assert service.issuance_blocked(db, project.id) is None
+    assert "boundary.overlap_cleared" in [c["action"] for c in ledger]
+
+
+def test_flag_stays_with_new_figures_when_the_other_project_still_overlaps(
+    client, db, flagged, admin
+):
+    project, flag = flagged
+    other = db.get(OverlapFlag, flag["id"]).other_project_id
+
+    # the other project grows further into this one: 0.0097 → 0.0094 shift = 6% overlap
+    bigger = square(BASE[0] + 0.0003, BASE[1])
+    service.save_boundary(db, db.get(Project, other), bigger, BoundarySource.DRAWN, admin)
+
+    kept = db.get(OverlapFlag, flag["id"])
+    assert kept.status == FlagStatus.OPEN
+    assert kept.overlap_pct == pytest.approx(6.0, abs=0.01)
+    assert service.issuance_blocked(db, project.id)
