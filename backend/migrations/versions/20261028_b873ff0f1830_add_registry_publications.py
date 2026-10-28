@@ -1,7 +1,7 @@
 """add registry publications
 
 Revision ID: b873ff0f1830
-Revises: 0001
+Revises: d4e95b88fdea
 Create Date: 2026-10-28 03:45:48.595056
 """
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "b873ff0f1830"
-down_revision: str | Sequence[str] | None = "0001"
+down_revision: str | Sequence[str] | None = "d4e95b88fdea"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
