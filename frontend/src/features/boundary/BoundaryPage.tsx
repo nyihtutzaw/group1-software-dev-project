@@ -51,11 +51,20 @@ export function BoundaryPage() {
         name: f.properties.name,
       }))
 
+  // An unknown or inaccessible ?project= falls back to the first project rather than "none".
   const requested = Number(params.get('project')) || null
-  const projectId = requested ?? options?.[0]?.id ?? null
-  const project = options?.find((o) => o.id === projectId)
-  const saved = useProjectBoundary(projectId)
+  const project = options?.find((o) => o.id === requested) ?? options?.[0]
+  const saved = useProjectBoundary(project?.id ?? null)
 
+  const loadError = (listsProjects ? projects.error : null) ?? boundaries.error ?? saved.error
+  if (loadError) {
+    return (
+      <>
+        <PageHeader title="Boundary" />
+        <Alert title="The boundary could not be loaded">{loadError.message}</Alert>
+      </>
+    )
+  }
   if (!options || boundaries.isPending) {
     return <PageHeader title="Boundary" subtitle="Loading…" />
   }

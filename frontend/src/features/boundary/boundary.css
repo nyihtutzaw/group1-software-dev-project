@@ -12,7 +12,7 @@
 /* Project code labels on the map, as in the mock-up (CRVR-0147 / CRVR-0092 pills) */
 .crvr-map .crvr-map-label {
   background: var(--label-bg, var(--accent));
-  color: #fff;
+  color: var(--on-accent);
   border: 0;
   border-radius: 4px;
   box-shadow: none;
