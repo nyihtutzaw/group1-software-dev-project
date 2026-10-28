@@ -1,6 +1,6 @@
-"""Load demo accounts (one per role) for local development.
+"""Load demo data for local development: accounts (one per role), projects and boundaries.
 
-Run with `python -m app.seed`. Safe to run repeatedly: existing accounts are left alone.
+Run with `python -m app.seed`. Safe to run repeatedly: existing records are left alone.
 """
 
 from sqlalchemy import select
@@ -18,6 +18,13 @@ DEMO_USERS = [
         "email": "developer@crvr.local",
         "full_name": "Somchai Prasert",
         "organization": "Nan Reforestation Co.",
+        "role": Role.DEVELOPER,
+    },
+    {
+        # Owns the neighbouring projects on the demo map (F2)
+        "email": "developer2@crvr.local",
+        "full_name": "Anan Chaiyasit",
+        "organization": "Phrae Agroforestry Co.",
         "role": Role.DEVELOPER,
     },
     {
@@ -59,7 +66,19 @@ def seed_demo_users() -> int:
     return created
 
 
+def seed_demo_data() -> str:
+    # Imported here: feature modules import app.auth, whose router imports DEMO_USERS from here.
+    from app.features.boundary.seed import seed_demo_boundaries
+    from app.features.registration.seed import seed_demo_projects
+
+    users = seed_demo_users()
+    with SessionLocal() as db:
+        projects = seed_demo_projects(db)
+        boundaries = seed_demo_boundaries(db)
+    return f"{users} user(s), {projects} project(s), {boundaries} boundary(ies)"
+
+
 if __name__ == "__main__":
     settings = get_settings()
     if settings.seed_demo_users and not settings.is_production:
-        print(f"seed: {seed_demo_users()} demo user(s) created (password: {DEMO_PASSWORD})")
+        print(f"seed: created {seed_demo_data()} — demo password: {DEMO_PASSWORD}")
