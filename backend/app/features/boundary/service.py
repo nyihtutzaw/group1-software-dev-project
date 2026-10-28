@@ -110,15 +110,16 @@ def save_boundary(
     boundary.source = source
     boundary.updated_by_id = user.id
 
-    # A redrawn boundary gets a fresh screening; earlier open/disputed flags no longer apply.
+    # A redrawn boundary gets a fresh screening; every earlier flag (open, disputed or resolved)
+    # described the old shape and no longer applies. Resolved ones keep their note and date.
     now = datetime.now(UTC)
     for flag in db.scalars(
         select(OverlapFlag).where(
-            OverlapFlag.project_id == project.id, OverlapFlag.status.in_(BLOCKING_STATUSES)
+            OverlapFlag.project_id == project.id, OverlapFlag.status != FlagStatus.SUPERSEDED
         )
     ):
         flag.status = FlagStatus.SUPERSEDED
-        flag.resolved_at = now
+        flag.resolved_at = flag.resolved_at or now
 
     record_action(
         db,

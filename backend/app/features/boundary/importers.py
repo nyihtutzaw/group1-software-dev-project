@@ -55,12 +55,16 @@ def _from_geojson(data: bytes) -> list[Rings]:
     if not isinstance(doc, dict):
         raise BoundaryError("The GeoJSON file must contain an object.")
 
-    crs = (doc.get("crs") or {}).get("properties", {}).get("name")
-    if crs and crs not in WGS84_CRS:
-        raise BoundaryError(f"The GeoJSON uses {crs}; re-export it in WGS 84 (EPSG:4326).")
+    crs = _get(_get(doc, "crs"), "properties")
+    crs_name = _get(crs, "name")
+    if crs_name and (not isinstance(crs_name, str) or crs_name not in WGS84_CRS):
+        raise BoundaryError(f"The GeoJSON uses {crs_name}; re-export it in WGS 84 (EPSG:4326).")
 
     if doc.get("type") == "FeatureCollection":
-        geometries = [f.get("geometry") for f in doc.get("features") or []]
+        features = doc.get("features")
+        if not isinstance(features, list):
+            raise BoundaryError("The GeoJSON FeatureCollection has no features list.")
+        geometries = [_get(f, "geometry") for f in features]
     elif doc.get("type") == "Feature":
         geometries = [doc.get("geometry")]
     else:
@@ -75,6 +79,11 @@ def _from_geojson(data: bytes) -> list[Rings]:
         elif geometry.get("type") == "MultiPolygon":
             polygons.extend(geometry.get("coordinates") or [])
     return polygons
+
+
+def _get(value: Any, key: str) -> Any:
+    """`value[key]` if `value` is a JSON object, else None — uploaded JSON can be any shape."""
+    return value.get(key) if isinstance(value, dict) else None
 
 
 # --- KML / KMZ ------------------------------------------------------------------------

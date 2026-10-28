@@ -99,7 +99,10 @@ async def import_file(
     limit = get_settings().boundary_upload_max_bytes
     data = await file.read(limit + 1)
     if len(data) > limit:
-        raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, "The file is larger than 5 MB")
+        raise HTTPException(
+            status.HTTP_413_CONTENT_TOO_LARGE,
+            f"The file is larger than {limit / (1024 * 1024):g} MB",
+        )
     try:
         geometry = parse_boundary_file(file.filename or "", data)
     except BoundaryError as exc:
@@ -124,11 +127,15 @@ def _flag_out(db: Session, flag: OverlapFlag) -> FlagOut:
     )
 
 
-def _boundary_out(db: Session, project: Project, user: User) -> BoundaryOut:
+def _boundary_out(
+    db: Session, project: Project, user: User, result: service.BoundaryCheck | None = None
+) -> BoundaryOut:
     boundary = service.get_boundary(db, project.id)
     if boundary is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No boundary has been registered yet")
     geometry = service.boundary_geojson(db, boundary)
+    if result is None:
+        result = service.check_boundary(db, geometry, project.id)
     flags = [_flag_out(db, f) for f in service.active_flags(db, project.id)]
     can_edit = user.role == Role.ADMIN or (
         user.role == Role.DEVELOPER and project.owner_id == user.id
@@ -140,7 +147,7 @@ def _boundary_out(db: Session, project: Project, user: User) -> BoundaryOut:
         geometry=geometry,
         source=boundary.source,
         updated_at=boundary.updated_at,
-        check=CheckOut.build(service.check_boundary(db, geometry, project.id)),
+        check=CheckOut.build(result),
         flags=flags,
         issuance_blocked=service.issuance_blocked(db, project.id),
         can_edit=can_edit,
@@ -167,10 +174,11 @@ def save_boundary(
     """Register or replace the project's boundary. Overlaps above tolerance are flagged."""
     project = service.get_project(db, project_id, user, write=True)
     try:
-        service.save_boundary(db, project, body.geometry, body.source, user)
+        result = service.save_boundary(db, project, body.geometry, body.source, user)
     except BoundaryError as exc:
         raise _invalid(exc) from exc
-    return _boundary_out(db, project, user)
+    # The save already screened this shape; reuse it rather than running the check again.
+    return _boundary_out(db, project, user, result)
 
 
 @router.post("/flags/{flag_id}/dispute", response_model=FlagOut)
