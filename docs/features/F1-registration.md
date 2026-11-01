@@ -13,7 +13,7 @@
 
 ## Status
 
-Not started — placeholder pages for `/` and `/projects/new`; `GET /api/projects` returns `[]`.
+In progress — `feature/F1-project-registration` builds the whole of F1 (issue #3).
 
 ## Scope
 
@@ -81,3 +81,17 @@ From WBS 4.x and the design report:
 - Max evidence file size, and which formats exactly?
 
 ## Progress log
+
+### 2026-11-02 · feature/F1-project-registration
+- Goal: all acceptance criteria of issue #3 on one branch — draft → submit registration with
+  additionality, write-once evidence, dashboard with live status.
+- Plan:
+  1. Extend `projects` (methodology, crediting period, area, est. removal, baseline,
+     additionality, submitted_at) + `evidence_files` table with a write-once DB trigger.
+  2. Service + API: create/update draft, upload/list/download evidence (no update/delete path),
+     submit with completeness check and F2 `issuance_blocked()`; ledger via `record_action()`.
+  3. Backend tests for every criterion and role rule.
+  4. Home dashboard: stat tiles, project rows (mini map, progress, status chip), monitoring slot.
+  5. 4-step registration form (details · additionality · boundary & evidence · review & submit)
+     and a project detail page.
+  6. Frontend tests, doc update, PR.
