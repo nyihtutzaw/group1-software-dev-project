@@ -13,7 +13,8 @@
 
 ## Status
 
-Not started — placeholder page at `/verify`; `GET /api/verifications/queue` returns `[]`.
+In progress — assignment queue planned on `feature/F3-assignment-queue`. The page at `/verify` and
+`GET /api/verifications/queue` are still placeholders (the queue returns `[]`).
 
 ## Scope
 
@@ -40,6 +41,12 @@ From WBS 7.x and the design report:
 ## Decisions
 
 - 2026-10-27 — Queue is sorted oldest-due first; overdue = past due date (mock-up).
+- 2026-11-01 — **Working assumption for this branch:** `registry_staff` and `admin` create
+  assignments. The issue still asks who assigns; both roles already reach the queue route, and
+  staff own the later maker-checker step. Change this if the team decides otherwise.
+- 2026-11-01 — A `verifier` receives only rows where they are `verifier_id`. `registry_staff` and
+  `admin` receive every assignment, so they can see what they assigned before the approval
+  screens exist. The API enforces this; the page only hides other people's work.
 
 ## API
 
@@ -66,7 +73,20 @@ From WBS 7.x and the design report:
 
 ## Open questions
 
-- Who assigns verifiers — registry staff or admin?
-- What does "Request changes" do to the project's status?
+- Who assigns verifiers — registry staff, admin, or both? This branch assumes both (see Decisions).
+- What does "Request changes" do to the project's status? Out of scope for the assignment-queue branch.
 
 ## Progress log
+
+### 2026-11-01 · feature/F3-assignment-queue
+- Goal: an assigned verifier sees only their projects, oldest due date first, with the due date
+  and an overdue flag (issue #5: 7.1.1 and the queue checkbox). Evidence review (7.1.2) waits
+  until F1 has evidence to show.
+- Plan: 1) `verification_assignments` model + migration (`project_id`, `verifier_id`,
+  `assigned_by`, `due_date`, `status`) on the F2 `projects` stub 2) assign service — staff and
+  admin only — plus tests that verifier A cannot read verifier B's rows 3) replace the
+  placeholder `GET /api/verifications/queue` (own rows for a verifier; all rows for staff and
+  admin; sort by `due_date` ascending; `overdue` when `due_date` is before today) 4) `/verify`
+  queue UI from the mock-up: subtitle counts, Assigned / Overdue tiles, rows with project name,
+  code, due date and an `OVERDUE` chip. Signed-off-this-year stays 0 until reports exist.
+- Next: step 1, the assignment table. Reports, checklist and maker-checker stay on later branches.
