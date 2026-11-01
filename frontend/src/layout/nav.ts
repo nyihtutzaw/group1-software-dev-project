@@ -24,7 +24,8 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Submit',
     path: '/projects/new',
     icon: 'submit',
-    roles: ['developer', 'admin'],
+    // Only developers register projects (the API enforces it); admins review them from Home
+    roles: ['developer'],
     feature: 'F1',
   },
   {

@@ -5,6 +5,7 @@ import { Guarded } from '@/auth/Guarded'
 import { LedgerPage } from '@/features/audit/LedgerPage'
 import { UsersPage } from '@/features/audit/UsersPage'
 import { HomePage } from '@/features/registration/HomePage'
+import { ProjectPage } from '@/features/registration/ProjectPage'
 import { SubmitPage } from '@/features/registration/SubmitPage'
 import { RegistryPage } from '@/features/registry/RegistryPage'
 import { VerifyPage } from '@/features/verification/VerifyPage'
@@ -37,6 +38,22 @@ export function App() {
           element={
             <Guarded page="submit">
               <SubmitPage />
+            </Guarded>
+          }
+        />
+        <Route
+          path="/projects/:id/edit"
+          element={
+            <Guarded page="submit">
+              <SubmitPage />
+            </Guarded>
+          }
+        />
+        <Route
+          path="/projects/:id"
+          element={
+            <Guarded page="home">
+              <ProjectPage />
             </Guarded>
           }
         />
