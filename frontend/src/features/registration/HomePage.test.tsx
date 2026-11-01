@@ -58,7 +58,7 @@ describe('HomePage', () => {
     })
     expect(rows).toHaveLength(3)
     expect(rows[0]).toHaveTextContent('OVERLAP')
-    expect(rows[0]).toHaveTextContent('1,240 ha · VM0047 · submitted 12 Sept')
+    expect(rows[0]).toHaveTextContent('1,240 ha · VM0047 · submitted 12 Sep')
     expect(rows[1]).toHaveTextContent('VERIFIED')
     expect(rows[2]).toHaveTextContent('DRAFT')
     // Drafts reopen the form; everything else opens the read-only page

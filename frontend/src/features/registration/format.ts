@@ -66,12 +66,14 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+// Fixed names: newer ICU spells en-GB September "Sept", the mock-up uses "Sep"
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** "12 Sep", or "12 Sep 2026" with the year. */
 export function formatDate(iso: string, withYear = false): string {
-  return new Date(iso).toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    ...(withYear && { year: 'numeric' }),
-  })
+  const d = new Date(iso)
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${day} ${MONTHS[d.getMonth()]}${withYear ? ` ${d.getFullYear()}` : ''}`
 }
 
 /** "1,240 ha · VM0047 · submitted 12 Sep" — the grey line on a project row. */
