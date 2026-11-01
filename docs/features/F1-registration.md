@@ -136,12 +136,16 @@ Migration: `20261102_47c89f71feec_add_registration_fields_and_evidence.py` (also
   5. 4-step registration form (details · additionality · boundary & evidence · review & submit)
      and a project detail page.
   6. Frontend tests, doc update, PR.
-- Done (2026-11-02): all plan steps. Backend: 42 new tests (formats, write-once API + DB trigger,
+- Done (2026-11-02): all plan steps. Backend: 41 new tests (formats, write-once API + DB trigger,
   validation, submission rules, F2 overlap gate, visibility per role). Frontend: 14 new tests
   (dashboard per role, form validation, draft save, uploads, missing list, submit). Checked the
   whole flow end to end against the running stack (create → upload → boundary → submit; files
   are read-only on the volume, DELETE refused, download returns the exact bytes).
 - Shared code touched: `core/config.py` (`EVIDENCE_MAX_BYTES`), `lib/api.ts` (validation messages),
   `App.tsx` (routes), `layout/nav.ts` (Submit developer-only).
+- Browser check (headless Chrome, 1280 px and 390 px, against the mock-up): home, all four form
+  steps and the project page render without console errors. Fixed two things it found: the
+  crediting-period year inputs overflowed the card (`cn()` does not merge Tailwind classes, so the
+  kit's `w-full` won), and dates read "12 Sept" in newer browsers instead of the mock-up's "12 Sep".
 - Next: F5 replaces the `record_action()` stub; F3 moves `submitted` projects on and may narrow
   verifier access; check the form on a real phone.
