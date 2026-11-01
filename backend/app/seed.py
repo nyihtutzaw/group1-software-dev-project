@@ -70,12 +70,17 @@ def seed_demo_data() -> str:
     # Imported here: feature modules import app.auth, whose router imports DEMO_USERS from here.
     from app.features.boundary.seed import seed_demo_boundaries
     from app.features.registration.seed import seed_demo_projects
+    from app.features.verification.seed import seed_demo_assignments
 
     users = seed_demo_users()
     with SessionLocal() as db:
         projects = seed_demo_projects(db)
         boundaries = seed_demo_boundaries(db)
-    return f"{users} user(s), {projects} project(s), {boundaries} boundary(ies)"
+        assignments = seed_demo_assignments(db)
+    return (
+        f"{users} user(s), {projects} project(s), {boundaries} boundary(ies), "
+        f"{assignments} assignment(s)"
+    )
 
 
 if __name__ == "__main__":
