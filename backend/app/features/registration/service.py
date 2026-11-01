@@ -272,7 +272,9 @@ def submit_project(db: Session, project: Project, user: User) -> Project:
     if missing:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
-            "This project cannot be submitted yet. Still needed: " + "; ".join(missing) + ".",
+            "This project cannot be submitted yet. Still needed: "
+            + "; ".join(m.rstrip(".") for m in missing)
+            + ".",
         )
     project.status = ProjectStatus.SUBMITTED
     project.submitted_at = datetime.now(UTC)

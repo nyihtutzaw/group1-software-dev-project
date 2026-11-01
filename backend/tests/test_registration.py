@@ -287,6 +287,7 @@ def test_incomplete_draft_cannot_be_submitted(client, login):
     detail = res.json()["detail"]
     assert detail.startswith("This project cannot be submitted yet. Still needed: Methodology")
     assert "No boundary has been registered" in detail
+    assert detail.endswith("No boundary has been registered for this project.")
     assert client.get(f"/api/projects/{project['id']}").json()["status"] == "draft"
 
 
