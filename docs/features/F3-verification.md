@@ -13,9 +13,10 @@
 
 ## Status
 
-In progress — queue, structured checklist, sign-off and maker-checker approval work on
-`feature/F3-assignment-queue` (PR #13). Evidence file contents still wait on F1: the review shows
-the project record and says uploads are not stored yet, plus the F2 overlap check.
+In progress — queue, structured checklist, sign-off and maker-checker approval are on `main`
+(PR #13). The review lists F1's sealed evidence files (kind, name, SHA-256) and the F2 overlap
+check. F3 now drives `projects.status` after submission: request changes → `draft`, approval →
+`verified`.
 
 ## Scope
 
@@ -50,10 +51,18 @@ From WBS 7.x and the design report:
 - 2026-11-01 — Overdue means `due_date` is before today (UTC) and the assignment is not approved
   or rejected. The due date itself is not overdue.
 - 2026-11-01 — One assignment per project. Sign-off cannot be edited. "Request changes" stores a
-  report and sets the assignment to `changes_requested`; it does not change `projects.status`
-  (F1 owns that column). The project owner reads the note from `GET /api/verifications/notes`.
+  report and sets the assignment to `changes_requested`. The project owner reads the note from
+  `GET /api/verifications/notes`. *(Status part superseded on 2026-11-02, below.)*
 - 2026-11-01 — Maker-checker: the approver must be `registry_staff` or `admin`, and must not be
   the user who signed off or the project owner. Sign-off and the approval call `record_action()`.
+- 2026-11-02 — **F3 moves `projects.status` after submission** (F1 marks `verified` as "set by F3").
+  Only a `submitted` project can be assigned (409 otherwise). "Request changes" returns the project
+  to `draft` and clears `submitted_at`, because F1 only accepts edits and new evidence on a draft;
+  files already sealed stay write-once. The verifier cannot report again until the developer
+  resubmits, and the note leaves the developer's Home once they do. Approval sets `verified`;
+  rejection leaves the project `submitted` (what happens next is an open question).
+- 2026-11-02 — Demo seed follows F1's seeded statuses: CRVR-0147 (submitted) is in review and
+  overdue; CRVR-0131/0092 (verified) and CRVR-0088 (issued) carry a sign-off plus staff approval.
 
 ## API
 
@@ -91,7 +100,8 @@ From WBS 7.x and the design report:
 ## Open questions
 
 - Who assigns verifiers — registry staff, admin, or both? This branch allows both (see Decisions).
-- Should "Request changes" also move `projects.status`? It currently only changes the assignment.
+- After a staff **rejection** the project stays `submitted` with a closed assignment. Should it be
+  reassigned to another verifier, go back to `draft`, or get its own `rejected` status?
 
 ## Progress log
 
@@ -121,3 +131,11 @@ From WBS 7.x and the design report:
   Prettier fixed in `VerifyPage.test.tsx` (CI frontend gate).
 - Next: F3 sign-off/approval does not yet move `projects.status` to `verified`; assignment should
   require a `submitted` project; align demo seed with F1's seeded statuses.
+
+### 2026-11-02 · fix/F3-project-status-handoff
+- Done: end-to-end check of F1 → F2 → F3 on `main` found the handoffs broken. A draft could be
+  assigned; request changes left the project sealed, so the developer could not act on the note;
+  approval left it `submitted`; the review still said F1 stores no files; the demo queue showed
+  verified/issued projects as waiting. Fixed all five (see Decisions 2026-11-02), with tests.
+- Next: decide what follows a rejection (Open questions). Existing local databases keep the old
+  demo queue — `sh scripts/start.sh --fresh --yes` reseeds it.

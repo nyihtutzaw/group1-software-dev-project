@@ -59,6 +59,9 @@ From WBS 4.x and the design report:
 - 2026-11-02 — Only **developers** create/edit/submit; admins and registry staff read everything.
   The *Submit* menu item is developer-only. Verifiers may open **submitted** projects (F3 will
   narrow to assignments). Projects a user may not see answer **404**, not 403.
+- 2026-11-02 — After submission F3 moves the status (see F3 doc): a verifier's "request changes"
+  returns the project to `draft` (and clears `submitted_at`) so the developer can edit, add
+  evidence and resubmit; staff approval sets `verified`.
 - 2026-11-02 — Crediting period stored as start/end **years** (2000–2200, end > start, ≤ 100 y);
   methodologies VM0047, VM0042, ACM0003, VM0033. New codes from sequence `project_code_seq`
   (CRVR-0200 onwards; below is demo data).
