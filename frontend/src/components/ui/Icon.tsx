@@ -91,6 +91,7 @@ const PATHS = {
     </>
   ),
   chevron: <path d="m9 18 6-6-6-6" />,
+  close: <path d="M18 6 6 18M6 6l12 12" />,
   pen: (
     <>
       <path d="M12 19l7-7 3 3-7 7-3-3z" />
