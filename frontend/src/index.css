@@ -29,6 +29,7 @@
   --wait: #b54708;
   --wait-soft: #fffaeb;
   --purple: #5b3f97;
+  --overlay: rgba(16, 24, 40, 0.45);
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
   --shadow-lg: 0 12px 24px -6px rgba(16, 24, 40, 0.1), 0 4px 8px -4px rgba(16, 24, 40, 0.05);
 }
@@ -56,6 +57,7 @@
     --wait: #fdb022;
     --wait-soft: #33250a;
     --purple: #a88bdd;
+    --overlay: rgba(0, 0, 0, 0.6);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-lg: 0 12px 24px -6px rgba(0, 0, 0, 0.5), 0 4px 8px -4px rgba(0, 0, 0, 0.4);
   }
@@ -83,6 +85,7 @@
   --wait: #fdb022;
   --wait-soft: #33250a;
   --purple: #a88bdd;
+  --overlay: rgba(0, 0, 0, 0.6);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 12px 24px -6px rgba(0, 0, 0, 0.5), 0 4px 8px -4px rgba(0, 0, 0, 0.4);
 }
@@ -108,6 +111,7 @@
   --color-wait: var(--wait);
   --color-wait-soft: var(--wait-soft);
   --color-purple: var(--purple);
+  --color-overlay: var(--overlay);
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;

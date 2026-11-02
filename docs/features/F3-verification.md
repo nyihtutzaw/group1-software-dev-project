@@ -86,7 +86,8 @@ From WBS 7.x and the design report:
 
 | Route | Roles | Shows |
 |---|---|---|
-| `/verify` | verifier, registry_staff, admin | Queue, open review, and (staff/admin) the assign form |
+| `/verify` | verifier, registry_staff, admin | Queue in tabs (In progress · Awaiting approval · Approved), and for staff/admin an Assign verifier tab; each row opens its review |
+| `/verify/:id` | verifier, registry_staff, admin | One review: tabs for Review (checklist, note, sign-off or the staff decision), Evidence & checks, and History; summary panel on the side |
 | `/` | developer | Verifier note when changes were requested, above the F1 placeholder |
 
 ## Data model
@@ -150,3 +151,9 @@ From WBS 7.x and the design report:
   with the rationale on the developer's Home; after resubmission the same assignment is reviewed
   and decided again (see Decisions). Backend test covers the full reject → resubmit → approve round.
 - Next: reassigning a verifier / resetting the due date after a rejection (Open questions).
+
+### 2026-11-02 · chore/ui-verify-tabs-registry-detail
+- Done: `/verify` was one long column (queue, open review, chain, assign form). The queue now sits
+  in tabs grouped by where each assignment is in the maker-checker flow, as a compact table, and
+  each row opens `/verify/:id` with its own Review / Evidence & checks / History tabs and a summary
+  panel. Staff open on "Awaiting approval" when something is waiting. No API change.

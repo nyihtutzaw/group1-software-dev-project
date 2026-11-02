@@ -7,7 +7,9 @@ import { UsersPage } from '@/features/audit/UsersPage'
 import { HomePage } from '@/features/registration/HomePage'
 import { ProjectPage } from '@/features/registration/ProjectPage'
 import { SubmitPage } from '@/features/registration/SubmitPage'
+import { CreditPage } from '@/features/registry/CreditPage'
 import { RegistryPage } from '@/features/registry/RegistryPage'
+import { ReviewPage } from '@/features/verification/ReviewPage'
 import { VerifyPage } from '@/features/verification/VerifyPage'
 import { AppShell } from '@/layout/AppShell'
 import { LoginPage } from '@/pages/LoginPage'
@@ -72,6 +74,22 @@ export function App() {
           element={
             <Guarded page="verify">
               <VerifyPage />
+            </Guarded>
+          }
+        />
+        <Route
+          path="/verify/:id"
+          element={
+            <Guarded page="verify">
+              <ReviewPage />
+            </Guarded>
+          }
+        />
+        <Route
+          path="/registry/:id"
+          element={
+            <Guarded page="registry">
+              <CreditPage />
             </Guarded>
           }
         />

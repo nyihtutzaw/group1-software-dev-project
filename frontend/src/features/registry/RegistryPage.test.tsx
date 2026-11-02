@@ -1,11 +1,24 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { Route, Routes } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
+import type { User } from '@/auth/types'
 import { makeUser, renderWithProviders } from '@/test/render'
 
-import type { CreditDetail, CreditPage } from './api'
+import type { CreditDetail, CreditPage as CreditPageData } from './api'
+import { CreditPage } from './CreditPage'
 import { RegistryPage } from './RegistryPage'
+
+function renderRegistry(user: User | null = null, route = '/registry') {
+  return renderWithProviders(
+    <Routes>
+      <Route path="/registry" element={<RegistryPage />} />
+      <Route path="/registry/:id" element={<CreditPage />} />
+    </Routes>,
+    { route, user },
+  )
+}
 
 const credit: CreditDetail = {
   id: 7,
@@ -27,7 +40,7 @@ const credit: CreditDetail = {
   monitoring: 'not_available',
   ledger_status: 'not_available',
 }
-const page: CreditPage = { items: [credit], total: 1, page: 1, page_size: 20 }
+const page: CreditPageData = { items: [credit], total: 1, page: 1, page_size: 20 }
 
 function responses(overrides: Record<string, unknown> = {}) {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
@@ -43,14 +56,14 @@ function responses(overrides: Record<string, unknown> = {}) {
 }
 
 async function selectCredit() {
-  await userEvent.click(await screen.findByRole('button', { name: /Nan Reforestation/ }))
+  await userEvent.click(await screen.findByRole('link', { name: /Nan Reforestation/ }))
   return screen.findByRole('region', { name: 'Credit traceability' })
 }
 
 describe('Public registry', () => {
   it('shows public results and full traceability with deferred states', async () => {
     responses()
-    renderWithProviders(<RegistryPage />)
+    renderRegistry()
     const panel = await selectCredit()
     expect(await within(panel).findByText('TUV Nord (VVB-114)')).toBeInTheDocument()
     expect(within(panel).getByText('Not available — monitoring is deferred')).toBeInTheDocument()
@@ -62,19 +75,17 @@ describe('Public registry', () => {
     expect(within(panel).getByText('Issued')).toBeInTheDocument()
   })
 
-  it('submits literal search text, resets selection and shows no matches', async () => {
+  it('submits literal search text and shows no matches', async () => {
     const fetch = responses({
       '/api/registry/credits?q=no+match&page=1': { ...page, items: [], total: 0 },
     })
-    renderWithProviders(<RegistryPage />)
-    await selectCredit()
+    renderRegistry()
     await userEvent.type(
       screen.getByRole('textbox', { name: 'Search project, serial or country' }),
       'no match',
     )
     await userEvent.click(screen.getByRole('button', { name: 'Search' }))
     expect(await screen.findByText('No matching credits')).toBeInTheDocument()
-    expect(screen.queryByRole('region', { name: 'Credit traceability' })).not.toBeInTheDocument()
     expect(fetch).toHaveBeenCalledWith(
       '/api/registry/credits?q=no+match&page=1',
       expect.any(Object),
@@ -83,7 +94,7 @@ describe('Public registry', () => {
 
   it('explains an empty registry', async () => {
     responses({ '/api/registry/credits?q=&page=1': { ...page, items: [], total: 0 } })
-    renderWithProviders(<RegistryPage />)
+    renderRegistry()
     expect(await screen.findByText('No issued credits available')).toBeInTheDocument()
   })
 
@@ -94,11 +105,11 @@ describe('Public registry', () => {
         { status: 503 },
       ),
     })
-    renderWithProviders(<RegistryPage />)
+    renderRegistry()
     expect(await screen.findByRole('alert')).toHaveTextContent('Registry unavailable')
     fetch.mockResolvedValue(Response.json(page))
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    expect(await screen.findByRole('button', { name: /Nan Reforestation/ })).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: /Nan Reforestation/ })).toBeInTheDocument()
   })
 
   it('allows an authorised buyer to request reviewed evidence', async () => {
@@ -109,23 +120,27 @@ describe('Public registry', () => {
         items: [{ id: 1, title: 'Verification report', summary: 'Reviewed project evidence' }],
       },
     })
-    renderWithProviders(<RegistryPage />, { user: makeUser('buyer') })
+    renderRegistry(makeUser('buyer'))
     expect(screen.getByText('Showing projects you are permitted to access.')).toBeInTheDocument()
     const panel = await selectCredit()
     await userEvent.click(await within(panel).findByRole('button', { name: 'Evidence pack' }))
-    expect(await screen.findByText('Reviewed project evidence')).toBeInTheDocument()
-    expect(screen.getByText('Reviewed summaries only')).toBeInTheDocument()
+    const dialog = await screen.findByRole('dialog', { name: 'Evidence pack' })
+    expect(within(dialog).getByText('Reviewed project evidence')).toBeInTheDocument()
+    expect(within(dialog).getByText('Reviewed summaries only')).toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('handles empty evidence and denied evidence without exposing data', async () => {
     const fetch = responses({
       '/api/registry/credits/7/evidence': { serial: credit.serial, notice: '', items: [] },
     })
-    renderWithProviders(<RegistryPage />, { user: makeUser('buyer') })
+    renderRegistry(makeUser('buyer'))
     const panel = await selectCredit()
     const button = await within(panel).findByRole('button', { name: 'Evidence pack' })
     await userEvent.click(button)
     expect(await screen.findByText('No permitted evidence')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }))
     fetch.mockResolvedValue(Response.json({ detail: 'Credit not found' }, { status: 404 }))
     await userEvent.click(button)
     expect(await screen.findByRole('alert')).toHaveTextContent('Credit not found')
@@ -133,7 +148,7 @@ describe('Public registry', () => {
 
   it('disables evidence for a developer', async () => {
     responses()
-    renderWithProviders(<RegistryPage />, { user: makeUser('developer') })
+    renderRegistry(makeUser('developer'))
     const panel = await selectCredit()
     expect(await within(panel).findByRole('button', { name: 'Evidence pack' })).toBeDisabled()
   })
@@ -148,7 +163,7 @@ describe('Public registry', () => {
           notice: 'Independent ledger verification is not available.',
         },
       })
-      renderWithProviders(<RegistryPage />)
+      renderRegistry()
       const panel = await selectCredit()
       await userEvent.click(
         await within(panel).findByRole('button', { name: 'Verify authenticity' }),
@@ -164,7 +179,7 @@ describe('Public registry', () => {
     },
   )
 
-  it('paginates and clears the previous traceability panel', async () => {
+  it('paginates through the results', async () => {
     responses({
       '/api/registry/credits?q=&page=1': { ...page, total: 21 },
       '/api/registry/credits?q=&page=2': {
@@ -174,18 +189,20 @@ describe('Public registry', () => {
         items: [{ ...credit, id: 8, project_name: 'Second page project' }],
       },
     })
-    renderWithProviders(<RegistryPage />)
-    await selectCredit()
-    await userEvent.click(screen.getByRole('button', { name: 'Next' }))
-    expect(await screen.findByRole('button', { name: /Second page project/ })).toBeInTheDocument()
+    renderRegistry()
+    await userEvent.click(await screen.findByRole('button', { name: 'Next' }))
+    expect(await screen.findByRole('link', { name: /Second page project/ })).toBeInTheDocument()
     expect(screen.getByText('Page 2 of 2')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
-    expect(screen.queryByRole('region', { name: 'Credit traceability' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Second page project/ })).toHaveAttribute(
+      'href',
+      '/registry/8',
+    )
   })
 
   it('shows a loading state before the request resolves', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise(() => {}))
-    renderWithProviders(<RegistryPage />)
+    renderRegistry()
     expect(screen.getByRole('status')).toHaveTextContent('Loading credits')
   })
 
@@ -193,8 +210,17 @@ describe('Public registry', () => {
     responses({
       '/api/registry/credits/7': Response.json({ detail: 'Credit not found' }, { status: 404 }),
     })
-    renderWithProviders(<RegistryPage />)
-    await userEvent.click(await screen.findByRole('button', { name: /Nan Reforestation/ }))
+    renderRegistry(null, '/registry/7')
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Credit not found'))
+  })
+
+  it('goes back to the same search results from a credit', async () => {
+    responses({ '/api/registry/credits?q=nan&page=1': page })
+    renderRegistry(null, '/registry?q=nan')
+    await selectCredit()
+    expect(screen.getByRole('link', { name: 'Public registry' })).toHaveAttribute(
+      'href',
+      '/registry?q=nan',
+    )
   })
 })

@@ -1,12 +1,25 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { Route, Routes } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
+import type { User } from '@/auth/types'
 import { makeUser, renderWithProviders } from '@/test/render'
 
 import type { Queue, Review } from './api'
 import { DeveloperNotes } from './DeveloperNotes'
+import { ReviewPage } from './ReviewPage'
 import { VerifyPage } from './VerifyPage'
+
+function renderVerify(route: string, user: User) {
+  return renderWithProviders(
+    <Routes>
+      <Route path="/verify" element={<VerifyPage />} />
+      <Route path="/verify/:id" element={<ReviewPage />} />
+    </Routes>,
+    { route, user },
+  )
+}
 
 const item = {
   id: 4,
@@ -107,24 +120,79 @@ function mockApi(pages: { queue?: Queue; review?: Review } = {}) {
 }
 
 describe('Verification queue', () => {
-  it('shows the assigned projects oldest-due first with the overdue flag', async () => {
-    mockApi()
-    renderWithProviders(<VerifyPage />, { user: makeUser('verifier') })
+  it('groups the queue into tabs and links each assignment to its review', async () => {
+    mockApi({
+      queue: {
+        ...queue,
+        items: [
+          item,
+          {
+            ...item,
+            id: 5,
+            project_name: 'Phrae Agroforestry',
+            status: 'signed_off',
+            chip: 'SIGNED OFF',
+            chip_tone: 'wait',
+          },
+        ],
+      },
+    })
+    renderVerify('/verify', makeUser('verifier'))
 
     expect(await screen.findByText('4 assigned to you · 2 overdue')).toBeInTheDocument()
-    expect(screen.getByText('Nan Reforestation Phase II')).toBeInTheDocument()
-    expect(screen.getByText('OVERDUE')).toBeInTheDocument()
-    expect(screen.getByText(/Due 26 Sep/)).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /In progress/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(screen.queryByRole('tab', { name: 'Assign verifier' })).not.toBeInTheDocument()
+    const row = screen.getByRole('link', { name: /Nan Reforestation Phase II/ })
+    expect(row).toHaveAttribute('href', '/verify/4')
+    expect(within(row).getByText('OVERDUE')).toBeInTheDocument()
+    expect(within(row).getByText('4 days overdue')).toBeInTheDocument()
+    expect(screen.queryByText('Phrae Agroforestry')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('tab', { name: /Awaiting approval/ }))
+    expect(screen.getByRole('link', { name: /Phrae Agroforestry/ })).toBeInTheDocument()
+    expect(screen.queryByText('Nan Reforestation Phase II')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('tab', { name: /Approved/ }))
+    expect(screen.getByText('Nothing approved yet')).toBeInTheDocument()
+  })
+
+  it('gives staff an assign tab', async () => {
+    mockApi()
+    renderVerify('/verify', makeUser('registry_staff'))
+    await userEvent.click(await screen.findByRole('tab', { name: 'Assign verifier' }))
+    expect(screen.getByRole('combobox', { name: 'Project' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Assign' })).toBeDisabled()
+  })
+
+  it('opens a review with the checklist, and evidence and history in tabs', async () => {
+    mockApi()
+    renderVerify('/verify/4', makeUser('verifier'))
+
     const panel = await screen.findByRole('region', { name: 'Open review CRVR-0147' })
+    expect(
+      within(panel).getByRole('heading', { name: 'Nan Reforestation Phase II' }),
+    ).toBeInTheDocument()
     expect(
       within(panel).getByRole('checkbox', { name: /Land title matches applicant/ }),
     ).toBeChecked()
+    expect(within(panel).getByText('1 of 5 confirmed')).toBeInTheDocument()
+
+    await userEvent.click(within(panel).getByRole('tab', { name: /Evidence & checks/ }))
     expect(within(panel).getByText(/Auto-checked · overlap not resolved/)).toBeInTheDocument()
+    expect(within(panel).getByText('NEEDS ATTENTION')).toBeInTheDocument()
+
+    await userEvent.click(within(panel).getByRole('tab', { name: /History/ }))
+    expect(
+      within(panel).getByText('Assigned to Dr. Anna Weber · due 2026-09-26'),
+    ).toBeInTheDocument()
   })
 
   it('submits a sign-off with the checklist and note', async () => {
     const fetch = mockApi()
-    renderWithProviders(<VerifyPage />, { user: makeUser('verifier') })
+    renderVerify('/verify/4', makeUser('verifier'))
     const panel = await screen.findByRole('region', { name: 'Open review CRVR-0147' })
     await userEvent.type(
       within(panel).getByRole('textbox', { name: 'Verifier note' }),
@@ -165,7 +233,6 @@ describe('Verification queue', () => {
     fetch.mockImplementation(async (input, init) => {
       const path = String(input)
       const method = init?.method ?? 'GET'
-      if (path === '/api/verifications/queue') return Response.json(queue)
       if (path === '/api/verifications/assignments/4') return Response.json(signed)
       if (path === '/api/verifications/reports/8/decision') {
         return Response.json({
@@ -180,18 +247,16 @@ describe('Verification queue', () => {
           },
         })
       }
-      if (path === '/api/verifications/verifiers') return Response.json([])
-      if (path === '/api/projects') return Response.json([])
       throw new Error(`Unexpected ${method} ${path}`)
     })
-    renderWithProviders(<VerifyPage />, { user: makeUser('registry_staff') })
-    expect(await screen.findByText('4 assignments · 2 overdue')).toBeInTheDocument()
+    renderVerify('/verify/4', makeUser('registry_staff'))
     await userEvent.type(
       await screen.findByRole('textbox', { name: 'Rationale' }),
       'Separate reviewer.',
     )
     await userEvent.click(screen.getByRole('button', { name: 'Approve' }))
-    expect(await screen.findByText('Separate reviewer.')).toBeInTheDocument()
+    expect(await screen.findByText('Approved by Naree Suwan')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve' })).not.toBeInTheDocument()
   })
 })
 

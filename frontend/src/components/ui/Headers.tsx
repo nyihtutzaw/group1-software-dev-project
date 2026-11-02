@@ -1,13 +1,43 @@
 import type { ReactNode } from 'react'
+import { Link } from 'react-router'
 
-/** Page title with an optional grey subtitle line. */
-export function PageHeader({ title, subtitle }: { title: ReactNode; subtitle?: ReactNode }) {
+import { Icon } from './Icon'
+
+/**
+ * Page title with an optional subtitle, a back link above it (detail pages) and actions on the
+ * right (a status chip, buttons).
+ */
+export function PageHeader({
+  title,
+  subtitle,
+  back,
+  actions,
+}: {
+  title: ReactNode
+  subtitle?: ReactNode
+  back?: { to: string; label: string }
+  actions?: ReactNode
+}) {
   return (
     <header className="mb-6">
-      <h1 className="text-[22px] leading-tight font-semibold tracking-[-0.02em] text-balance desk:text-[26px]">
-        {title}
-      </h1>
-      {subtitle && <p className="mt-1 text-sm text-faint">{subtitle}</p>}
+      {back && (
+        <Link
+          to={back.to}
+          className="mb-3 inline-flex items-center gap-1 text-[13px] font-medium text-faint hover:text-accent"
+        >
+          <Icon name="chevron" strokeWidth={2} className="size-4 rotate-180" />
+          {back.label}
+        </Link>
+      )}
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0">
+          <h1 className="text-[22px] leading-tight font-semibold tracking-[-0.02em] text-balance desk:text-[26px]">
+            {title}
+          </h1>
+          {subtitle && <p className="mt-1 text-sm text-faint">{subtitle}</p>}
+        </div>
+        {actions && <div className="flex flex-none items-center gap-2 pt-1">{actions}</div>}
+      </div>
     </header>
   )
 }
