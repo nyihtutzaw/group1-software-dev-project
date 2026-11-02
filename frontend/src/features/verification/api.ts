@@ -63,6 +63,8 @@ export type ChangeNote = {
   project_id: number
   project_code: string
   project_name: string
+  /** changes_requested: the verifier's note · rejected: the registry staff rationale */
+  kind: 'changes_requested' | 'rejected'
   note: string
   at: string
 }

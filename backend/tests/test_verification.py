@@ -207,6 +207,7 @@ def test_request_changes_reaches_the_project_owner(client, login, db, make_user,
             "project_id": project.id,
             "project_code": project.code,
             "project_name": project.name,
+            "kind": "changes_requested",
             "note": note,
             "at": notes[0]["at"],
         }
@@ -347,25 +348,74 @@ def test_only_a_submitted_project_can_be_assigned(client, login, make_user, make
     assert "submitted" in res.json()["detail"]
 
 
-def test_rejection_leaves_the_project_unverified(client, login, db, make_user, make_project):
+def test_rejection_sends_the_project_back_for_another_round(
+    client, login, db, make_user, make_project
+):
     login(Role.REGISTRY_STAFF)
     verifier = make_user(Role.VERIFIER, email="v@test.local")
-    project = make_project()
-    created = assign(client, project, verifier)
+    owner = make_user(Role.DEVELOPER, email="owner@test.local")
+    project = make_project(owner=owner)
+    created = assign(client, project, verifier, date.today() - timedelta(days=1))
     sign_in(client, verifier)
-    report_id = client.post(
+    first = client.post(
         f"/api/verifications/assignments/{created['id']}/report", json=report_body()
     ).json()["report_id"]
 
-    sign_in(client, make_user(Role.REGISTRY_STAFF, email="checker@test.local"))
+    checker = make_user(Role.REGISTRY_STAFF, email="checker@test.local")
+    sign_in(client, checker)
     rejected = client.post(
-        f"/api/verifications/reports/{report_id}/decision",
-        json={"decision": "rejected", "rationale": "Land title does not match."},
+        f"/api/verifications/reports/{first}/decision",
+        json={"decision": "rejected", "rationale": "Land title does not match the applicant."},
     )
-
     assert rejected.status_code == 200, rejected.text
+    assert rejected.json()["item"]["status"] == "rejected"
+    # Not finished: it is back with the developer and still counts against the due date
+    assert rejected.json()["item"]["overdue"] is True
     db.refresh(project)
-    assert project.status == ProjectStatus.SUBMITTED
+    assert project.status == ProjectStatus.DRAFT
+    assert project.submitted_at is None
+
+    sign_in(client, owner)
+    notes = client.get("/api/verifications/notes").json()
+    assert [(n["kind"], n["note"]) for n in notes] == [
+        ("rejected", "Land title does not match the applicant.")
+    ]
+
+    sign_in(client, verifier)
+    waiting = client.post(
+        f"/api/verifications/assignments/{created['id']}/report", json=report_body()
+    )
+    assert waiting.status_code == 409
+
+    project.status = ProjectStatus.SUBMITTED  # the developer fixes it and resubmits through F1
+    db.flush()
+    sign_in(client, owner)
+    assert client.get("/api/verifications/notes").json() == []
+
+    sign_in(client, verifier)
+    review = client.get(f"/api/verifications/assignments/{created['id']}").json()
+    assert review["can_submit"] is True
+    second = client.post(
+        f"/api/verifications/assignments/{created['id']}/report", json=report_body()
+    )
+    assert second.status_code == 200, second.text
+    sign_in(client, checker)
+    approved = client.post(
+        f"/api/verifications/reports/{second.json()['report_id']}/decision",
+        json={"decision": "approved", "rationale": "The corrected land title matches."},
+    )
+    assert approved.status_code == 200, approved.text
+    db.refresh(project)
+    assert project.status == ProjectStatus.VERIFIED
+
+    chain = client.get(f"/api/verifications/projects/{project.id}/chain").json()["chain"]
+    assert [event["kind"] for event in chain] == [
+        "assigned",
+        "report",
+        "approval",
+        "report",
+        "approval",
+    ]
 
 
 def test_review_lists_the_sealed_evidence_files(client, login, db, make_user, make_project):

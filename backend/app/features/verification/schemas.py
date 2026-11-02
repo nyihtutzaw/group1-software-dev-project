@@ -122,6 +122,8 @@ class NoteOut(BaseModel):
     project_id: int
     project_code: str
     project_name: str
+    # changes_requested: the verifier's note · rejected: the registry staff rationale
+    kind: Literal["changes_requested", "rejected"]
     note: str
     at: datetime
 

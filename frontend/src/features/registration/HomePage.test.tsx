@@ -114,20 +114,31 @@ describe('HomePage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Database offline')
   })
 
-  it('shows a developer the verifier notes on a request for changes', async () => {
+  it('shows a developer what was sent back: changes requested or rejected', async () => {
     mockHome(projects, [
       {
         project_id: 1,
         project_code: 'CRVR-0147',
         project_name: 'Nan Reforestation Phase II',
+        kind: 'changes_requested',
         note: 'Upload the 2026 survey.',
         at: '2026-10-30T00:00:00Z',
+      },
+      {
+        project_id: 2,
+        project_code: 'CRVR-0131',
+        project_name: 'Chiang Rai Mangrove Restore',
+        kind: 'rejected',
+        note: 'Land title does not match the applicant.',
+        at: '2026-10-31T00:00:00Z',
       },
     ])
     renderWithProviders(<HomePage />, { user: makeUser('developer') })
 
     expect(await screen.findByText('CRVR-0147 · changes requested')).toBeInTheDocument()
     expect(screen.getByText('Upload the 2026 survey.')).toBeInTheDocument()
+    expect(screen.getByText('CRVR-0131 · verification rejected')).toBeInTheDocument()
+    expect(screen.getByText('Land title does not match the applicant.')).toBeInTheDocument()
   })
 
   it('points verifiers to their queue without asking for projects', () => {
