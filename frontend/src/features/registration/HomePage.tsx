@@ -11,6 +11,7 @@ import {
   StatTiles,
   StatusChip,
 } from '@/components/ui'
+import { DeveloperNotes } from '@/features/verification/DeveloperNotes'
 
 import { useProjectList } from './api'
 import { formatNumber, isDraft } from './format'
@@ -49,6 +50,7 @@ export function HomePage() {
             : `${plural(registered.length, 'submission')} · ${awaiting.length} awaiting verification`)
         }
       />
+      {isDeveloper && <DeveloperNotes />}
 
       {projects.isPending && <p role="status">Loading projects…</p>}
       {projects.isError && (
