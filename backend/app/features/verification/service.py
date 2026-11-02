@@ -44,6 +44,7 @@ OPEN_FOR_REPORT = (
     AssignmentStatus.ASSIGNED,
     AssignmentStatus.IN_REVIEW,
     AssignmentStatus.CHANGES_REQUESTED,
+    AssignmentStatus.REJECTED,  # reviewed again once the developer resubmits
 )
 
 
@@ -468,6 +469,10 @@ def decide(db: Session, user: User, report_id: int, data: ApprovalIn) -> ReviewO
     )
     if data.decision == ApprovalDecision.APPROVED:
         project.status = ProjectStatus.VERIFIED
+    else:
+        # Back to the developer with the rationale, like a request for changes
+        project.status = ProjectStatus.DRAFT
+        project.submitted_at = None
     db.add(approval)
     db.flush()
     record_action(
@@ -514,20 +519,30 @@ def developer_notes(db: Session, user: User) -> list[NoteOut]:
         assignment = db.scalar(
             select(VerificationAssignment).where(VerificationAssignment.project_id == project.id)
         )
-        if assignment is None or assignment.status != AssignmentStatus.CHANGES_REQUESTED:
-            continue
-        if project.status != ProjectStatus.DRAFT:
-            continue  # already resubmitted — the note is answered
+        if assignment is None or project.status != ProjectStatus.DRAFT:
+            continue  # nothing sent back, or already resubmitted — the note is answered
         report = _latest_report(db, assignment.id)
-        if report is None or report.decision != ReportDecision.REQUEST_CHANGES:
+        if report is None:
+            continue
+        if assignment.status == AssignmentStatus.CHANGES_REQUESTED:
+            if report.decision != ReportDecision.REQUEST_CHANGES:
+                continue
+            kind, note, at = "changes_requested", report.note, report.signed_at
+        elif assignment.status == AssignmentStatus.REJECTED:
+            approval = _approval_for(db, report.id)
+            if approval is None:
+                continue
+            kind, note, at = "rejected", approval.rationale, approval.decided_at
+        else:
             continue
         notes.append(
             NoteOut(
                 project_id=project.id,
                 project_code=project.code,
                 project_name=project.name,
-                note=report.note,
-                at=report.signed_at,
+                kind=kind,
+                note=note,
+                at=at,
             )
         )
     return notes

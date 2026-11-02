@@ -49,8 +49,9 @@ class ApprovalDecision(enum.StrEnum):
     REJECTED = "rejected"
 
 
-# A finished approval is no longer waiting on the verifier's due date.
-CLOSED = (AssignmentStatus.APPROVED, AssignmentStatus.REJECTED)
+# A finished approval is no longer waiting on the verifier's due date. A rejection is not closed:
+# the project goes back to the developer and the same assignment is reviewed again on resubmission.
+CLOSED = (AssignmentStatus.APPROVED,)
 
 
 class VerificationAssignment(TimestampMixin, Base):
