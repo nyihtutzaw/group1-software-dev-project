@@ -22,14 +22,14 @@ export function AppShell() {
   const items = navFor(user?.role ?? null)
 
   return (
-    <div className="grid min-h-screen grid-cols-1 desk:grid-cols-[232px_1fr]">
-      <Sidebar items={items} />
+    <div className="grid min-h-screen grid-cols-1 desk:grid-cols-[248px_1fr]">
+      <Sidebar items={items} user={user} />
       <div className="min-w-0 pb-[calc(62px+env(safe-area-inset-bottom))] desk:pb-0">
-        <TopBar user={user} />
+        <TopBar user={user} items={items} />
         {/* key forces the fade-in animation on every page change */}
         <main
           key={pathname}
-          className="page-enter mx-auto max-w-[1080px] px-4 pt-[18px] pb-[30px] desk:px-7 desk:pt-[26px] desk:pb-11"
+          className="page-enter mx-auto max-w-[1120px] px-4 pt-5 pb-8 desk:px-8 desk:pt-8 desk:pb-12"
         >
           <Outlet />
         </main>

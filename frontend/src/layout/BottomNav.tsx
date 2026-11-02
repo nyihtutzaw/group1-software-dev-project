@@ -10,7 +10,7 @@ export function BottomNav({ items }: { items: NavItem[] }) {
   return (
     <nav
       aria-label="Sections"
-      className="fixed inset-x-0 bottom-0 z-30 grid auto-cols-fr grid-flow-col border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_14px_rgba(11,20,18,0.06)] desk:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 grid auto-cols-fr grid-flow-col border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md desk:hidden"
     >
       {items.map((item) => (
         <NavLink
@@ -19,7 +19,7 @@ export function BottomNav({ items }: { items: NavItem[] }) {
           end={item.path === '/'}
           className={({ isActive }) =>
             cn(
-              'grid h-[62px] place-items-center content-center gap-[3px] text-[10.5px] font-medium text-faint',
+              'grid h-[62px] place-items-center content-center gap-1 text-[11px] font-medium text-faint',
               isActive && 'font-semibold text-accent',
             )
           }
