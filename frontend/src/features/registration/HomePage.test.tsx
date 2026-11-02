@@ -1,5 +1,5 @@
 import { screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { makeUser, mockFetch, renderWithProviders } from '@/test/render'
 
@@ -44,9 +44,23 @@ const projects: ProjectOut[] = [
   },
 ]
 
+/**
+ * Home loads the project list and, for developers, F3's change-request notes. Answer each request
+ * with a fresh Response — one shared Response body can only be read once.
+ */
+function mockHome(projectsBody: unknown, notes: unknown[] = [], status = 200) {
+  return vi
+    .spyOn(globalThis, 'fetch')
+    .mockImplementation(async (input) =>
+      String(input).endsWith('/verifications/notes')
+        ? Response.json(notes)
+        : Response.json(projectsBody, { status }),
+    )
+}
+
 describe('HomePage', () => {
   it('shows a developer their projects, live status and what needs action', async () => {
-    mockFetch(projects)
+    mockHome(projects)
     renderWithProviders(<HomePage />, { user: makeUser('developer') })
 
     expect(await screen.findByText('2 registered · 2 waiting on you')).toBeInTheDocument()
@@ -67,7 +81,7 @@ describe('HomePage', () => {
   })
 
   it('reserves the satellite-monitoring slot', async () => {
-    mockFetch(projects)
+    mockHome(projects)
     renderWithProviders(<HomePage />, { user: makeUser('developer') })
 
     const slot = screen.getByRole('region', { name: 'Latest satellite check' })
@@ -75,7 +89,7 @@ describe('HomePage', () => {
   })
 
   it('gives registry staff the overview of every submission', async () => {
-    mockFetch(projects)
+    mockHome(projects)
     renderWithProviders(<HomePage />, { user: makeUser('registry_staff') })
 
     expect(screen.getByRole('heading', { name: 'All projects' })).toBeInTheDocument()
@@ -85,7 +99,7 @@ describe('HomePage', () => {
   })
 
   it('invites a new developer to register', async () => {
-    mockFetch([])
+    mockHome([])
     renderWithProviders(<HomePage />, { user: makeUser('developer') })
 
     expect(
@@ -94,10 +108,26 @@ describe('HomePage', () => {
   })
 
   it('reports a failed load', async () => {
-    mockFetch().mockResolvedValue(Response.json({ detail: 'Database offline' }, { status: 503 }))
+    mockHome({ detail: 'Database offline' }, [], 503)
     renderWithProviders(<HomePage />, { user: makeUser('developer') })
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Database offline')
+  })
+
+  it('shows a developer the verifier notes on a request for changes', async () => {
+    mockHome(projects, [
+      {
+        project_id: 1,
+        project_code: 'CRVR-0147',
+        project_name: 'Nan Reforestation Phase II',
+        note: 'Upload the 2026 survey.',
+        at: '2026-10-30T00:00:00Z',
+      },
+    ])
+    renderWithProviders(<HomePage />, { user: makeUser('developer') })
+
+    expect(await screen.findByText('CRVR-0147 · changes requested')).toBeInTheDocument()
+    expect(screen.getByText('Upload the 2026 survey.')).toBeInTheDocument()
   })
 
   it('points verifiers to their queue without asking for projects', () => {

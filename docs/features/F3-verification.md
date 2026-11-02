@@ -113,3 +113,11 @@ From WBS 7.x and the design report:
   note, demo queue for `verifier@crvr.local`, backend and frontend tests. Ledger writes go through
   `record_action()` (still F5's log stub). Evidence bytes are not listed because F1 has no files yet.
 - Next: tick the issue checklist once the PR is reviewed. Ask the team who should assign verifiers.
+
+### 2026-11-02 · feature/F3-assignment-queue (sync with F1)
+- Done: rebased on `main` after F1 (#14) merged. The F3 migration now revises F1's
+  `47c89f71feec`, so there is one Alembic head. F1's Home dashboard shows `DeveloperNotes` under the
+  header. F1's Home tests answer the notes request separately, and a new test covers the note.
+  Prettier fixed in `VerifyPage.test.tsx` (CI frontend gate).
+- Next: F3 sign-off/approval does not yet move `projects.status` to `verified`; assignment should
+  require a `submitted` project; align demo seed with F1's seeded statuses.

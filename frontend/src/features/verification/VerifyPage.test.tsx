@@ -186,7 +186,10 @@ describe('Verification queue', () => {
     })
     renderWithProviders(<VerifyPage />, { user: makeUser('registry_staff') })
     expect(await screen.findByText('4 assignments · 2 overdue')).toBeInTheDocument()
-    await userEvent.type(await screen.findByRole('textbox', { name: 'Rationale' }), 'Separate reviewer.')
+    await userEvent.type(
+      await screen.findByRole('textbox', { name: 'Rationale' }),
+      'Separate reviewer.',
+    )
     await userEvent.click(screen.getByRole('button', { name: 'Approve' }))
     expect(await screen.findByText('Separate reviewer.')).toBeInTheDocument()
   })
