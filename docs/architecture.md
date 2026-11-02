@@ -72,7 +72,7 @@ src/index.css           design tokens (light + dark) → Tailwind utilities
 | Area | Tables (planned) | Owner |
 |---|---|---|
 | Users & roles | `users` ✅ | F5 |
-| Projects & evidence | `projects`, `evidence_files` | F1 |
+| Projects & evidence | `projects` ✅, `evidence_files` ✅ (write-once) | F1 |
 | Boundaries | `boundaries` (PostGIS geometry) | F2 |
 | Verification | `verification_assignments`, `verification_reports`, `approvals` | F3 |
 | Credits | `credits` | F4 |

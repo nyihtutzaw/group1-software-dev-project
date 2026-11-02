@@ -19,6 +19,8 @@ class Settings(BaseSettings):
 
     seed_demo_users: bool = True
     storage_dir: str = "/data/evidence"
+    # F1: largest evidence file accepted (zipped geo-tagged photo sets are the big ones)
+    evidence_max_bytes: int = 50 * 1024 * 1024
 
     # F2: an overlap larger than this % of the new project's area blocks submission and issuance.
     # Absorbs GPS error along shared edges (UI mock-up: 0.5%).
