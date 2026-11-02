@@ -15,8 +15,8 @@
 
 In progress — queue, structured checklist, sign-off and maker-checker approval are on `main`
 (PR #13). The review lists F1's sealed evidence files (kind, name, SHA-256) and the F2 overlap
-check. F3 now drives `projects.status` after submission: request changes → `draft`, approval →
-`verified`.
+check. F3 now drives `projects.status` after submission: request changes or a staff rejection →
+`draft`, approval → `verified`.
 
 ## Scope
 
@@ -49,7 +49,7 @@ From WBS 7.x and the design report:
 - 2026-11-01 — A `verifier` receives only rows where they are `verifier_id`. `registry_staff` and
   `admin` receive every assignment. The API enforces this.
 - 2026-11-01 — Overdue means `due_date` is before today (UTC) and the assignment is not approved
-  or rejected. The due date itself is not overdue.
+  or rejected. The due date itself is not overdue. *(Rejected changed on 2026-11-02, below.)*
 - 2026-11-01 — One assignment per project. Sign-off cannot be edited. "Request changes" stores a
   report and sets the assignment to `changes_requested`. The project owner reads the note from
   `GET /api/verifications/notes`. *(Status part superseded on 2026-11-02, below.)*
@@ -59,8 +59,13 @@ From WBS 7.x and the design report:
   Only a `submitted` project can be assigned (409 otherwise). "Request changes" returns the project
   to `draft` and clears `submitted_at`, because F1 only accepts edits and new evidence on a draft;
   files already sealed stay write-once. The verifier cannot report again until the developer
-  resubmits, and the note leaves the developer's Home once they do. Approval sets `verified`;
-  rejection leaves the project `submitted` (what happens next is an open question).
+  resubmits, and the note leaves the developer's Home once they do. Approval sets `verified`.
+- 2026-11-02 — **A staff rejection also returns the project to `draft`**, with the rationale shown
+  on the developer's Home (`NoteOut.kind` = `rejected`; a verifier's note is `changes_requested`).
+  The assignment stays `rejected` but reopens: once the developer resubmits, the same verifier
+  reports again and a staff member decides on the new sign-off. One assignment per project is kept;
+  the chain shows every round. A rejected assignment still counts against its due date (only
+  `approved` is closed).
 - 2026-11-02 — Demo seed follows F1's seeded statuses: CRVR-0147 (submitted) is in review and
   overdue; CRVR-0131/0092 (verified) and CRVR-0088 (issued) carry a sign-off plus staff approval.
 
@@ -100,8 +105,8 @@ From WBS 7.x and the design report:
 ## Open questions
 
 - Who assigns verifiers — registry staff, admin, or both? This branch allows both (see Decisions).
-- After a staff **rejection** the project stays `submitted` with a closed assignment. Should it be
-  reassigned to another verifier, go back to `draft`, or get its own `rejected` status?
+- After a rejection the **same verifier** reviews the resubmission, and the due date is not reset.
+  Should staff be able to reassign to a different verifier or set a new due date?
 
 ## Progress log
 
@@ -139,3 +144,9 @@ From WBS 7.x and the design report:
   verified/issued projects as waiting. Fixed all five (see Decisions 2026-11-02), with tests.
 - Next: decide what follows a rejection (Open questions). Existing local databases keep the old
   demo queue — `sh scripts/start.sh --fresh --yes` reseeds it.
+
+### 2026-11-02 · fix/F3-rejection-returns-to-draft
+- Done: a staff rejection no longer strands the project as `submitted`. It goes back to `draft`
+  with the rationale on the developer's Home; after resubmission the same assignment is reviewed
+  and decided again (see Decisions). Backend test covers the full reject → resubmit → approve round.
+- Next: reassigning a verifier / resetting the due date after a rejection (Open questions).
