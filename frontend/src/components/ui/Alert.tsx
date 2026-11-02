@@ -7,8 +7,8 @@ import { Icon, type IconName } from './Icon'
 type Tone = 'warn' | 'ok'
 
 const TONES: Record<Tone, { box: string; icon: string; name: IconName }> = {
-  warn: { box: 'bg-warn-soft border-warn/30', icon: 'text-warn', name: 'alert' },
-  ok: { box: 'bg-ok-soft border-ok/30', icon: 'text-ok', name: 'check' },
+  warn: { box: 'bg-warn-soft border-warn/25', icon: 'text-warn', name: 'alert' },
+  ok: { box: 'bg-ok-soft border-ok/25', icon: 'text-ok', name: 'check' },
 }
 
 export function Alert({
@@ -29,14 +29,14 @@ export function Alert({
     <div
       role={tone === 'warn' ? 'alert' : 'status'}
       className={cn(
-        'grid grid-cols-[auto_1fr] gap-[11px] rounded-xl border px-3.5 py-[13px] text-[13.5px] text-muted',
+        'grid grid-cols-[auto_1fr] gap-3 rounded-xl border px-4 py-3 text-[13px] text-muted',
         t.box,
         className,
       )}
     >
-      <Icon name={icon ?? t.name} strokeWidth={2} className={cn('mt-px size-[19px]', t.icon)} />
+      <Icon name={icon ?? t.name} strokeWidth={2} className={cn('mt-px size-[18px]', t.icon)} />
       <div>
-        <b className="mb-0.5 block text-sm text-ink">{title}</b>
+        <b className="mb-0.5 block text-sm font-semibold text-ink">{title}</b>
         {children}
       </div>
     </div>

@@ -48,10 +48,7 @@ export function EvidenceDrop({ projectId, kind }: { projectId: number; kind?: Ev
     <div className="grid gap-[11px]">
       {!kind && (
         <Card className="px-3.5 py-3">
-          <label
-            htmlFor={kindId}
-            className="mb-[5px] block font-mono text-[11px] font-semibold tracking-[0.1em] text-faint uppercase"
-          >
+          <label htmlFor={kindId} className="mb-1.5 block text-[13px] font-medium text-muted">
             Type of evidence
           </label>
           <Select
