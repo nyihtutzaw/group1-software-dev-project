@@ -64,7 +64,8 @@ No HTTP write routes are exposed.
 
 | Route | Roles | Shows |
 |---|---|---|
-| `/registry` | public + all signed-in | Search, paginated credit cards, selectable traceability, evidence and integrity results, history |
+| `/registry` | public + all signed-in | Search and a paginated results table; search text and page are kept in the URL |
+| `/registry/:id` | public + all signed-in | One credit: origin, verification & approval, history; Verify authenticity result beside it; the evidence pack opens in a dialog |
 
 ## Data model
 
@@ -156,3 +157,9 @@ seeds on normal startup. These are fictional demo credits and approvals, never r
 - Migration downgrade to `0001`, upgrade to head and schema check passed on the isolated test DB.
 - Lifecycle transition refreshes loaded ORM state under its row lock before checking terminal
   status, so an already-loaded active snapshot cannot overwrite another completed transition.
+
+### 2026-11-02 · chore/ui-verify-tabs-registry-detail
+- Done: traceability no longer opens under the results list. Each result links to `/registry/:id`
+  (origin, verification & approval, history, with the authenticity check beside them) and the
+  evidence pack opens in a dialog. Search and page live in the URL, so Back returns to the same
+  results. No API change.
