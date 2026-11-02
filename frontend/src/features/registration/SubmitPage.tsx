@@ -299,7 +299,7 @@ function DetailsStep({ form, errors, set }: StepProps & { errors: Errors }) {
               aria-label="Crediting start year"
               inputMode="numeric"
               placeholder="2027"
-              className="w-[4.5ch]! flex-none font-mono"
+              className="min-w-0 flex-1 font-mono"
               value={form.start}
               onChange={(e) => set('start')(e.target.value)}
             />
@@ -309,7 +309,7 @@ function DetailsStep({ form, errors, set }: StepProps & { errors: Errors }) {
               aria-label="Crediting end year"
               inputMode="numeric"
               placeholder="2047"
-              className="w-[4.5ch]! flex-none font-mono"
+              className="min-w-0 flex-1 font-mono"
               value={form.end}
               onChange={(e) => set('end')(e.target.value)}
             />

@@ -1,82 +1,90 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens, copied from the UI mock-up (docs/project/CRVR-Mock-UI-v0.1.html).
+ * Design tokens. Light theme: white page with the CRVR teal as the theme colour.
+ * Dark theme: neutral dark surfaces. The theme follows the system unless the user picks one
+ * (data-theme on <html>, set by lib/theme.ts).
  * Use them through Tailwind utilities: bg-surface, text-muted, border-line, text-accent, …
  * Never hard-code a hex colour in a component — add a token here instead.
  */
 :root {
-  --bg: #f2f5f4;
+  color-scheme: light;
+  --bg: #ffffff;
   --surface: #ffffff;
-  --surface-2: #f3f7f6;
-  --surface-3: #e7eeec;
-  --ink: #0b1412;
-  --muted: #46564f;
-  --faint: #6e7f7a;
-  --line: #d5dedb;
-  --line-strong: #9fb0ab;
-  --accent: #0a5f53;
-  --accent-ink: #083f37;
-  --accent-soft: #ddede9;
+  --surface-2: #f7f9f9;
+  --surface-3: #eef2f1;
+  --ink: #101828;
+  --muted: #475467;
+  --faint: #667085;
+  --line: #e4e7ec;
+  --line-strong: #d0d5dd;
+  --accent: #0b6e60;
+  --accent-ink: #08574c;
+  --accent-soft: #e7f3f0;
   --on-accent: #ffffff;
-  --warn: #9e4514;
-  --warn-soft: #fbeadf;
-  --ok: #1f6b3b;
-  --ok-soft: #dff0e4;
-  --wait: #8a5a00;
-  --wait-soft: #faefd6;
+  --warn: #b42318;
+  --warn-soft: #fef3f2;
+  --ok: #067647;
+  --ok-soft: #ecfdf3;
+  --wait: #b54708;
+  --wait-soft: #fffaeb;
   --purple: #5b3f97;
-  --shadow: 0 1px 2px rgba(11, 20, 18, 0.05), 0 6px 18px rgba(11, 20, 18, 0.06);
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-lg: 0 12px 24px -6px rgba(16, 24, 40, 0.1), 0 4px 8px -4px rgba(16, 24, 40, 0.05);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #0a100f;
-    --surface: #141c1a;
-    --surface-2: #1b2523;
-    --surface-3: #222e2b;
-    --ink: #e8f0ed;
-    --muted: #a9bab4;
-    --faint: #7e8f8a;
-    --line: #2a3835;
-    --line-strong: #3d4e4a;
-    --accent: #4fbfa8;
-    --accent-ink: #8fe0ce;
-    --accent-soft: #16332d;
-    --on-accent: #06201b;
-    --warn: #e0885a;
-    --warn-soft: #3a2418;
-    --ok: #6dc98c;
-    --ok-soft: #14301f;
-    --wait: #d9ac55;
-    --wait-soft: #33270f;
+    color-scheme: dark;
+    --bg: #0c1110;
+    --surface: #121918;
+    --surface-2: #19211f;
+    --surface-3: #212b29;
+    --ink: #eef2f1;
+    --muted: #b3bfbc;
+    --faint: #86938f;
+    --line: #243030;
+    --line-strong: #344341;
+    --accent: #3cc4a8;
+    --accent-ink: #6fd8c1;
+    --accent-soft: #123630;
+    --on-accent: #04201a;
+    --warn: #f97066;
+    --warn-soft: #3a1a17;
+    --ok: #47cd89;
+    --ok-soft: #0f2e1f;
+    --wait: #fdb022;
+    --wait-soft: #33250a;
     --purple: #a88bdd;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.35);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 12px 24px -6px rgba(0, 0, 0, 0.5), 0 4px 8px -4px rgba(0, 0, 0, 0.4);
   }
 }
 
 :root[data-theme='dark'] {
-  --bg: #0a100f;
-  --surface: #141c1a;
-  --surface-2: #1b2523;
-  --surface-3: #222e2b;
-  --ink: #e8f0ed;
-  --muted: #a9bab4;
-  --faint: #7e8f8a;
-  --line: #2a3835;
-  --line-strong: #3d4e4a;
-  --accent: #4fbfa8;
-  --accent-ink: #8fe0ce;
-  --accent-soft: #16332d;
-  --on-accent: #06201b;
-  --warn: #e0885a;
-  --warn-soft: #3a2418;
-  --ok: #6dc98c;
-  --ok-soft: #14301f;
-  --wait: #d9ac55;
-  --wait-soft: #33270f;
+  color-scheme: dark;
+  --bg: #0c1110;
+  --surface: #121918;
+  --surface-2: #19211f;
+  --surface-3: #212b29;
+  --ink: #eef2f1;
+  --muted: #b3bfbc;
+  --faint: #86938f;
+  --line: #243030;
+  --line-strong: #344341;
+  --accent: #3cc4a8;
+  --accent-ink: #6fd8c1;
+  --accent-soft: #123630;
+  --on-accent: #04201a;
+  --warn: #f97066;
+  --warn-soft: #3a1a17;
+  --ok: #47cd89;
+  --ok-soft: #0f2e1f;
+  --wait: #fdb022;
+  --wait-soft: #33250a;
   --purple: #a88bdd;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.35);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 24px -6px rgba(0, 0, 0, 0.5), 0 4px 8px -4px rgba(0, 0, 0, 0.4);
 }
 
 @theme inline {
@@ -101,11 +109,11 @@
   --color-wait-soft: var(--wait-soft);
   --color-purple: var(--purple);
 
-  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
-  --font-serif: 'Source Serif 4', Georgia, serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
 
   --shadow-card: var(--shadow);
+  --shadow-pop: var(--shadow-lg);
 
   /* The mock-up switches from phone layout to sidebar layout at 880px: use `desk:` */
   --breakpoint-desk: 880px;
@@ -114,8 +122,13 @@
 @layer base {
   body {
     @apply bg-bg font-sans text-ink antialiased;
-    font-size: 15px;
+    font-size: 14px;
     line-height: 1.5;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  /* A block that opens with a SectionHeader starts a new section: keep the gap above it */
+  main * + :has(> [data-section-header]:first-child) {
+    margin-top: 1.75rem;
   }
   :focus-visible {
     outline: 2px solid var(--accent);

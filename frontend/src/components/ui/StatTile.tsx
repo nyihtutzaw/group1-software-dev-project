@@ -21,16 +21,16 @@ export function StatTile({
   tone?: Tone
 }) {
   return (
-    <div className="rounded-xl border border-line bg-surface px-3.5 py-[13px]">
+    <div className="flex flex-col-reverse justify-end gap-2 rounded-xl border border-line bg-surface px-4 py-3.5 shadow-card">
       <b
         className={cn(
-          'block font-serif text-[27px] leading-none font-bold tabular-nums',
+          'block text-[26px] leading-none font-semibold tracking-[-0.02em] tabular-nums',
           TONES[tone],
         )}
       >
         {value}
       </b>
-      <span className="mt-1.5 block text-[11.5px] leading-snug text-faint">{label}</span>
+      <span className="block text-[13px] leading-snug font-medium text-faint">{label}</span>
     </div>
   )
 }
@@ -38,7 +38,7 @@ export function StatTile({
 /** Responsive grid of StatTiles (two per row on phones). */
 export function StatTiles({ children }: { children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(140px,45%),1fr))] gap-2.5">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(160px,45%),1fr))] gap-3">
       {children}
     </div>
   )

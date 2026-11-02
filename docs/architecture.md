@@ -62,9 +62,9 @@ tests/                 pytest against crvr_test; each test runs in a rolled-back
 src/main.tsx            QueryClient + BrowserRouter
 src/App.tsx             routes, each wrapped in <Guarded page="…">
 src/layout/             AppShell (sidebar ≥ 880 px, bottom tab bar on phones), TopBar, nav.ts
-src/components/ui/      UI kit reproducing the mock-up (Card, Button, Field, Alert, StatusChip, …)
+src/components/ui/      UI kit (Card, Button, Field, Alert, StatusChip, …) — look per ADR 0004
 src/features/<name>/    a feature's pages, components, API hooks
-src/index.css           design tokens (light + dark) → Tailwind utilities
+src/index.css           design tokens (light + dark) → Tailwind utilities; lib/theme.ts switches
 ```
 
 ## Data ownership
