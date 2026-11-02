@@ -10,8 +10,11 @@ Testing Library.
 
 ## The UI source of truth
 
-`docs/project/CRVR-Mock-UI-v0.1.html` — open it in a browser. Every page you build should look like
-its screen there: same structure, spacing, labels and states. The mock-up's CSS classes map to the
+`docs/project/CRVR-Mock-UI-v0.1.html` — open it in a browser. Every page you build should follow
+its screen there: same structure, sections, labels and states. The **look** comes from the UI kit,
+which was restyled to a plainer, professional style (Inter, white light theme with the teal accent,
+dark theme, bordered form controls — see `docs/decisions/0004-professional-ui-and-themes.md`).
+Don't copy the mock-up's serif titles or mono uppercase labels. The mock-up's CSS classes map to the
 UI kit:
 
 | Mock-up | Use |
@@ -32,8 +35,9 @@ wrapper, checklist)? Build it **in your feature folder** first; move it to `comp
 second feature needs it.
 
 **Colours:** only design tokens (`bg-surface`, `text-muted`, `border-line`, `text-accent`,
-`bg-warn-soft`, …, defined in `src/index.css`). No hex values in components. Dark mode then works
-for free.
+`bg-warn-soft`, …, defined in `src/index.css` for both themes). No hex values in components. Dark
+mode then works for free — check both with the sun/moon toggle in the top bar. `font-mono` only for
+codes, serials and hashes.
 **Responsive:** design phone-first (≥ 420 px wide), then `desk:` (≥ 880 px) for the sidebar layout.
 
 ## Where things go
