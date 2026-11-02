@@ -1,7 +1,7 @@
 """add verification workflow
 
 Revision ID: c91e4a7b2d05
-Revises: b873ff0f1830
+Revises: 47c89f71feec
 Create Date: 2026-11-01 21:40:00.000000
 """
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "c91e4a7b2d05"
-down_revision: str | Sequence[str] | None = "b873ff0f1830"
+down_revision: str | Sequence[str] | None = "47c89f71feec"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

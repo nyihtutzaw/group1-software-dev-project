@@ -16,6 +16,20 @@ export class ApiError extends Error {
   }
 }
 
+type ValidationIssue = { loc?: (string | number)[]; msg?: string }
+
+/** FastAPI sends a string, or for request validation a list of {loc, msg}: "area_ha: …". */
+function errorDetail(detail: unknown): string | null {
+  if (typeof detail === 'string') return detail
+  if (!Array.isArray(detail) || detail.length === 0) return null
+  return (detail as ValidationIssue[])
+    .map(({ loc, msg }) => {
+      const field = loc?.at(-1)
+      return typeof field === 'string' && field !== 'body' ? `${field}: ${msg}` : msg
+    })
+    .join('; ')
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const isForm = body instanceof FormData
   const res = await fetch(`/api${path}`, {
@@ -28,8 +42,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
   if (!res.ok) {
     const data = await res.json().catch(() => null)
-    const detail = typeof data?.detail === 'string' ? data.detail : res.statusText
-    throw new ApiError(res.status, detail)
+    throw new ApiError(res.status, errorDetail(data?.detail) ?? res.statusText)
   }
   return res.status === 204 ? (undefined as T) : ((await res.json()) as T)
 }
