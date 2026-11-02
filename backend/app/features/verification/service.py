@@ -10,7 +10,7 @@ from app.auth.models import Role, User
 from app.features.audit.ledger import record_action
 from app.features.boundary.geometry import count_other_boundaries
 from app.features.boundary.service import issuance_blocked
-from app.features.registration.models import Project
+from app.features.registration.models import EvidenceFile, Project, ProjectStatus
 from app.features.verification.models import (
     CHECKLIST,
     CLOSED,
@@ -237,6 +237,22 @@ def _decision_block(
     return None
 
 
+def _evidence_lines(db: Session, project_id: int) -> list[EvidenceLine]:
+    """F1's sealed uploads, with the hash the verifier can compare against the ledger."""
+    files = db.scalars(
+        select(EvidenceFile).where(EvidenceFile.project_id == project_id).order_by(EvidenceFile.id)
+    ).all()
+    if not files:
+        return [EvidenceLine(title="Evidence files", detail="No files uploaded yet.")]
+    return [
+        EvidenceLine(
+            title=f"{f.kind.value.replace('_', ' ').capitalize()} · {f.filename}",
+            detail=f"sealed {f.sealed_at:%d %b %Y} · SHA-256 {f.sha256[:12]}…",
+        )
+        for f in files
+    ]
+
+
 def _review(
     db: Session, user: User, assignment: VerificationAssignment, project: Project
 ) -> ReviewOut:
@@ -248,6 +264,7 @@ def _review(
     sources = _sources(db, project.id)
     can_submit = user.role == Role.VERIFIER and assignment.status in OPEN_FOR_REPORT
     can_submit = can_submit and assignment.verifier_id == user.id
+    can_submit = can_submit and project.status == ProjectStatus.SUBMITTED
     block = _decision_block(user, assignment, project, report, approval)
     can_decide = (
         user.role in STAFF
@@ -263,13 +280,7 @@ def _review(
                 title="Project record",
                 detail=f"{project.code} · {project.name} · status {project.status}",
             ),
-            EvidenceLine(
-                title="Evidence files",
-                detail=(
-                    "No files yet. F1 has not stored uploads; "
-                    "the checklist still records what the verifier checked."
-                ),
-            ),
+            *_evidence_lines(db, project.id),
         ],
         automatic_checks=[AutoCheck(name="Boundary overlap", passed=passed, detail=overlap)],
         checklist=[
@@ -297,6 +308,10 @@ def list_verifiers(db: Session) -> list[VerifierOut]:
 
 def assign(db: Session, actor: User, data: AssignIn) -> QueueItem:
     project = _project(db, data.project_id)
+    if project.status != ProjectStatus.SUBMITTED:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Only a submitted project can be assigned for verification"
+        )
     verifier = _user(db, data.verifier_id)
     if verifier.role != Role.VERIFIER or not verifier.is_active:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Choose an active verifier")
@@ -376,6 +391,11 @@ def submit_report(db: Session, user: User, assignment_id: int, data: ReportIn) -
             status.HTTP_409_CONFLICT, "Sign-off is irreversible and this review is already closed"
         )
     project = _project(db, assignment.project_id)
+    if project.status != ProjectStatus.SUBMITTED:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "The developer is still making the requested changes and has not resubmitted",
+        )
     note = data.note.strip()
     if not note:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Add a note")
@@ -392,6 +412,10 @@ def submit_report(db: Session, user: User, assignment_id: int, data: ReportIn) -
         action = "verification.signed_off"
     else:
         assignment.status = AssignmentStatus.CHANGES_REQUESTED
+        # Back to the developer: F1 only allows edits and new evidence on a draft. Files already
+        # sealed stay write-once; resubmitting seals the new set and the verifier reviews again.
+        project.status = ProjectStatus.DRAFT
+        project.submitted_at = None
         action = "verification.changes_requested"
     db.add(report)
     db.flush()
@@ -442,6 +466,8 @@ def decide(db: Session, user: User, report_id: int, data: ApprovalIn) -> ReviewO
         if data.decision == ApprovalDecision.APPROVED
         else AssignmentStatus.REJECTED
     )
+    if data.decision == ApprovalDecision.APPROVED:
+        project.status = ProjectStatus.VERIFIED
     db.add(approval)
     db.flush()
     record_action(
@@ -490,6 +516,8 @@ def developer_notes(db: Session, user: User) -> list[NoteOut]:
         )
         if assignment is None or assignment.status != AssignmentStatus.CHANGES_REQUESTED:
             continue
+        if project.status != ProjectStatus.DRAFT:
+            continue  # already resubmitted — the note is answered
         report = _latest_report(db, assignment.id)
         if report is None or report.decision != ReportDecision.REQUEST_CHANGES:
             continue

@@ -2,11 +2,27 @@
 
 from datetime import date, timedelta
 
+import pytest
+
 from app.auth.models import Role
+from app.features.registration.models import EvidenceFile, EvidenceKind, ProjectStatus
 from app.features.verification.models import CHECKLIST, VerificationReport
 from tests.conftest import PASSWORD
 
 DUE = date.today() + timedelta(days=10)
+
+
+@pytest.fixture
+def make_project(db, make_project):
+    """Verification starts from a submitted project (F1); pass status="draft" to test refusals."""
+
+    def _make(*args, status=ProjectStatus.SUBMITTED, **kwargs):
+        project = make_project(*args, **kwargs)
+        project.status = status
+        db.flush()
+        return project
+
+    return _make
 
 
 def sign_in(client, user):
@@ -170,7 +186,7 @@ def test_sign_off_is_irreversible_and_written_to_the_ledger(
     assert again.status_code == 409
 
 
-def test_request_changes_reaches_the_project_owner(client, login, make_user, make_project):
+def test_request_changes_reaches_the_project_owner(client, login, db, make_user, make_project):
     login(Role.REGISTRY_STAFF)
     verifier = make_user(Role.VERIFIER, email="v@test.local")
     owner = make_user(Role.DEVELOPER, email="owner@test.local")
@@ -199,6 +215,24 @@ def test_request_changes_reaches_the_project_owner(client, login, make_user, mak
     assert chain["chain"][1]["summary"] == "Requested changes"
     assert chain["chain"][1]["note"] == note
 
+    # The project is back with the developer, so the verifier waits for the resubmission
+    db.refresh(project)
+    assert project.status == ProjectStatus.DRAFT
+    assert project.submitted_at is None
+    sign_in(client, verifier)
+    review = client.get(f"/api/verifications/assignments/{created['id']}").json()
+    assert review["can_submit"] is False
+    early = client.post(
+        f"/api/verifications/assignments/{created['id']}/report",
+        json=report_body(),
+    )
+    assert early.status_code == 409
+    assert "resubmitted" in early.json()["detail"]
+
+    project.status = ProjectStatus.SUBMITTED  # the developer resubmits through F1
+    db.flush()
+    sign_in(client, owner)
+    assert client.get("/api/verifications/notes").json() == []
     sign_in(client, verifier)
     follow_up = client.post(
         f"/api/verifications/assignments/{created['id']}/report",
@@ -250,7 +284,7 @@ def test_maker_and_submitter_cannot_approve(client, login, db, make_user, make_p
 
 
 def test_other_staff_approve_and_the_chain_is_complete(
-    client, login, make_user, make_project, monkeypatch
+    client, login, db, make_user, make_project, monkeypatch
 ):
     calls = []
     monkeypatch.setattr(
@@ -280,6 +314,8 @@ def test_other_staff_approve_and_the_chain_is_complete(
     assert body["approval"]["rationale"] == "Separate reviewer. Evidence matches."
     assert body["can_decide"] is False
     assert calls[-1]["action"] == "verification.approved"
+    db.refresh(project)
+    assert project.status == ProjectStatus.VERIFIED
 
     chain = client.get(f"/api/verifications/projects/{project.id}/chain").json()
     assert [event["kind"] for event in chain["chain"]] == ["assigned", "report", "approval"]
@@ -295,3 +331,64 @@ def test_buyer_cannot_read_the_chain(client, login, make_project):
     project = make_project()
     login(Role.BUYER)
     assert client.get(f"/api/verifications/projects/{project.id}/chain").status_code == 403
+
+
+def test_only_a_submitted_project_can_be_assigned(client, login, make_user, make_project):
+    login(Role.REGISTRY_STAFF)
+    verifier = make_user(Role.VERIFIER, email="v@test.local")
+    draft = make_project(status=ProjectStatus.DRAFT)
+
+    res = client.post(
+        "/api/verifications/assignments",
+        json={"project_id": draft.id, "verifier_id": verifier.id, "due_date": DUE.isoformat()},
+    )
+
+    assert res.status_code == 409
+    assert "submitted" in res.json()["detail"]
+
+
+def test_rejection_leaves_the_project_unverified(client, login, db, make_user, make_project):
+    login(Role.REGISTRY_STAFF)
+    verifier = make_user(Role.VERIFIER, email="v@test.local")
+    project = make_project()
+    created = assign(client, project, verifier)
+    sign_in(client, verifier)
+    report_id = client.post(
+        f"/api/verifications/assignments/{created['id']}/report", json=report_body()
+    ).json()["report_id"]
+
+    sign_in(client, make_user(Role.REGISTRY_STAFF, email="checker@test.local"))
+    rejected = client.post(
+        f"/api/verifications/reports/{report_id}/decision",
+        json={"decision": "rejected", "rationale": "Land title does not match."},
+    )
+
+    assert rejected.status_code == 200, rejected.text
+    db.refresh(project)
+    assert project.status == ProjectStatus.SUBMITTED
+
+
+def test_review_lists_the_sealed_evidence_files(client, login, db, make_user, make_project):
+    login(Role.REGISTRY_STAFF)
+    verifier = make_user(Role.VERIFIER, email="v@test.local")
+    project = make_project()
+    db.add(
+        EvidenceFile(
+            project_id=project.id,
+            kind=EvidenceKind.LAND_TITLE,
+            filename="title-deed.pdf",
+            content_type="application/pdf",
+            size_bytes=1024,
+            sha256="ab" * 32,
+            storage_key=f"test/{project.id}/title-deed.pdf",
+            uploaded_by_id=project.owner_id,
+        )
+    )
+    db.flush()
+    created = assign(client, project, verifier)
+
+    sign_in(client, verifier)
+    evidence = client.get(f"/api/verifications/assignments/{created['id']}").json()["evidence"]
+
+    assert evidence[1]["title"] == "Land title · title-deed.pdf"
+    assert "SHA-256 abababababab" in evidence[1]["detail"]

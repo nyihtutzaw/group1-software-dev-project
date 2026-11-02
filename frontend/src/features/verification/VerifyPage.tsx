@@ -235,8 +235,8 @@ function ReviewForm({
       <SectionHeader title={`Open review — ${data.item.project_code}`} />
       <Card className="mb-[11px] px-3.5 py-3">
         <p className="text-sm font-medium">Evidence</p>
-        {data.evidence.map((line) => (
-          <p key={line.title} className="mt-1 text-[13px] text-faint">
+        {data.evidence.map((line, index) => (
+          <p key={`${index}-${line.title}`} className="mt-1 text-[13px] text-faint">
             <b className="font-medium text-muted">{line.title}.</b> {line.detail}
           </p>
         ))}
