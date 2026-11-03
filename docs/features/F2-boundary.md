@@ -13,8 +13,7 @@
 
 ## Status
 
-**In review** — all seven acceptance criteria built on `feature/F2-boundary-overlap` (PR closes #4).
-Developers draw (pen tool, phone-friendly) or upload a boundary, see the overlap check live, and
+**Done** — all seven acceptance criteria merged (#4 closed). Developers draw (pen tool, phone-friendly) or upload a boundary, see the overlap check live, and
 save it; overlaps above 0.5% are flagged and block issuance until registry staff resolve them.
 
 ## Scope
@@ -50,6 +49,10 @@ From WBS 5.x and the design report — all done:
   add up unnoticed). Compared at the 2 decimals shown, so exactly "0.50%" never blocks. Overlaps
   within tolerance are reported but not flagged; touching edges are not overlaps. *(Tightened after
   code review of #10.)*
+- 2026-11-03 — One tolerance for all methodologies, no per-methodology setting: it absorbs GPS and
+  drawing error, which depends on how the boundary was surveyed, not on the methodology. Known limit:
+  small parcels are flagged more easily; if that becomes a problem, add an absolute allowance
+  (m²) instead. [ADR 0005](../decisions/0005-one-overlap-tolerance-for-all-methodologies.md) (#24).
 - 2026-10-28 — One current boundary per project; redrawing replaces it and marks **all** its
   earlier flags `superseded` — including resolved ones, which keep their note and date. The fresh
   screening wins, so a redraw that still overlaps needs staff to resolve it again.
@@ -111,14 +114,13 @@ Migrations: `…_add_projects_table_f1_stub.py`, `…_add_boundaries_and_overlap
 
 ## Depends on / used by
 
-- Uses: F1 `projects` (stub for now), F5 `record_action()` (stub for now), auth roles.
+- Uses: F1 `projects` (built by F1 on top of the F2 stub), F5 `record_action()` (stub for now), auth roles.
 - Used by: F1 (inline overlap banner + block submission via `issuance_blocked`), F3 (checklist item
   "Boundary has no overlap" — call `issuance_blocked` / `GET /api/boundaries/{id}`), F4 (issuance gate).
 
 ## Open questions
 
-- Tolerance registry-wide (current) or per methodology?
-- `projects` shape: agree the stub's columns with Jinkin (F1) before F1 adds its fields.
+None at the moment.
 
 ## Progress log
 
@@ -146,3 +148,9 @@ Migrations: `…_add_projects_table_f1_stub.py`, `…_add_boundaries_and_overlap
   hard-coded label colour; then closed the double-counting gaps (either-area and combined
   tolerance), re-measured other projects' flags on redraw, and serialised saves with a lock.
   Backend 77 tests, frontend 16.
+
+### 2026-11-03 · docs/F2-overlap-tolerance-decision
+- Goal: answer the open question on tolerance per methodology (#24).
+- Done: decided one registry-wide tolerance (ADR 0005); no code change. Status set to Done and the
+  answered `projects` question removed (F1 now owns the full table).
+- Next: watch for false flags on small parcels; Put replaces the `record_action()` stub (#31).
