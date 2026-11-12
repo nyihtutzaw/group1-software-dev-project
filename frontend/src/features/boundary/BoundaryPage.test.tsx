@@ -41,7 +41,9 @@ const OVERLAP_CHECK: BoundaryCheck = {
   area_ha: 1240,
   vertices: 6,
   checked_against: 3,
+  methodology: 'VM0047',
   tolerance_pct: 0.5,
+  cap_ha: 10,
   blocked: true,
   overlaps: [
     {
@@ -53,7 +55,10 @@ const OVERLAP_CHECK: BoundaryCheck = {
       overlap_ha: 38.4,
       overlap_pct: 3.1,
       other_overlap_pct: 9.9,
+      tolerance_pct: 0.5,
+      cap_ha: 1,
       exceeds_tolerance: true,
+      reason: 'share_of_this',
       intersection: DRAWN,
     },
   ],
@@ -146,7 +151,12 @@ describe('BoundaryPage', () => {
 
   it('explains when a boundary swallows a smaller project', async () => {
     const [overlap] = OVERLAP_CHECK.overlaps
-    const swallowed = { ...overlap, overlap_pct: 0.16, other_overlap_pct: 100 }
+    const swallowed = {
+      ...overlap,
+      overlap_pct: 0.16,
+      other_overlap_pct: 100,
+      reason: 'share_of_other' as const,
+    }
     mockApi({
       'GET /projects': PROJECTS,
       'GET /boundaries': COLLECTION,
@@ -158,6 +168,31 @@ describe('BoundaryPage', () => {
     })
 
     expect(await screen.findByText(/That is 100.0% of CRVR-0092's area/)).toBeInTheDocument()
+  })
+
+  it('explains when an overlap is above the area cap, and shows the methodology limits', async () => {
+    const [overlap] = OVERLAP_CHECK.overlaps
+    const large = {
+      ...overlap,
+      overlap_ha: 35,
+      overlap_pct: 0.3,
+      other_overlap_pct: 0.3,
+      cap_ha: 10,
+      reason: 'area_cap' as const,
+    }
+    mockApi({
+      'GET /projects': PROJECTS,
+      'GET /boundaries': COLLECTION,
+      'GET /boundaries/4': saved({ check: { ...OVERLAP_CHECK, overlaps: [large] } }),
+    })
+    renderWithProviders(<BoundaryPage />, {
+      route: '/boundary?project=4',
+      user: makeUser('developer'),
+    })
+
+    expect(await screen.findByText(/That is above the 10.0 ha area cap/)).toBeInTheDocument()
+    expect(screen.getByText('Tolerance (VM0047)')).toBeInTheDocument()
+    expect(screen.getByText('0.5% · max 10.0 ha')).toBeInTheDocument()
   })
 
   it('gives verifiers a read-only view', async () => {

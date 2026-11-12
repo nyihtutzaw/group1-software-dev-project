@@ -25,19 +25,21 @@ export function OverlapSummary({
   const disputed =
     blocking.length > 0 && blocking.every((o) => flagFor(o.project_id)?.status === 'disputed')
   const [worst] = check.overlaps
-  const tolerance = check.tolerance_pct
   const first = blocking[0]
-  const blockingPct = blocking.reduce((sum, o) => sum + o.overlap_pct, 0)
-  // Say which rule was broken: share of this area, share of theirs, or all overlaps together.
-  const reason = !first
-    ? ''
-    : Number(first.overlap_pct.toFixed(2)) > tolerance
-      ? `That is ${formatPct(first.overlap_pct)} of ${own ? 'your' : 'its'} area`
-      : Number(first.other_overlap_pct.toFixed(2)) > tolerance
-        ? `That is ${formatPct(first.other_overlap_pct)} of ${first.project_code}'s area`
-        : `Together the overlaps cover ${formatPct(blockingPct)} of ${own ? 'your' : 'its'} area`
   const totalHa = check.overlaps.reduce((sum, o) => sum + o.overlap_ha, 0)
   const totalPct = check.overlaps.reduce((sum, o) => sum + o.overlap_pct, 0)
+  const whose = own ? 'your' : 'its'
+  // Say which rule was broken (the API names it), with the limit that applies.
+  const reason = !first
+    ? ''
+    : {
+        share_of_this: `That is ${formatPct(first.overlap_pct)} of ${whose} area — above the ${formatPct(first.tolerance_pct)} tolerance`,
+        share_of_other: `That is ${formatPct(first.other_overlap_pct)} of ${first.project_code}'s area — above the ${formatPct(first.tolerance_pct)} tolerance`,
+        area_cap: `That is above the ${formatHa(first.cap_ha)} area cap`,
+        combined_share: `Together the overlaps cover ${formatPct(totalPct)} of ${whose} area — above the ${formatPct(check.tolerance_pct)} tolerance`,
+        combined_area: `Together the overlaps cover ${formatHa(totalHa)} — above the ${formatHa(check.cap_ha)} area cap`,
+      }[first.reason ?? 'share_of_this']
+  const limits = `${formatPct(check.tolerance_pct)} · max ${formatHa(check.cap_ha)}`
 
   return (
     <>
@@ -50,9 +52,8 @@ export function OverlapSummary({
           <b className="inline font-semibold text-ink">
             {blocking[0].project_code} ({blocking[0].project_name})
           </b>
-          , registered {formatDate(blocking[0].registered_at)}. {reason} — above the{' '}
-          {formatPct(check.tolerance_pct)} tolerance, so the submission is blocked until it is
-          resolved.
+          , registered {formatDate(blocking[0].registered_at)}. {reason}, so the submission is
+          blocked until it is resolved.
           {disputed && ' The dispute is with registry staff for investigation.'}
           {blocking.length > 1 && ` It also overlaps ${blocking.length - 1} more project(s).`}
         </Alert>
@@ -65,8 +66,9 @@ export function OverlapSummary({
       ) : worst ? (
         <Alert tone="ok" className="mt-[13px]" title="Boundary drawn — overlap within tolerance">
           Shares {formatHa(worst.overlap_ha)} ({formatPct(worst.overlap_pct)}) with{' '}
-          {worst.project_code}, within the {formatPct(check.tolerance_pct)} allowed for GPS error.
-          Checked against {check.checked_against.toLocaleString('en-US')} registered boundaries.
+          {worst.project_code}, within the {formatPct(worst.tolerance_pct)} and{' '}
+          {formatHa(worst.cap_ha)} allowed for GPS error. Checked against{' '}
+          {check.checked_against.toLocaleString('en-US')} registered boundaries.
         </Alert>
       ) : (
         <Alert tone="ok" className="mt-[13px]" title="Boundary drawn — no overlap">
@@ -90,7 +92,11 @@ export function OverlapSummary({
               ),
               mono: true,
             },
-            { label: 'Tolerance', value: formatPct(check.tolerance_pct), mono: true },
+            {
+              label: check.methodology ? `Tolerance (${check.methodology})` : 'Tolerance',
+              value: limits,
+              mono: true,
+            },
             { label: 'Vertices', value: check.vertices, mono: true },
             {
               label: 'Checked against',
