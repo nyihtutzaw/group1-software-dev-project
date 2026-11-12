@@ -1,6 +1,6 @@
 # 0005 — One overlap tolerance for all methodologies
 
-**Date:** 2026-11-03 · **Status:** Accepted
+**Date:** 2026-11-03 · **Status:** Superseded by [0006](0006-overlap-rules-per-methodology.md) (change request #43)
 
 ## Context
 
