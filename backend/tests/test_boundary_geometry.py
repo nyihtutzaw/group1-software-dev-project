@@ -9,9 +9,12 @@ from app.features.boundary.geometry import (
     find_overlaps,
 )
 from app.features.boundary.models import Boundary, BoundarySource
+from app.features.boundary.rules import OverlapRule
 from tests.geo import BASE, square
 
 TOLERANCE = 0.5
+# Projects in these tests have no methodology, so the strict default rule applies to them too.
+RULE = OverlapRule(tolerance_pct=TOLERANCE, cap_ha=2.0)
 
 
 @pytest.fixture
@@ -105,7 +108,7 @@ def test_no_overlap_when_far_apart(db, register):
 
     checked = check_geometry(db, square(BASE[0] + 1, BASE[1]))
 
-    assert find_overlaps(db, checked, tolerance_pct=TOLERANCE) == []
+    assert find_overlaps(db, checked, rule=RULE) == []
 
 
 def test_boundaries_that_only_touch_do_not_overlap(db, register):
@@ -114,7 +117,7 @@ def test_boundaries_that_only_touch_do_not_overlap(db, register):
     # shares the eastern edge exactly
     checked = check_geometry(db, square(BASE[0] + 0.01, BASE[1]))
 
-    assert find_overlaps(db, checked, tolerance_pct=TOLERANCE) == []
+    assert find_overlaps(db, checked, rule=RULE) == []
 
 
 def test_overlap_names_the_project_and_measures_the_shared_area(db, register):
@@ -122,7 +125,7 @@ def test_overlap_names_the_project_and_measures_the_shared_area(db, register):
 
     # shifted 0.0097° east → a 0.0003°-wide shared strip = 3% of the area
     checked = check_geometry(db, square(BASE[0] + 0.0097, BASE[1]))
-    [overlap] = find_overlaps(db, checked, tolerance_pct=TOLERANCE)
+    [overlap] = find_overlaps(db, checked, rule=RULE)
 
     assert overlap.project_id == other.id
     assert overlap.project_code == other.code
@@ -138,7 +141,7 @@ def test_small_overlap_within_tolerance_is_reported_but_not_blocking(db, registe
 
     # 0.2% shared strip — typical GPS error along a common edge
     checked = check_geometry(db, square(BASE[0] + 0.00998, BASE[1]))
-    [overlap] = find_overlaps(db, checked, tolerance_pct=TOLERANCE)
+    [overlap] = find_overlaps(db, checked, rule=RULE)
 
     assert overlap.overlap_pct == pytest.approx(0.2, abs=0.01)
     assert not overlap.exceeds_tolerance
@@ -150,7 +153,7 @@ def test_overlaps_are_sorted_largest_first_and_exclude_own_project(db, register)
     own = register(square(*BASE), name="own")
 
     checked = check_geometry(db, square(*BASE))
-    overlaps = find_overlaps(db, checked, tolerance_pct=TOLERANCE, exclude_project_id=own.id)
+    overlaps = find_overlaps(db, checked, rule=RULE, exclude_project_id=own.id)
 
     assert [o.project_id for o in overlaps] == [large.id, small.id]
     assert count_other_boundaries(db, exclude_project_id=own.id) == 2
@@ -169,7 +172,7 @@ def test_swallowing_a_small_project_exceeds_tolerance(db, register):
     small = register(square(BASE[0] + 0.02, BASE[1] + 0.02, size=0.002))
 
     checked = check_geometry(db, square(*BASE, size=0.05))
-    [overlap] = find_overlaps(db, checked, tolerance_pct=TOLERANCE)
+    [overlap] = find_overlaps(db, checked, rule=RULE)
 
     assert overlap.project_id == small.id
     assert overlap.overlap_pct == pytest.approx(0.16, abs=0.01)
@@ -184,7 +187,7 @@ def test_many_small_slivers_exceed_tolerance_together(db, register):
         register(square(BASE[0] + dx, BASE[1] + dy))
 
     checked = check_geometry(db, square(*BASE))
-    overlaps = find_overlaps(db, checked, tolerance_pct=TOLERANCE)
+    overlaps = find_overlaps(db, checked, rule=RULE)
 
     assert len(overlaps) == 4
     assert all(o.overlap_pct == pytest.approx(0.3, abs=0.01) for o in overlaps)
@@ -195,6 +198,6 @@ def test_a_single_small_sliver_stays_within_tolerance(db, register):
     register(square(BASE[0] + 0.00997, BASE[1]))
 
     checked = check_geometry(db, square(*BASE))
-    [overlap] = find_overlaps(db, checked, tolerance_pct=TOLERANCE)
+    [overlap] = find_overlaps(db, checked, rule=RULE)
 
     assert not overlap.exceeds_tolerance

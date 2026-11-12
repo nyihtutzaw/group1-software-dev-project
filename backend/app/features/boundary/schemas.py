@@ -39,7 +39,12 @@ class OverlapOut(BaseModel):
     overlap_ha: float
     overlap_pct: float  # % of the checked boundary's area
     other_overlap_pct: float  # % of the other project's area
-    exceeds_tolerance: bool
+    # Limits for this pair: the stricter of the two projects' methodology rules
+    tolerance_pct: float
+    cap_ha: float
+    exceeds_tolerance: bool  # blocks: above the tolerance or the area cap
+    # Why it blocks: share_of_this | share_of_other | area_cap | combined_share | combined_area
+    reason: str | None
     intersection: GeoJSON
 
     @classmethod
@@ -53,7 +58,10 @@ class OverlapOut(BaseModel):
             overlap_ha=o.overlap_m2 / M2_PER_HA,
             overlap_pct=o.overlap_pct,
             other_overlap_pct=o.other_overlap_pct,
+            tolerance_pct=o.rule.tolerance_pct,
+            cap_ha=o.rule.cap_ha,
             exceeds_tolerance=o.exceeds_tolerance,
+            reason=o.reason,
             intersection=o.intersection,
         )
 
@@ -63,7 +71,9 @@ class CheckOut(BaseModel):
     area_ha: float
     vertices: int
     checked_against: int
-    tolerance_pct: float
+    methodology: str | None  # of the checked project; picks the rule
+    tolerance_pct: float  # the checked project's own rule
+    cap_ha: float
     overlaps: list[OverlapOut]
     blocked: bool
 
@@ -74,7 +84,9 @@ class CheckOut(BaseModel):
             area_ha=c.geometry.area_m2 / M2_PER_HA,
             vertices=c.geometry.vertices,
             checked_against=c.checked_against,
-            tolerance_pct=c.tolerance_pct,
+            methodology=c.methodology,
+            tolerance_pct=c.rule.tolerance_pct,
+            cap_ha=c.rule.cap_ha,
             overlaps=[OverlapOut.build(o) for o in c.overlaps],
             blocked=c.blocked,
         )
@@ -108,6 +120,12 @@ class BoundaryOut(BaseModel):
     # Why issuance is blocked, or null when clear (FR-04)
     issuance_blocked: str | None
     can_edit: bool
+
+
+class RuleOut(BaseModel):
+    methodology: str | None  # null = projects with no listed methodology
+    tolerance_pct: float
+    cap_ha: float
 
 
 class ImportOut(BaseModel):

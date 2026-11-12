@@ -15,7 +15,15 @@ from sqlalchemy import Float, cast, func, select
 from sqlalchemy.orm import Session
 
 from app.features.boundary.models import Boundary
+from app.features.boundary.rules import OverlapRule, exceeds_cap, exceeds_tolerance, rule_for
 from app.features.registration.models import Project
+
+# Why an overlap blocks (first rule broken, in this order) — `Overlap.reason`.
+SHARE_OF_THIS = "share_of_this"  # above tolerance of the checked boundary's area
+SHARE_OF_OTHER = "share_of_other"  # above tolerance of the other project's area
+AREA_CAP = "area_cap"  # above the absolute area cap
+COMBINED_SHARE = "combined_share"  # all overlaps together above tolerance of the checked area
+COMBINED_AREA = "combined_area"  # all overlaps together above the area cap
 
 # A field-drawn or surveyed parcel never needs more; protects the overlap query.
 MAX_VERTICES = 10_000
@@ -41,14 +49,13 @@ class Overlap:
     overlap_m2: float
     overlap_pct: float  # % of the checked boundary's area
     other_overlap_pct: float  # % of the other project's area
-    exceeds_tolerance: bool
+    rule: OverlapRule  # the stricter of the two projects' rules
+    reason: str | None  # why it blocks (one of the constants above), None when within limits
     intersection: dict[str, Any]  # GeoJSON geometry of the shared area
 
-
-def exceeds_tolerance(overlap_pct: float, tolerance_pct: float) -> bool:
-    """True if the overlap is above tolerance. Compared at the 2 decimals shown to users,
-    so "0.50%" against a 0.5% tolerance is never blocked."""
-    return round(overlap_pct, 2) > tolerance_pct
+    @property
+    def exceeds_tolerance(self) -> bool:
+        return self.reason is not None
 
 
 def _check_shape(geojson: Any) -> None:
@@ -112,16 +119,18 @@ def find_overlaps(
     db: Session,
     geometry: CheckedGeometry,
     *,
-    tolerance_pct: float,
+    rule: OverlapRule,
     exclude_project_id: int | None = None,
 ) -> list[Overlap]:
     """Every registered boundary that shares area with `geometry`, largest overlap first.
 
     Boundaries that only touch along an edge share no area and are not returned.
 
-    An overlap exceeds the tolerance if it is more than `tolerance_pct` of **either** project's
-    area (a large new boundary swallowing a small project), or if all overlaps **together** are
-    more than `tolerance_pct` of the new area (many slivers that are each small).
+    `rule` is the checked project's own rule. Each pair uses the stricter of the two projects'
+    rules. An overlap blocks if it is more than the tolerance of **either** project's area (a
+    large new boundary swallowing a small project) or more than the area cap (a large project
+    double-counting many hectares under the percentage), or if all overlaps **together** break
+    the checked project's tolerance or cap (many slivers that are each small).
     """
     g = func.ST_GeomFromEWKT(geometry.ewkt)
     shared = func.ST_Intersection(Boundary.geom, g)
@@ -133,6 +142,7 @@ def find_overlaps(
             Project.code,
             Project.name,
             Project.created_at,
+            Project.methodology,
             Boundary.area_m2,
             shared_m2,
             func.ST_AsGeoJSON(shared),
@@ -143,14 +153,22 @@ def find_overlaps(
     if exclude_project_id is not None:
         stmt = stmt.where(Boundary.project_id != exclude_project_id)
 
-    rows = [row for row in db.execute(stmt) if row[5] >= 1]  # skip touching edges / corners
-    total_pct = sum(m2 for *_, m2, _ in rows) / geometry.area_m2 * 100
-    combined_too_large = exceeds_tolerance(total_pct, tolerance_pct)
+    rows = [row for row in db.execute(stmt) if row[6] >= 1]  # skip touching edges / corners
+    total_m2 = sum(m2 for *_, m2, _ in rows)
+    total_pct = total_m2 / geometry.area_m2 * 100
+    combined = (
+        COMBINED_SHARE
+        if exceeds_tolerance(total_pct, rule.tolerance_pct)
+        else COMBINED_AREA
+        if exceeds_cap(total_m2, rule.cap_ha)
+        else None
+    )
 
     overlaps = []
-    for project_id, code, name, created_at, other_area_m2, m2, intersection in rows:
+    for project_id, code, name, created_at, methodology, other_area_m2, m2, intersection in rows:
         pct = m2 / geometry.area_m2 * 100
         other_pct = m2 / other_area_m2 * 100
+        pair = rule.stricter(rule_for(methodology))
         overlaps.append(
             Overlap(
                 project_id=project_id,
@@ -160,13 +178,23 @@ def find_overlaps(
                 overlap_m2=m2,
                 overlap_pct=pct,
                 other_overlap_pct=other_pct,
-                exceeds_tolerance=combined_too_large
-                or exceeds_tolerance(pct, tolerance_pct)
-                or exceeds_tolerance(other_pct, tolerance_pct),
+                rule=pair,
+                reason=pair_reason(pct, other_pct, m2, pair) or combined,
                 intersection=json.loads(intersection),
             )
         )
     return sorted(overlaps, key=lambda o: o.overlap_m2, reverse=True)
+
+
+def pair_reason(pct: float, other_pct: float, m2: float, rule: OverlapRule) -> str | None:
+    """Why an overlap between two projects blocks under `rule`, or None if it does not."""
+    if exceeds_tolerance(pct, rule.tolerance_pct):
+        return SHARE_OF_THIS
+    if exceeds_tolerance(other_pct, rule.tolerance_pct):
+        return SHARE_OF_OTHER
+    if exceeds_cap(m2, rule.cap_ha):
+        return AREA_CAP
+    return None
 
 
 def count_other_boundaries(db: Session, exclude_project_id: int | None = None) -> int:

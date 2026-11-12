@@ -87,11 +87,13 @@ def make_project(db: Session, make_user: Callable[..., User]) -> Callable[..., P
     """Create a project; owned by a new developer unless `owner` is given."""
     counter = iter(range(9000, 10000))
 
-    def _make(owner: User | None = None, name: str = "Test project") -> Project:
+    def _make(
+        owner: User | None = None, name: str = "Test project", methodology: str | None = None
+    ) -> Project:
         n = next(counter)
         if owner is None:
             owner = make_user(Role.DEVELOPER, email=f"owner{n}@test.local")
-        project = Project(code=f"CRVR-{n}", name=name, owner_id=owner.id)
+        project = Project(code=f"CRVR-{n}", name=name, owner_id=owner.id, methodology=methodology)
         db.add(project)
         db.flush()
         return project
