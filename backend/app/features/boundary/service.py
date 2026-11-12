@@ -11,15 +11,14 @@ from sqlalchemy import Float, cast, func, select
 from sqlalchemy.orm import Session
 
 from app.auth.models import Role, User
-from app.core.config import get_settings
 from app.features.audit.ledger import record_action
 from app.features.boundary.geometry import (
     CheckedGeometry,
     Overlap,
     check_geometry,
     count_other_boundaries,
-    exceeds_tolerance,
     find_overlaps,
+    pair_reason,
 )
 from app.features.boundary.models import (
     BLOCKING_STATUSES,
@@ -28,6 +27,7 @@ from app.features.boundary.models import (
     FlagStatus,
     OverlapFlag,
 )
+from app.features.boundary.rules import OverlapRule, rule_for
 from app.features.registration.models import Project
 
 
@@ -35,7 +35,8 @@ from app.features.registration.models import Project
 class BoundaryCheck:
     geometry: CheckedGeometry
     checked_against: int
-    tolerance_pct: float
+    methodology: str | None
+    rule: OverlapRule  # the checked project's own rule
     overlaps: list[Overlap]
 
     @property
@@ -44,14 +45,20 @@ class BoundaryCheck:
 
 
 def check_boundary(db: Session, geojson: Any, project_id: int | None = None) -> BoundaryCheck:
-    """Validate a boundary and screen it against every other registered boundary."""
-    tolerance = get_settings().overlap_tolerance_pct
+    """Validate a boundary and screen it against every other registered boundary.
+
+    The project's methodology picks the overlap rule; without a project the strict default applies.
+    """
+    project = db.get(Project, project_id) if project_id is not None else None
+    methodology = project.methodology if project is not None else None
+    rule = rule_for(methodology)
     checked = check_geometry(db, geojson)
     return BoundaryCheck(
         geometry=checked,
         checked_against=count_other_boundaries(db, exclude_project_id=project_id),
-        tolerance_pct=tolerance,
-        overlaps=find_overlaps(db, checked, tolerance_pct=tolerance, exclude_project_id=project_id),
+        methodology=methodology,
+        rule=rule,
+        overlaps=find_overlaps(db, checked, rule=rule, exclude_project_id=project_id),
     )
 
 
@@ -105,18 +112,21 @@ def save_boundary(
     db: Session, project: Project, geojson: Any, source: BoundarySource, user: User
 ) -> BoundaryCheck:
     """Store the project's boundary, replace its overlap flags and record it in the ledger."""
+    # Read the ids first: touching an expired object after the new row is added would flush it
+    # half-filled (e.g. a second save in the same session, after the first one committed).
+    project_id, user_id = project.id, user.id
     db.execute(select(func.pg_advisory_xact_lock(BOUNDARY_SAVE_LOCK)))
-    result = check_boundary(db, geojson, project_id=project.id)
+    result = check_boundary(db, geojson, project_id=project_id)
     checked = result.geometry
 
-    boundary = get_boundary(db, project.id)
+    boundary = get_boundary(db, project_id)
     if boundary is None:
-        boundary = Boundary(project_id=project.id)
+        boundary = Boundary(project_id=project_id)
         db.add(boundary)
     boundary.geom = checked.ewkt
     boundary.area_m2 = checked.area_m2
     boundary.source = source
-    boundary.updated_by_id = user.id
+    boundary.updated_by_id = user_id
 
     # A redrawn boundary gets a fresh screening; every earlier flag (open, disputed or resolved)
     # described the old shape and no longer applies. Resolved ones keep their note and date.
@@ -129,7 +139,7 @@ def save_boundary(
         flag.status = FlagStatus.SUPERSEDED
         flag.resolved_at = flag.resolved_at or now
 
-    _recheck_flags_against(db, project, checked, result.tolerance_pct, now)
+    _recheck_flags_against(db, project, checked, now)
 
     record_action(
         db,
@@ -175,7 +185,6 @@ def _recheck_flags_against(
     db: Session,
     project: Project,
     checked: CheckedGeometry,
-    tolerance_pct: float,
     now: datetime,
 ) -> None:
     """Re-measure blocking flags other projects hold against `project`, whose shape just changed.
@@ -183,7 +192,9 @@ def _recheck_flags_against(
     Still above tolerance: keep the flag (and any dispute) with updated figures. Now within
     tolerance: supersede it, so the other project is no longer blocked by a shape that is gone.
     Pairwise only — the other project's combined-overlap rule is re-applied when it next saves.
+    Each pair is measured with the stricter of the two projects' rules.
     """
+    changed_rule = rule_for(project.methodology)
     new_shape = func.ST_GeomFromEWKT(checked.ewkt)
     flags = db.scalars(
         select(OverlapFlag).where(
@@ -208,9 +219,11 @@ def _recheck_flags_against(
         )
         holder_pct = shared_m2 / holder.area_m2 * 100
         changed_pct = shared_m2 / checked.area_m2 * 100
-        if exceeds_tolerance(holder_pct, tolerance_pct) or exceeds_tolerance(
-            changed_pct, tolerance_pct
-        ):
+        holder_project = db.get(Project, flag.project_id)
+        pair = changed_rule.stricter(
+            rule_for(holder_project.methodology if holder_project else None)
+        )
+        if pair_reason(holder_pct, changed_pct, shared_m2, pair):
             flag.overlap_m2 = shared_m2
             flag.overlap_pct = holder_pct
             continue

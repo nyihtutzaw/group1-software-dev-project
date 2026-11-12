@@ -15,6 +15,7 @@ from app.features.boundary import service
 from app.features.boundary.geometry import BoundaryError
 from app.features.boundary.importers import parse_boundary_file
 from app.features.boundary.models import BLOCKING_STATUSES, Boundary, OverlapFlag
+from app.features.boundary.rules import all_rules, rule_for
 from app.features.boundary.schemas import (
     M2_PER_HA,
     BoundaryOut,
@@ -24,6 +25,7 @@ from app.features.boundary.schemas import (
     FlagOut,
     ImportOut,
     ResolveIn,
+    RuleOut,
     SaveIn,
 )
 from app.features.registration.models import Project
@@ -78,6 +80,13 @@ def list_boundaries(
             for project_id, code, name, area_m2, flagged, geometry in rows
         ],
     }
+
+
+@router.get("/rules", response_model=list[RuleOut])
+def list_rules(user: User = Depends(require_roles(*MAP_ROLES))) -> list[RuleOut]:
+    """Overlap tolerance and area cap per methodology; `methodology: null` is the default."""
+    rules = [RuleOut(methodology=code, **vars(rule)) for code, rule in all_rules().items()]
+    return [*rules, RuleOut(methodology=None, **vars(rule_for(None)))]
 
 
 @router.post("/check", response_model=CheckOut)

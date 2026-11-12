@@ -13,8 +13,11 @@
 
 ## Status
 
-**Done** — all seven acceptance criteria merged (#4 closed). Developers draw (pen tool, phone-friendly) or upload a boundary, see the overlap check live, and
-save it; overlaps above 0.5% are flagged and block issuance until registry staff resolve them.
+**In review** — change request #43 (overlap rules per methodology with an area cap) on
+`feature/F2-methodology-tolerance`. The original seven acceptance criteria are merged (#4 closed).
+Developers draw (pen tool, phone-friendly) or upload a boundary, see the overlap check live, and
+save it; overlaps above their methodology's tolerance or area cap are flagged and block issuance
+until registry staff resolve them.
 
 ## Scope
 
@@ -34,8 +37,8 @@ From WBS 5.x and the design report — all done:
 2. ✅ Stored as validated geometry; area **computed** by PostGIS on the geography, never claimed (5.1.2).
 3. ✅ GeoJSON, KML/KMZ and zipped shapefile imports, validated; non-WGS 84 rejected (5.1.3).
 4. ✅ Phone drawing: pen tool, tap corners, drag to adjust; map fills the width at 420 px (5.2.1).
-5. ✅ Overlaps detected across all registered projects with a 0.5% tolerance — of either
-   project's area, and of all overlaps combined (5.3.1).
+5. ✅ Overlaps detected across all registered projects with a tolerance and an area cap per
+   methodology — of either project's area, and of all overlaps combined (5.3.1; #43).
 6. ✅ Overlaps above tolerance are flagged and block issuance until resolved — `issuance_blocked()` (5.3.2).
 7. ✅ Result shows conflicting project (code, name, registration date), overlap ha and % of area.
 
@@ -53,6 +56,13 @@ From WBS 5.x and the design report — all done:
   drawing error, which depends on how the boundary was surveyed, not on the methodology. Known limit:
   small parcels are flagged more easily; if that becomes a problem, add an absolute allowance
   (m²) instead. [ADR 0005](../decisions/0005-one-overlap-tolerance-for-all-methodologies.md) (#24).
+  **Superseded 2026-11-12 by ADR 0006.**
+- 2026-11-12 — Change request #43: each methodology has a tolerance (%) and an area cap (ha);
+  a pair uses the stricter value of each; all overlaps together are checked against both. Defaults:
+  VM0047 0.5% / 10 ha, VM0042 3% / 1 ha, ACM0003 1% / 2 ha, VM0033 1% / 5 ha, not set 0.5% / 2 ha.
+  Set in `OVERLAP_RULES` (JSON), `OVERLAP_TOLERANCE_PCT`, `OVERLAP_CAP_HA` — config, not a database
+  table. Changing a rule does not re-screen saved boundaries.
+  [ADR 0006](../decisions/0006-overlap-rules-per-methodology.md).
 - 2026-10-28 — One current boundary per project; redrawing replaces it and marks **all** its
   earlier flags `superseded` — including resolved ones, which keep their note and date. The fresh
   screening wins, so a redraw that still overlaps needs staff to resolve it again.
@@ -81,7 +91,8 @@ From WBS 5.x and the design report — all done:
 | Method | Path | Roles | Purpose |
 |---|---|---|---|
 | GET | `/api/boundaries` | developer, verifier, registry_staff, admin | All registered boundaries as GeoJSON FeatureCollection (code, name, area_ha, flagged) |
-| POST | `/api/boundaries/check` | developer, verifier, registry_staff, admin | Validate + screen a geometry without saving `{geometry, project_id?}` → area, vertices, overlaps, blocked |
+| GET | `/api/boundaries/rules` | developer, verifier, registry_staff, admin | Tolerance and area cap per methodology; `methodology: null` is the default |
+| POST | `/api/boundaries/check` | developer, verifier, registry_staff, admin | Validate + screen a geometry without saving `{geometry, project_id?}` → area, vertices, methodology, tolerance_pct, cap_ha, overlaps (each with the pair's tolerance_pct, cap_ha and `reason`), blocked |
 | POST | `/api/boundaries/import` | developer, admin | Multipart `file` (GeoJSON/KML/KMZ/zip shapefile) → `{filename, geometry}`; nothing saved |
 | GET | `/api/boundaries/{project_id}` | developer (own), verifier, registry_staff, admin | Saved boundary + live check + flags + `issuance_blocked` + `can_edit`; 404 if none |
 | PUT | `/api/boundaries/{project_id}` | developer (own), admin | Save/replace `{geometry, source: drawn\|uploaded}`; flags overlaps above tolerance |
@@ -154,3 +165,12 @@ None at the moment.
 - Done: decided one registry-wide tolerance (ADR 0005); no code change. Status set to Done and the
   answered `projects` question removed (F1 now owns the full table).
 - Next: watch for false flags on small parcels; Put replaces the `record_action()` stub (#31).
+
+### 2026-11-12 · feature/F2-methodology-tolerance
+- Goal: change request #43 — tolerance per methodology plus an absolute area cap.
+- Done: rules in settings (`rules.py`, `OVERLAP_RULES`); overlap check and redraw re-check use the
+  stricter rule of each pair and return why an overlap blocks; `GET /api/boundaries/rules`; Boundary
+  page shows the methodology's limits and the reason; ADR 0006 supersedes 0005. Fixed
+  `save_boundary` flushing a half-filled row when the user object had expired. Tests: 15 new
+  backend tests (`test_boundary_rules.py`), 1 new frontend test; checked in the browser.
+- Next: impact analysis comment on #43; Put's ledger (#31) replaces the `record_action()` stub.

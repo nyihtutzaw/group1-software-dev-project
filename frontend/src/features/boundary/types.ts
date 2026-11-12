@@ -15,16 +15,26 @@ export type Overlap = {
   overlap_ha: number
   overlap_pct: number // % of the checked boundary's area
   other_overlap_pct: number // % of the other project's area
-  exceeds_tolerance: boolean
+  // Limits for this pair: the stricter of the two projects' methodology rules
+  tolerance_pct: number
+  cap_ha: number
+  exceeds_tolerance: boolean // blocks: above the tolerance or the area cap
+  reason: OverlapReason | null
   intersection: Geometry
 }
+
+/** Why an overlap blocks (the first rule it breaks). */
+export type OverlapReason =
+  'share_of_this' | 'share_of_other' | 'area_cap' | 'combined_share' | 'combined_area'
 
 export type BoundaryCheck = {
   area_m2: number
   area_ha: number
   vertices: number
   checked_against: number
-  tolerance_pct: number
+  methodology: string | null // of the checked project; picks the rule
+  tolerance_pct: number // the checked project's own rule
+  cap_ha: number
   overlaps: Overlap[]
   blocked: boolean
 }
