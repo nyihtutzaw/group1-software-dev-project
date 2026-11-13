@@ -110,7 +110,7 @@ on their feature: they direct the assistant, review and test its output, and mak
 |---|---|---|
 | Nyi Htut Zaw (F2) | Claude Code (Claude Opus) | Project setup (Docker, auth, CI, UI kit, agent skills); F2 boundary and overlap code, tests and docs; F3 integration fixes; change request #43; GitHub issue planning; progress report slides and demo video |
 | Jingqing (F1) | Claude Code (model not recorded) | F1 registration and evidence code, tests and docs |
-| Pyae Phyo Hein (F3) | Cursor (model not recorded) | F3 verification workflow code, tests and docs |
+| Pyae Phyo Hein (F3) | Antigravity (model not recorded) | F3 verification workflow code, tests and docs |
 | Zay Yar Phyo (F4) | Codex (model not recorded) | F4 public registry code, tests and docs |
 | Put Thitisawat (F5) | Not declared yet | — |
 
