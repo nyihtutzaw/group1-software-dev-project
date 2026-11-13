@@ -114,16 +114,45 @@ on their feature: they direct the assistant, review and test its output, and mak
 | Zay Yar Phyo (F4) | Codex (model not recorded) | F4 public registry code, tests and docs |
 | Put Thitisawat (F5) | Not declared yet | — |
 
-**Extent**
+**How each member used it**
+
+- **Nyi Htut Zaw (F2)**: Claude Code
+  - **Context management:** keeps the shared rules in `AGENTS.md` and `.agents/skills/`, and the
+    F2 context doc ([docs/features/F2-boundary.md](docs/features/F2-boundary.md)) up to date, so
+    every session starts from the current status, decisions and progress log. Design choices are
+    written as decision records ([0005](docs/decisions/0005-one-overlap-tolerance-for-all-methodologies.md),
+    [0006](docs/decisions/0006-overlap-rules-per-methodology.md)) before or with the code.
+  - **Manual review of each PR:** reads the full diff, runs the tests and the app in Docker, and
+    checks the change on screen before merging.
+- **Jingqing (F1)**: Claude Code
+  - **Context management:** works from `AGENTS.md`, the skills and the F1 context doc
+    ([docs/features/F1-registration.md](docs/features/F1-registration.md)), updated at the end of
+    each session.
+  - **Manual review of each PR:** reads the diff, runs the tests and checks registration and
+    evidence upload in the app before merging.
+- **Pyae Phyo Hein (F3)**: Antigravity
+  - **Context management:** works from `AGENTS.md`, the skills and the F3 context doc
+    ([docs/features/F3-verification.md](docs/features/F3-verification.md)), updated at the end of
+    each session.
+  - **Manual review of each PR:** reads the diff, runs the tests and checks the verification queue
+    and maker-checker steps in the app before merging.
+- **Zay Yar Phyo (F4)**: Codex
+  - **Context management:** works from `AGENTS.md`, the skills and the F4 context doc
+    ([docs/features/F4-registry.md](docs/features/F4-registry.md)), updated at the end of each
+    session.
+  - **Manual review of each PR:** reads the diff, runs the tests and checks the public registry
+    pages in the app before merging.
+- **Put Thitisawat (F5)**: not declared yet.
+
+**Extent (whole team)**
 
 - **High for code and documentation.** Most code, tests and docs were drafted by an AI assistant
   from the member's instructions, then reviewed, run and corrected by that member.
 - **People made the decisions.** Scope, feature ownership, design choices (recorded in
   [docs/decisions](docs/decisions/)) and the response to each change request were decided by the
-  team. The assistants follow our shared rules in [AGENTS.md](AGENTS.md) and
-  [.agents/skills](.agents/skills/).
+  team.
 - **Checks before merging.** Every change goes through a pull request: automated tests and lint in
-  CI, a check in the running app, and review by a teammate.
+  CI, the owner's manual review, and review by a teammate.
 - **Data.** Demo projects, people and evidence files are synthetic. No real personal or confidential
   data was given to an AI tool.
 - **Commits.** By team rule, commit messages carry no AI tags (see `AGENTS.md`); this section is our
