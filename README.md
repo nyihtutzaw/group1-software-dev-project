@@ -98,3 +98,62 @@ More (dependencies, troubleshooting, Windows): [.agents/skills/dev-environment/S
 
 React 19 + TypeScript + Tailwind CSS 4 (Vite) · FastAPI (Python 3.13) · PostgreSQL 17 + PostGIS ·
 Docker Compose · GitHub Actions · Google Cloud Run (planned). Architecture: [docs/architecture.md](docs/architecture.md).
+
+## AI usage declaration
+
+We used AI coding assistants throughout this project. Every member stays responsible for the work
+on their feature: they direct the assistant, review and test its output, and make the decisions.
+
+**Tools used**
+
+| Member | Tool (model) | Used for |
+|---|---|---|
+| Nyi Htut Zaw (F2) | Claude Code (Claude Opus) | Project setup (Docker, auth, CI, UI kit, agent skills); F2 boundary and overlap code, tests and docs; F3 integration fixes; change request #43; GitHub issue planning; progress report slides and demo video |
+| Jingqing (F1) | Claude Code (model not recorded) | F1 registration and evidence code, tests and docs |
+| Pyae Phyo Hein (F3) | Antigravity (model not recorded) | F3 verification workflow code, tests and docs |
+| Zay Yar Phyo (F4) | Codex (model not recorded) | F4 public registry code, tests and docs |
+| Put Thitisawat (F5) | Not declared yet | — |
+
+**How each member used it**
+
+- **Nyi Htut Zaw (F2)**: Claude Code
+  - **Context management:** keeps the shared rules in `AGENTS.md` and `.agents/skills/`, and the
+    F2 context doc ([docs/features/F2-boundary.md](docs/features/F2-boundary.md)) up to date, so
+    every session starts from the current status, decisions and progress log. Design choices are
+    written as decision records ([0005](docs/decisions/0005-one-overlap-tolerance-for-all-methodologies.md),
+    [0006](docs/decisions/0006-overlap-rules-per-methodology.md)) before or with the code.
+  - **Manual review of each PR:** reads the full diff, runs the tests and the app in Docker, and
+    checks the change on screen before merging.
+- **Jingqing (F1)**: Claude Code
+  - **Context management:** works from `AGENTS.md`, the skills and the F1 context doc
+    ([docs/features/F1-registration.md](docs/features/F1-registration.md)), updated at the end of
+    each session.
+  - **Manual review of each PR:** reads the diff, runs the tests and checks registration and
+    evidence upload in the app before merging.
+- **Pyae Phyo Hein (F3)**: Antigravity
+  - **Context management:** works from `AGENTS.md`, the skills and the F3 context doc
+    ([docs/features/F3-verification.md](docs/features/F3-verification.md)), updated at the end of
+    each session.
+  - **Manual review of each PR:** reads the diff, runs the tests and checks the verification queue
+    and maker-checker steps in the app before merging.
+- **Zay Yar Phyo (F4)**: Codex
+  - **Context management:** works from `AGENTS.md`, the skills and the F4 context doc
+    ([docs/features/F4-registry.md](docs/features/F4-registry.md)), updated at the end of each
+    session.
+  - **Manual review of each PR:** reads the diff, runs the tests and checks the public registry
+    pages in the app before merging.
+- **Put Thitisawat (F5)**: not declared yet.
+
+**Extent (whole team)**
+
+- **High for code and documentation.** Most code, tests and docs were drafted by an AI assistant
+  from the member's instructions, then reviewed, run and corrected by that member.
+- **People made the decisions.** Scope, feature ownership, design choices (recorded in
+  [docs/decisions](docs/decisions/)) and the response to each change request were decided by the
+  team.
+- **Checks before merging.** Every change goes through a pull request: automated tests and lint in
+  CI, the owner's manual review, and review by a teammate.
+- **Data.** Demo projects, people and evidence files are synthetic. No real personal or confidential
+  data was given to an AI tool.
+- **Commits.** By team rule, commit messages carry no AI tags (see `AGENTS.md`); this section is our
+  declaration instead.
