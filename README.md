@@ -98,3 +98,33 @@ More (dependencies, troubleshooting, Windows): [.agents/skills/dev-environment/S
 
 React 19 + TypeScript + Tailwind CSS 4 (Vite) · FastAPI (Python 3.13) · PostgreSQL 17 + PostGIS ·
 Docker Compose · GitHub Actions · Google Cloud Run (planned). Architecture: [docs/architecture.md](docs/architecture.md).
+
+## AI usage declaration
+
+We used AI coding assistants throughout this project. Every member stays responsible for the work
+on their feature: they direct the assistant, review and test its output, and make the decisions.
+
+**Tools used**
+
+| Member | Tool (model) | Used for |
+|---|---|---|
+| Nyi Htut Zaw (F2) | Claude Code (Claude Opus) | Project setup (Docker, auth, CI, UI kit, agent skills); F2 boundary and overlap code, tests and docs; F3 integration fixes; change request #43; GitHub issue planning; progress report slides and demo video |
+| Jingqing (F1) | Claude Code (model not recorded) | F1 registration and evidence code, tests and docs |
+| Pyae Phyo Hein (F3) | Cursor (model not recorded) | F3 verification workflow code, tests and docs |
+| Zay Yar Phyo (F4) | Codex (model not recorded) | F4 public registry code, tests and docs |
+| Put Thitisawat (F5) | Not declared yet | — |
+
+**Extent**
+
+- **High for code and documentation.** Most code, tests and docs were drafted by an AI assistant
+  from the member's instructions, then reviewed, run and corrected by that member.
+- **People made the decisions.** Scope, feature ownership, design choices (recorded in
+  [docs/decisions](docs/decisions/)) and the response to each change request were decided by the
+  team. The assistants follow our shared rules in [AGENTS.md](AGENTS.md) and
+  [.agents/skills](.agents/skills/).
+- **Checks before merging.** Every change goes through a pull request: automated tests and lint in
+  CI, a check in the running app, and review by a teammate.
+- **Data.** Demo projects, people and evidence files are synthetic. No real personal or confidential
+  data was given to an AI tool.
+- **Commits.** By team rule, commit messages carry no AI tags (see `AGENTS.md`); this section is our
+  declaration instead.
