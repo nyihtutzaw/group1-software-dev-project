@@ -71,7 +71,8 @@ From WBS 9.x and the design report:
 | POST | `/api/auth/logout` | any | Clear the session cookie |
 | GET | `/api/auth/me` | signed-in | Current user |
 | GET | `/api/auth/demo-accounts` | public (dev only) | Demo accounts for the sign-in page |
-| GET | `/api/ledger` | verifier, registry_staff, buyer, admin | Ledger entries (placeholder) |
+| GET | `/api/ledger` | verifier, registry_staff, buyer, admin | List ledger entries, newest first |
+| GET | `/api/ledger/verify` | verifier, registry_staff, admin | Verify cryptographic integrity of ledger chain |
 
 ## Pages
 
@@ -86,7 +87,7 @@ From WBS 9.x and the design report:
 | Table | Key columns | Notes |
 |---|---|---|
 | `users` | email (unique), full_name, organization, role, password_hash, is_active | migration 0001 |
-| — | | `ledger_entries` (seq, action, actor_id, payload, prev_hash, hash) to be designed |
+| `ledger_entries` | id, created_at, action, actor_id, actor_email, entity, entity_id, payload, prev_hash, hash | migration e24ad4024afd (append-only trigger blocks UPDATE/DELETE) |
 
 ## Depends on / used by
 
@@ -102,13 +103,14 @@ From WBS 9.x and the design report:
 
 ### 2026-11-14 · feature/F5-ledger-table
 - Goal: store critical actions in an append-only, hash-chained ledger table behind `record_action()` (#31)
-- Plan:
-  1. Define `LedgerEntry` model in `backend/app/features/audit/models.py`.
-  2. Create Alembic migration for `ledger_entries` with a PostgreSQL trigger preventing UPDATE or DELETE.
-  3. Implement canonical JSON serialization and hash calculation in `backend/app/features/audit/ledger.py`.
-  4. Replace `record_action()` stub with real DB insert within caller transaction.
-  5. Add verification helper `verify_ledger_chain(db)`.
-  6. Write comprehensive tests in `backend/tests/test_audit.py` (chain building, tampering detection, DB trigger enforcement).
+- Done:
+  - `ledger_entries` model and Alembic migration `e24ad4024afd`.
+  - Database-level trigger `ledger_entries_no_update_delete` raising `insufficient_privilege` on UPDATE or DELETE.
+  - Implemented `record_action()` in `backend/app/features/audit/ledger.py` with transaction advisory lock and deterministic canonical JSON hash calculation `sha256(prev_hash || canonical_json(entry))`.
+  - Added `verify_ledger_chain(db)` utility to detect tampering, gap deletion, or link breakage.
+  - Added `GET /api/ledger` and `GET /api/ledger/verify` with role checks.
+  - Tests: 9 backend tests in `backend/tests/test_audit.py` covering hash chaining, canonical JSON determinism, tampering detection, deletion gap detection, DB trigger enforcement, rollback on caller error, and RBAC; all 24 boundary tests pass with live ledger writes.
+- Next: frontend LedgerPage UI from mock-up, admin user management endpoints & UI, separation-of-duties helper.
 
 ### 2026-10-27 · main (initial setup)
 - Done: users table, login/logout/me, require_roles, demo seed, frontend sign-in, Guarded routes,
