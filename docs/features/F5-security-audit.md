@@ -13,9 +13,9 @@
 
 ## Status
 
-Partly in place (app shell): email + password sign-in, httpOnly JWT cookie, five roles,
+In progress (`feature/F5-ledger-table`): email + password sign-in, httpOnly JWT cookie, five roles,
 `require_roles()` on the API and role-based menus/route guards on the frontend, seeded demo users.
-Ledger, user management and separation-of-duties enforcement not started.
+Building hash-chained ledger table behind `record_action()` (#31).
 
 ## Scope
 
@@ -41,6 +41,14 @@ From WBS 9.x and the design report:
 7. Admins can create users, assign roles and deactivate accounts.
 
 ## Decisions
+
+- 2026-11-14 — **Hash-chained ledger table design (#31)**:
+  `ledger_entries` table with auto-incrementing `id`, `created_at` (UTC), `action` (string),
+  `actor_id` (FK `users.id`, nullable for system actions), `actor_email` (snapshot), `entity`,
+  `entity_id`, `payload` (JSON), `prev_hash` (hex sha256), and `hash` (hex sha256).
+  Formula: `hash = sha256(prev_hash || canonical_json(entry))`. Genesis `prev_hash` is `'0' * 64`.
+  An `immutable_ledger_entries` PostgreSQL BEFORE UPDATE OR DELETE trigger blocks modifications
+  at the DB level. `record_action()` signature remains unchanged and inserts into caller transaction.
 
 - 2026-10-28 — **F2 added a `record_action()` stub** in `backend/app/features/audit/ledger.py`
   (`record_action(db, *, actor, action, entity, entity_id, payload)`, logs only). Replace the body
@@ -91,6 +99,16 @@ From WBS 9.x and the design report:
 - Should failed sign-ins and 403s go into the ledger or a separate security log?
 
 ## Progress log
+
+### 2026-11-14 · feature/F5-ledger-table
+- Goal: store critical actions in an append-only, hash-chained ledger table behind `record_action()` (#31)
+- Plan:
+  1. Define `LedgerEntry` model in `backend/app/features/audit/models.py`.
+  2. Create Alembic migration for `ledger_entries` with a PostgreSQL trigger preventing UPDATE or DELETE.
+  3. Implement canonical JSON serialization and hash calculation in `backend/app/features/audit/ledger.py`.
+  4. Replace `record_action()` stub with real DB insert within caller transaction.
+  5. Add verification helper `verify_ledger_chain(db)`.
+  6. Write comprehensive tests in `backend/tests/test_audit.py` (chain building, tampering detection, DB trigger enforcement).
 
 ### 2026-10-27 · main (initial setup)
 - Done: users table, login/logout/me, require_roles, demo seed, frontend sign-in, Guarded routes,
