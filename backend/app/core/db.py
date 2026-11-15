@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 from datetime import datetime
 
+from fastapi import Request
 from sqlalchemy import DateTime, create_engine, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
@@ -21,9 +22,10 @@ engine = create_engine(get_settings().database_url, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
-def get_db() -> Iterator[Session]:
+def get_db(request: Request) -> Iterator[Session]:
     """FastAPI dependency: one session per request."""
     db = SessionLocal()
+    request.state.db = db
     try:
         yield db
     finally:

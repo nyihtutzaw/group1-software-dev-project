@@ -16,6 +16,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     user = db.get(User, user_id) if user_id else None
     if user is None or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not signed in")
+    request.state.user = user
     return user
 
 

@@ -83,5 +83,7 @@ src/index.css           design tokens (light + dark) → Tailwind utilities; lib
 - **CI** (`.github/workflows/ci.yml`, every PR and push to main): backend ruff + migrations check +
   pytest against the same `infra/db` PostGIS image used locally; frontend lint, typecheck, tests, build; agent-skill stubs in sync.
 - **Production (planned)**: backend and frontend as Docker images on Google Cloud Run, Cloud SQL
-  for PostgreSQL + PostGIS, Cloud Storage with a retention lock for evidence. Deploy workflow to be
-  added once a GCP project exists.
+  for PostgreSQL + PostGIS, Cloud Storage with a retention lock for evidence. Cloud Run sets
+  `APP_ENV=production` and injects `JWT_SECRET` from Secret Manager; production startup rejects the
+  development default, and demo seeding is disabled. Deploy workflow to be added once a GCP project
+  exists.

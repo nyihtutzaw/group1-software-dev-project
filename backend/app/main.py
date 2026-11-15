@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends, FastAPI
+from collections.abc import Awaitable, Callable
+
+from fastapi import APIRouter, Depends, FastAPI, Request, Response, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.auth.admin_router import router as admin_users_router
+from app.auth.models import User
 from app.auth.router import router as auth_router
 from app.core.db import get_db
 from app.features.audit.router import router as audit_router
+from app.features.audit.security_log import ACCESS_DENIED, client_ip, record_security_event
 from app.features.boundary.router import router as boundary_router
 from app.features.registration.router import router as registration_router
 from app.features.registry.router import router as registry_router
@@ -17,6 +21,30 @@ app = FastAPI(
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
 )
+
+
+@app.middleware("http")
+async def log_forbidden_requests(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    response = await call_next(request)
+    if response.status_code == status.HTTP_403_FORBIDDEN:
+        db: Session | None = getattr(request.state, "db", None)
+        if db is None:
+            raise RuntimeError("Cannot record a forbidden request without its database session")
+        user: User | None = getattr(request.state, "user", None)
+        record_security_event(
+            db,
+            event_type=ACCESS_DENIED,
+            actor_id=user.id if user else None,
+            source_ip=client_ip(request),
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+        )
+        db.commit()
+    return response
+
 
 api = APIRouter(prefix="/api")
 
