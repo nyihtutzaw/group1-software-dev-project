@@ -13,8 +13,9 @@
 
 ## Status
 
-In progress (`feature/F5-ledger-page`, stacked on unmerged #31): sign-in, role checks, and the
-hash-chained ledger are implemented. The paginated ledger API and integrity timeline are complete.
+In progress (`feature/F5-security-controls`, stacked on the unmerged #31/#32 branch): failed
+sign-ins and forbidden requests are being recorded in a separate security log, with rate limiting
+and agreed retention periods. #33 admin actions remain on their separate user-management branch.
 
 ## Scope
 
@@ -50,6 +51,11 @@ From WBS 9.x and the design report:
   at the DB level. `record_action()` signature remains unchanged and inserts into caller transaction.
 - 2026-11-15 — **Ledger actor role snapshot (#32)**: preserve the actor's role when each action is
   recorded so the timeline does not misstate a historical role after an account role change.
+- 2026-11-15 — **Security events and retention (#34/#35)**: keep failed sign-ins and 403 events in
+  a separate security log so attack traffic does not pollute the critical-action ledger. Retain
+  ledger entries indefinitely, evidence for 7 years, and security events for 90 days. Apply a
+  temporary 15-minute block after 5 failed sign-ins for the same normalized account and source IP
+  within 15 minutes. Hash normalized account identifiers with the application secret in the log.
 
 - 2026-10-28 — **F2 added a `record_action()` stub** in `backend/app/features/audit/ledger.py`
   (`record_action(db, *, actor, action, entity, entity_id, payload)`, logs only). Replace the body
@@ -68,7 +74,7 @@ From WBS 9.x and the design report:
 
 | Method | Path | Roles | Purpose |
 |---|---|---|---|
-| POST | `/api/auth/login` | public | Sign in; sets the session cookie |
+| POST | `/api/auth/login` | public | Sign in; sets cookie, records failures, and rate-limits repeated failures |
 | POST | `/api/auth/logout` | any | Clear the session cookie |
 | GET | `/api/auth/me` | signed-in | Current user |
 | GET | `/api/auth/demo-accounts` | public (dev only) | Demo accounts for the sign-in page |
@@ -89,6 +95,7 @@ From WBS 9.x and the design report:
 |---|---|---|
 | `users` | email (unique), full_name, organization, role, password_hash, is_active | migration 0001 |
 | `ledger_entries` | id, created_at, action, actor_id, actor_email, actor_role, entity, entity_id, payload, prev_hash, hash | migrations e24ad4024afd and f13d8a1b0c2e (append-only trigger blocks UPDATE/DELETE) |
+| `security_events` | id, created_at, event_type, actor_id, subject_hash, source_ip, method, path, status_code | Stores access denials and sign-in events; 90-day retention policy |
 
 ## Depends on / used by
 
@@ -97,10 +104,16 @@ From WBS 9.x and the design report:
 
 ## Open questions
 
-- Login rate limiting / lockout?
-- Should failed sign-ins and 403s go into the ledger or a separate security log?
+- Automatic evidence expiry requires production object-storage lifecycle support; the current local
+  filesystem does not enforce the agreed 7-year retention period.
 
 ## Progress log
+
+### 2026-11-15 · feature/F5-security-controls
+- Goal: complete #34 and #35: record failed sign-ins and 403s, enforce temporary login lockout, and document retention periods.
+- Decisions: separate security-event log; 5 failed attempts per normalized account + IP in 15 minutes trigger a 15-minute block; retain security events 90 days, evidence 7 years, and the append-only ledger indefinitely.
+- Plan: add security-event model/migration and logging helpers; log login failures and all 403 responses; enforce persistent rate limiting; add focused tests and document behavior.
+- Dependency: #31/#32 are unmerged and this branch is stacked on their branch; #33 already emits ledger actions on its separate branch.
 
 ### 2026-11-15 · feature/F5-ledger-page
 - Goal: complete #32 on top of the #31 ledger implementation.
