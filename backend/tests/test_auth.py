@@ -1,4 +1,5 @@
 from app.auth.models import Role
+from app.core.config import get_settings
 from tests.conftest import PASSWORD
 
 
@@ -16,6 +17,16 @@ def test_login_sets_session_cookie_and_me_returns_user(client, make_user):
     me = client.get("/api/auth/me").json()
     assert me["email"] == user.email
     assert me["role"] == "verifier"
+
+
+def test_login_cookie_is_secure_in_production(client, make_user, monkeypatch):
+    user = make_user(Role.VERIFIER)
+    monkeypatch.setattr(get_settings(), "app_env", "production")
+
+    res = client.post("/api/auth/login", json={"email": user.email, "password": PASSWORD})
+
+    assert res.status_code == 200
+    assert "; secure" in res.headers["set-cookie"].lower()
 
 
 def test_login_rejects_wrong_password(client, make_user):
