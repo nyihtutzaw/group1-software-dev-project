@@ -13,8 +13,8 @@
 
 ## Status
 
-In progress (`feature/F5-user-management`): implementing admin-only user listing, creation, role
-changes and deactivation, with audit calls and the `/admin/users` page.
+In review (`feature/F5-user-management`): admins can list and create accounts, change roles, and
+deactivate or reactivate users from `/admin/users`. Each change calls `record_action()`.
 
 ## Scope
 
@@ -53,6 +53,11 @@ From WBS 9.x and the design report:
   `crvr_session`; `Secure` in production. The frontend never sees the token.
 - 2026-10-27 — Roles: `developer`, `verifier`, `registry_staff`, `buyer`, `admin` (Charter FR-10).
 - 2026-10-27 — Ledger lives in a PostgreSQL table (append-only), not a separate service.
+- 2026-11-15 — User creation requires an admin-provided initial password of at least 12 characters
+  and at most 72 UTF-8 bytes (bcrypt's input limit). Only the password hash is stored; the password
+  is never returned or included in audit payloads. Admins cannot change their own role or deactivate
+  themselves; active admin rows are locked while changing an admin account to prevent concurrent
+  changes from removing all active admins.
 
 ## API
 
@@ -73,7 +78,7 @@ From WBS 9.x and the design report:
 |---|---|---|
 | `/login` | public | Sign-in + demo accounts (dev) |
 | `/ledger` | verifier, registry_staff, buyer, admin | Audit ledger — placeholder |
-| `/admin/users` | admin | Search/list accounts, create users, change roles and deactivate accounts |
+| `/admin/users` | admin | List accounts, create users, change roles, and deactivate or reactivate accounts |
 
 ## Data model
 
@@ -91,6 +96,8 @@ From WBS 9.x and the design report:
 
 - Login rate limiting / lockout?
 - Should failed sign-ins and 403s go into the ledger or a separate security log?
+- User invitation, password-change and password-reset flows are not included; users receive their
+  initial password out of band.
 
 ## Progress log
 
@@ -102,6 +109,15 @@ From WBS 9.x and the design report:
   calls; cover validation, RBAC, self/last-admin safeguards and audit calls; implement the Users
   page and focused frontend tests; update this doc and run the relevant Docker checks.
 - Dependency: persisted admin-action audit entries require the hash-chain implementation in #31.
+- Done: `/api/admin/users` supports admin-only list/create/patch; creation normalizes and validates
+  email, rejects duplicates, hashes the initial password, and returns no credential data. Role
+  changes, activation and deactivation emit audit calls; self-access changes are blocked. The
+  responsive page lists accounts and provides create, role-change and confirm-before-deactivate
+  controls. No migration was needed.
+- Validation: 13 backend auth/admin-user tests and 5 Users page tests passed; backend Ruff,
+  frontend ESLint, TypeScript, Prettier and production build passed. Tests used a new isolated
+  database because the existing local database is stamped at #31's unmerged ledger migration;
+  that database was left untouched.
 
 ### 2026-10-27 · main (initial setup)
 - Done: users table, login/logout/me, require_roles, demo seed, frontend sign-in, Guarded routes,
