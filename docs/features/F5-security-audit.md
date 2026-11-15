@@ -13,8 +13,8 @@
 
 ## Status
 
-In progress (`feature/F5-ledger-page`, based on #31): sign-in, role checks, and the hash-chained
-ledger are implemented. This step adds a paginated ledger API and user-facing integrity timeline.
+In progress (`feature/F5-ledger-page`, stacked on unmerged #31): sign-in, role checks, and the
+hash-chained ledger are implemented. The paginated ledger API and integrity timeline are complete.
 
 ## Scope
 
@@ -48,6 +48,8 @@ From WBS 9.x and the design report:
   Formula: `hash = sha256(prev_hash || canonical_json(entry))`. Genesis `prev_hash` is `'0' * 64`.
   An `immutable_ledger_entries` PostgreSQL BEFORE UPDATE OR DELETE trigger blocks modifications
   at the DB level. `record_action()` signature remains unchanged and inserts into caller transaction.
+- 2026-11-15 — **Ledger actor role snapshot (#32)**: preserve the actor's role when each action is
+  recorded so the timeline does not misstate a historical role after an account role change.
 
 - 2026-10-28 — **F2 added a `record_action()` stub** in `backend/app/features/audit/ledger.py`
   (`record_action(db, *, actor, action, entity, entity_id, payload)`, logs only). Replace the body
@@ -71,7 +73,7 @@ From WBS 9.x and the design report:
 | GET | `/api/auth/me` | signed-in | Current user |
 | GET | `/api/auth/demo-accounts` | public (dev only) | Demo accounts for the sign-in page |
 | GET | `/api/ledger` | verifier, registry_staff, buyer, admin | Paginated ledger entries, newest first |
-| GET | `/api/ledger/verify` | verifier, registry_staff, admin | Verify cryptographic integrity of ledger chain |
+| GET | `/api/ledger/verify` | verifier, registry_staff, buyer, admin | Verify cryptographic integrity of ledger chain |
 
 ## Pages
 
@@ -86,7 +88,7 @@ From WBS 9.x and the design report:
 | Table | Key columns | Notes |
 |---|---|---|
 | `users` | email (unique), full_name, organization, role, password_hash, is_active | migration 0001 |
-| `ledger_entries` | id, created_at, action, actor_id, actor_email, entity, entity_id, payload, prev_hash, hash | migration e24ad4024afd (append-only trigger blocks UPDATE/DELETE) |
+| `ledger_entries` | id, created_at, action, actor_id, actor_email, actor_role, entity, entity_id, payload, prev_hash, hash | migrations e24ad4024afd and f13d8a1b0c2e (append-only trigger blocks UPDATE/DELETE) |
 
 ## Depends on / used by
 
@@ -104,6 +106,10 @@ From WBS 9.x and the design report:
 - Goal: complete #32 on top of the #31 ledger implementation.
 - Plan: add a paginated ledger endpoint; implement the responsive timeline, status alert, and role-aware integrity check; test API and UI behavior; validate and update this doc.
 - Dependency: #31 is not yet merged; this branch is based on its open implementation branch.
+- Decision: expose the read-only chain integrity result to buyers as well as other ledger readers; the mock-up shows the chain status on the shared ledger page.
+- Done: `/api/ledger` returns newest-first pages; the timeline shows action, actor and role snapshot, time, short hash and payload details. Buyers can see the read-only integrity status. Added an additive migration for historical actor-role snapshots.
+- Validation: backend Ruff checks, migration consistency, and all 180 backend tests passed; frontend formatting, lint, typecheck, all 60 frontend tests, and production build passed.
+- Next: after #31 merges, rebase on `main`, rerun checks, then open the #32 PR.
 
 ### 2026-11-14 · feature/F5-ledger-table
 - Goal: store critical actions in an append-only, hash-chained ledger table behind `record_action()` (#31)

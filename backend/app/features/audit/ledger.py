@@ -36,7 +36,7 @@ def canonical_json(data: Any) -> str:
 
 def entry_to_canonical_dict(entry: LedgerEntry) -> dict[str, Any]:
     """Convert an existing LedgerEntry into its canonical dictionary for hash verification."""
-    return {
+    data = {
         "action": entry.action,
         "actor_email": entry.actor_email,
         "actor_id": entry.actor_id,
@@ -45,6 +45,9 @@ def entry_to_canonical_dict(entry: LedgerEntry) -> dict[str, Any]:
         "entity_id": entry.entity_id,
         "payload": entry.payload or {},
     }
+    if entry.actor_role is not None:
+        data["actor_role"] = entry.actor_role
+    return data
 
 
 def compute_hash(prev_hash: str, entry_dict: dict[str, Any]) -> str:
@@ -78,6 +81,7 @@ def record_action(
     now = datetime.now(UTC)
     actor_id = actor.id if actor else None
     actor_email = actor.email if actor else None
+    actor_role = actor.role.value if actor else None
     payload_data = payload or {}
 
     entry_data = {
@@ -89,6 +93,8 @@ def record_action(
         "entity_id": entity_id,
         "payload": payload_data,
     }
+    if actor_role is not None:
+        entry_data["actor_role"] = actor_role
     entry_hash = compute_hash(prev_hash, entry_data)
 
     # 4. Insert into ledger_entries and flush to assign sequence ID
@@ -97,6 +103,7 @@ def record_action(
         action=action,
         actor_id=actor_id,
         actor_email=actor_email,
+        actor_role=actor_role,
         entity=entity,
         entity_id=entity_id,
         payload=payload_data,

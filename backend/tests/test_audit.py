@@ -41,6 +41,7 @@ def test_record_action_creates_hash_chained_entries(db, make_user):
     assert e1.prev_hash == GENESIS_PREV_HASH
     assert e1.actor_id == user.id
     assert e1.actor_email == "dev@example.com"
+    assert e1.actor_role == Role.DEVELOPER.value
     assert e1.entity == "project"
     assert e1.entity_id == 101
     assert e1.payload == {"name": "Mangrove Restoration"}
@@ -60,6 +61,7 @@ def test_record_action_creates_hash_chained_entries(db, make_user):
     assert e2.prev_hash == e1.hash
     assert e2.actor_id is None
     assert e2.actor_email is None
+    assert e2.actor_role is None
     assert e2.hash == compute_hash(e1.hash, entry_to_canonical_dict(e2))
 
     # Third entry
@@ -182,6 +184,17 @@ def test_record_action_rolls_back_with_caller_transaction(db, make_user):
     assert len(entries) == 0
 
 
+def test_ledger_keeps_actor_role_snapshot(db, make_user):
+    user = make_user(Role.DEVELOPER)
+    entry = record_action(db, actor=user, action="project.created", entity="project", entity_id=1)
+
+    user.role = Role.ADMIN
+    db.flush()
+
+    assert entry.actor_role == Role.DEVELOPER.value
+    assert verify_ledger_chain(db) == (True, None)
+
+
 def test_ledger_api_endpoints_and_rbac(client, login, db, make_user):
     """Ledger endpoints enforce RBAC and return serialized hash-chained entries."""
     user = make_user(Role.DEVELOPER, email="p@test.local")
@@ -199,18 +212,25 @@ def test_ledger_api_endpoints_and_rbac(client, login, db, make_user):
     assert client.get("/api/ledger").status_code == 403
     assert client.get("/api/ledger/verify").status_code == 403
 
-    # Buyers can view the ledger but not trigger verify
+    # Buyers can view the ledger and its read-only integrity status
     login(Role.BUYER)
     res = client.get("/api/ledger")
     assert res.status_code == 200
-    entries = res.json()
+    page = res.json()
+    entries = page["items"]
     assert len(entries) >= 1
     assert entries[0]["action"] == "project.submitted"
     assert entries[0]["entity"] == "project"
     assert entries[0]["entity_id"] == 42
+    assert entries[0]["actor_role"] == Role.DEVELOPER.value
     assert "hash" in entries[0]
     assert "prev_hash" in entries[0]
-    assert client.get("/api/ledger/verify").status_code == 403
+    assert page["total"] == 1
+    assert page["page"] == 1
+    assert page["page_size"] == 50
+    verify_res = client.get("/api/ledger/verify")
+    assert verify_res.status_code == 200
+    assert verify_res.json() == {"valid": True, "error": None}
 
     # Registry staff can view and verify
     login(Role.REGISTRY_STAFF)
@@ -218,3 +238,24 @@ def test_ledger_api_endpoints_and_rbac(client, login, db, make_user):
     verify_res = client.get("/api/ledger/verify")
     assert verify_res.status_code == 200
     assert verify_res.json() == {"valid": True, "error": None}
+
+
+def test_ledger_api_paginates_entries_and_validates_bounds(client, login, db, make_user):
+    user = make_user(Role.DEVELOPER)
+    for entity_id in (1, 2, 3):
+        record_action(
+            db, actor=user, action="project.created", entity="project", entity_id=entity_id
+        )
+
+    login(Role.BUYER)
+    first = client.get("/api/ledger?page=1&page_size=2")
+    assert first.status_code == 200
+    assert first.json()["total"] == 3
+    assert [entry["entity_id"] for entry in first.json()["items"]] == [3, 2]
+
+    second = client.get("/api/ledger?page=2&page_size=2")
+    assert second.status_code == 200
+    assert [entry["entity_id"] for entry in second.json()["items"]] == [1]
+
+    assert client.get("/api/ledger?page=0").status_code == 422
+    assert client.get("/api/ledger?page_size=101").status_code == 422
