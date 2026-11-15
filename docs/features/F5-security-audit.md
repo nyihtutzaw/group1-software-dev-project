@@ -13,9 +13,9 @@
 
 ## Status
 
-Partly in place (app shell): email + password sign-in, httpOnly JWT cookie, five roles,
-`require_roles()` on the API and role-based menus/route guards on the frontend, seeded demo users.
-Ledger, user management and separation-of-duties enforcement not started.
+In progress (`feature/F5-production-settings`): login cookies already use `Secure` in production.
+This branch validates the production JWT secret, prevents production demo seeding, and documents
+the Cloud Run configuration for #38.
 
 ## Scope
 
@@ -96,3 +96,7 @@ From WBS 9.x and the design report:
 - Done: users table, login/logout/me, require_roles, demo seed, frontend sign-in, Guarded routes,
   role-based nav; tests for auth and role checks.
 - Next: ledger table + `record_action()`, separation-of-duties helper, user management.
+
+### 2026-11-15 · feature/F5-production-settings
+- Goal: complete #38 by making production authentication settings fail safely before Cloud Run deployment.
+- Plan: validate the production JWT secret at settings load, guard demo-data seed functions, test production cookie/secret/seeding behavior, and document Cloud Run Secret Manager configuration.
