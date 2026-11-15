@@ -15,7 +15,9 @@
 
 In progress: production JWT secrets are validated, login cookies use `Secure`, and demo seeding is
 blocked. The hash-chained ledger behind `record_action()` (#31), the paginated ledger API and the
-integrity timeline page are complete.
+integrity timeline page are complete. Failed sign-ins and forbidden requests are recorded in a
+separate security log, and repeated sign-in failures are temporarily blocked. Retention periods are
+documented; automated log cleanup is not implemented.
 
 ## Scope
 
@@ -33,11 +35,11 @@ flagging hook (deferred).
 From WBS 9.x and the design report:
 
 1. All users authenticate; sessions are managed securely (9.1.1). ✅ shell
-2. The access matrix is enforced; unauthorised access is blocked and logged (9.1.2). Partly ✅ (blocked, not yet logged)
+2. The access matrix is enforced; unauthorised access is blocked and logged (9.1.2). ✅ 403 responses are logged.
 3. The same user cannot both submit and approve a critical action (9.1.3).
 4. Ledger records are hash-chained; tampering is detectable (9.2.1).
 5. 100% of critical verification and issuance actions are recorded (9.2.2).
-6. Admin actions are logged; a retention policy is enforced (9.3.1).
+6. Admin actions are logged; a retention policy is enforced (9.3.1). Partly: #33 admin actions are on a separate branch; retention periods are documented, but automated cleanup is pending.
 7. Admins can create users, assign roles and deactivate accounts.
 
 ## Decisions
@@ -51,6 +53,12 @@ From WBS 9.x and the design report:
   at the DB level. `record_action()` signature remains unchanged and inserts into caller transaction.
 - 2026-11-15 — **Ledger actor role snapshot (#32)**: preserve the actor's role when each action is
   recorded so the timeline does not misstate a historical role after an account role change.
+- 2026-11-15 — **Security events and retention (#34/#35)**: keep failed sign-ins and 403 events in
+  a separate security log so attack traffic does not pollute the critical-action ledger. Retain
+  ledger entries indefinitely, evidence for 7 years, and security events for 90 days. Apply a
+  temporary 15-minute block after 5 failed sign-ins for the same normalized account and source IP
+  within 15 minutes. Hash normalized account identifiers with the application secret in the log.
+  Retention periods are policy decisions; scheduled deletion is not implemented in this branch.
 
 - 2026-10-28 — **F2 added a `record_action()` stub** in `backend/app/features/audit/ledger.py`
   (`record_action(db, *, actor, action, entity, entity_id, payload)`, logs only). Replace the body
@@ -80,7 +88,7 @@ From WBS 9.x and the design report:
 
 | Method | Path | Roles | Purpose |
 |---|---|---|---|
-| POST | `/api/auth/login` | public | Sign in; sets the session cookie |
+| POST | `/api/auth/login` | public | Sign in; sets cookie, records failures, and rate-limits repeated failures |
 | POST | `/api/auth/logout` | any | Clear the session cookie |
 | GET | `/api/auth/me` | signed-in | Current user |
 | GET | `/api/auth/demo-accounts` | public (dev only) | Demo accounts for the sign-in page |
@@ -101,6 +109,7 @@ From WBS 9.x and the design report:
 |---|---|---|
 | `users` | email (unique), full_name, organization, role, password_hash, is_active | migration 0001 |
 | `ledger_entries` | id, created_at, action, actor_id, actor_email, actor_role, entity, entity_id, payload, prev_hash, hash | migrations e24ad4024afd and f13d8a1b0c2e (append-only trigger blocks UPDATE/DELETE) |
+| `security_events` | id, created_at, event_type, actor_id, subject_hash, source_ip, method, path, status_code | Stores access denials and sign-in events; 90-day retention policy |
 
 ## Depends on / used by
 
@@ -109,10 +118,19 @@ From WBS 9.x and the design report:
 
 ## Open questions
 
-- Login rate limiting / lockout?
-- Should failed sign-ins and 403s go into the ledger or a separate security log?
+- Automatic evidence expiry requires production object-storage lifecycle support; the current local
+  filesystem does not enforce the agreed 7-year retention period.
+- Automated deletion of security events after 90 days is not implemented.
 
 ## Progress log
+
+### 2026-11-15 · feature/F5-security-controls
+- Goal: complete #34 and #35: record failed sign-ins and 403s, enforce temporary login lockout, and document retention periods.
+- Done: added the `security_events` table and migration, hashed sign-in subjects, recorded failed and successful sign-ins plus 403 responses, and enforced a persistent 5-failure/15-minute lockout per normalized account and source IP.
+- Validation: targeted auth/audit tests passed (19); full backend suite passed (183); Ruff checks and formatting passed; Alembic has one head and `alembic check` reports no new upgrade operations.
+- Decisions: separate security-event log; retain security events 90 days, evidence 7 years, and the append-only ledger indefinitely. Automated retention cleanup is not implemented.
+- Dependency: #31/#32 are unmerged and this branch is stacked on their branch; #33 already emits ledger actions on its separate branch.
+- Next: integrate #33 admin-action logging, decide/implement scheduled retention cleanup if required, then rebase and open the combined PR after #31/#32 merge.
 
 ### 2026-11-15 · feature/F5-ledger-page
 - Goal: complete #32 on top of the #31 ledger implementation.

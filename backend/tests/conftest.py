@@ -12,6 +12,7 @@ from collections.abc import Callable, Iterator  # noqa: E402
 import pytest  # noqa: E402
 from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402
+from fastapi import Request  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
@@ -47,7 +48,11 @@ def db() -> Iterator[Session]:
 
 @pytest.fixture
 def client(db: Session) -> Iterator[TestClient]:
-    app.dependency_overrides[get_db] = lambda: db
+    def override_get_db(request: Request) -> Session:
+        request.state.db = db
+        return db
+
+    app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()

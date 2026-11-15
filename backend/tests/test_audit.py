@@ -11,7 +11,8 @@ from app.features.audit.ledger import (
     record_action,
     verify_ledger_chain,
 )
-from app.features.audit.models import LedgerEntry
+from app.features.audit.models import LedgerEntry, SecurityEvent
+from app.features.audit.security_log import ACCESS_DENIED
 
 
 def test_canonical_json_deterministic():
@@ -259,3 +260,18 @@ def test_ledger_api_paginates_entries_and_validates_bounds(client, login, db, ma
 
     assert client.get("/api/ledger?page=0").status_code == 422
     assert client.get("/api/ledger?page_size=101").status_code == 422
+
+
+def test_forbidden_requests_are_recorded_in_security_log(client, login, db):
+    user = login(Role.DEVELOPER)
+
+    assert client.get("/api/ledger").status_code == 403
+    assert client.get("/api/ledger/verify").status_code == 403
+
+    events = db.scalars(
+        select(SecurityEvent).where(SecurityEvent.event_type == ACCESS_DENIED)
+    ).all()
+    assert len(events) == 2
+    assert {event.path for event in events} == {"/api/ledger", "/api/ledger/verify"}
+    assert all(event.actor_id == user.id for event in events)
+    assert all(event.status_code == 403 for event in events)
