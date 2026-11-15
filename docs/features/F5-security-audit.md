@@ -136,6 +136,11 @@ From WBS 9.x and the design report:
 
 ## Progress log
 
+### 2026-11-15 · fix/admin-user-local-email
+- Fix: creating a user at `/admin/users` rejected `@crvr.local` emails (the domain of the demo and
+  team accounts), because `EmailStr` refuses reserved domains such as `.local`. The admin form now
+  checks only the address shape (`name@domain.tld`). Tests added for both cases.
+
 ### 2026-11-15 · feature/F5-user-management
 - Goal: complete #33 with admin-only user listing, creation, role changes and deactivation.
 - Decision: an admin supplies the new account's initial password because no invite or reset flow
