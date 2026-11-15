@@ -54,7 +54,13 @@ DEMO_USERS = [
 ]
 
 
+def _ensure_demo_seeding_allowed() -> None:
+    if get_settings().is_production:
+        raise RuntimeError("Demo data seeding is disabled when APP_ENV=production")
+
+
 def seed_demo_users() -> int:
+    _ensure_demo_seeding_allowed()
     created = 0
     with SessionLocal() as db:
         for data in DEMO_USERS:
@@ -67,6 +73,7 @@ def seed_demo_users() -> int:
 
 
 def seed_demo_data() -> str:
+    _ensure_demo_seeding_allowed()
     # Imported here: feature modules import app.auth, whose router imports DEMO_USERS from here.
     from app.features.boundary.seed import seed_demo_boundaries
     from app.features.registration.seed import seed_demo_projects
