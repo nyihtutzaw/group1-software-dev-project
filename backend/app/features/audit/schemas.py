@@ -12,6 +12,7 @@ class LedgerEntryOut(BaseModel):
     action: str
     actor_id: int | None
     actor_email: str | None
+    actor_role: str | None
     entity: str
     entity_id: int
     payload: dict[str, Any]
@@ -22,3 +23,10 @@ class LedgerEntryOut(BaseModel):
 class LedgerVerificationOut(BaseModel):
     valid: bool
     error: str | None = None
+
+
+class LedgerPageOut(BaseModel):
+    items: list[LedgerEntryOut]
+    total: int
+    page: int
+    page_size: int

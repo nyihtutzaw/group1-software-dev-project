@@ -14,8 +14,8 @@
 ## Status
 
 In progress: production JWT secrets are validated, login cookies use `Secure`, and demo seeding is
-blocked (`feature/F5-production-settings`). Hash-chained ledger table behind `record_action()`
-(#31, `feature/F5-ledger-table`).
+blocked. The hash-chained ledger behind `record_action()` (#31), the paginated ledger API and the
+integrity timeline page are complete.
 
 ## Scope
 
@@ -49,6 +49,8 @@ From WBS 9.x and the design report:
   Formula: `hash = sha256(prev_hash || canonical_json(entry))`. Genesis `prev_hash` is `'0' * 64`.
   An `immutable_ledger_entries` PostgreSQL BEFORE UPDATE OR DELETE trigger blocks modifications
   at the DB level. `record_action()` signature remains unchanged and inserts into caller transaction.
+- 2026-11-15 — **Ledger actor role snapshot (#32)**: preserve the actor's role when each action is
+  recorded so the timeline does not misstate a historical role after an account role change.
 
 - 2026-10-28 — **F2 added a `record_action()` stub** in `backend/app/features/audit/ledger.py`
   (`record_action(db, *, actor, action, entity, entity_id, payload)`, logs only). Replace the body
@@ -82,15 +84,15 @@ From WBS 9.x and the design report:
 | POST | `/api/auth/logout` | any | Clear the session cookie |
 | GET | `/api/auth/me` | signed-in | Current user |
 | GET | `/api/auth/demo-accounts` | public (dev only) | Demo accounts for the sign-in page |
-| GET | `/api/ledger` | verifier, registry_staff, buyer, admin | List ledger entries, newest first |
-| GET | `/api/ledger/verify` | verifier, registry_staff, admin | Verify cryptographic integrity of ledger chain |
+| GET | `/api/ledger` | verifier, registry_staff, buyer, admin | Paginated ledger entries, newest first |
+| GET | `/api/ledger/verify` | verifier, registry_staff, buyer, admin | Verify cryptographic integrity of ledger chain |
 
 ## Pages
 
 | Route | Roles | Shows |
 |---|---|---|
 | `/login` | public | Sign-in + demo accounts (dev) |
-| `/ledger` | verifier, registry_staff, buyer, admin | Audit ledger — placeholder |
+| `/ledger` | verifier, registry_staff, buyer, admin | Paginated audit timeline with chain integrity status |
 | `/admin/users` | admin | User management — placeholder |
 
 ## Data model
@@ -98,7 +100,7 @@ From WBS 9.x and the design report:
 | Table | Key columns | Notes |
 |---|---|---|
 | `users` | email (unique), full_name, organization, role, password_hash, is_active | migration 0001 |
-| `ledger_entries` | id, created_at, action, actor_id, actor_email, entity, entity_id, payload, prev_hash, hash | migration e24ad4024afd (append-only trigger blocks UPDATE/DELETE) |
+| `ledger_entries` | id, created_at, action, actor_id, actor_email, actor_role, entity, entity_id, payload, prev_hash, hash | migrations e24ad4024afd and f13d8a1b0c2e (append-only trigger blocks UPDATE/DELETE) |
 
 ## Depends on / used by
 
@@ -111,6 +113,15 @@ From WBS 9.x and the design report:
 - Should failed sign-ins and 403s go into the ledger or a separate security log?
 
 ## Progress log
+
+### 2026-11-15 · feature/F5-ledger-page
+- Goal: complete #32 on top of the #31 ledger implementation.
+- Plan: add a paginated ledger endpoint; implement the responsive timeline, status alert, and role-aware integrity check; test API and UI behavior; validate and update this doc.
+- Dependency: #31 is not yet merged; this branch is based on its open implementation branch.
+- Decision: expose the read-only chain integrity result to buyers as well as other ledger readers; the mock-up shows the chain status on the shared ledger page.
+- Done: `/api/ledger` returns newest-first pages; the timeline shows action, actor and role snapshot, time, short hash and payload details. Buyers can see the read-only integrity status. Added an additive migration for historical actor-role snapshots.
+- Validation: backend Ruff checks, migration consistency, and all 180 backend tests passed; frontend formatting, lint, typecheck, all 60 frontend tests, and production build passed.
+- Next: after #31 merges, rebase on `main`, rerun checks, then open the #32 PR.
 
 ### 2026-11-14 · feature/F5-ledger-table
 - Goal: store critical actions in an append-only, hash-chained ledger table behind `record_action()` (#31)
