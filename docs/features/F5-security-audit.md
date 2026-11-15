@@ -13,8 +13,9 @@
 
 ## Status
 
-In review (`feature/F5-user-management`): admins can list and create accounts, change roles, and
-deactivate or reactivate users from `/admin/users`. Each change calls `record_action()`.
+In progress (`feature/F5-user-management`): admins can list and create accounts, change roles, and
+deactivate or reactivate users from `/admin/users`. Each change calls `record_action()`; persisted
+audit entries depend on #31.
 
 ## Scope
 
@@ -118,6 +119,8 @@ From WBS 9.x and the design report:
   frontend ESLint, TypeScript, Prettier and production build passed. Tests used a new isolated
   database because the existing local database is stamped at #31's unmerged ledger migration;
   that database was left untouched.
+- Next: after #31 lands, verify admin actions are persisted by the ledger, then complete review and
+  merge #33.
 
 ### 2026-10-27 · main (initial setup)
 - Done: users table, login/logout/me, require_roles, demo seed, frontend sign-in, Guarded routes,
