@@ -13,9 +13,8 @@
 
 ## Status
 
-In progress (`feature/F5-ledger-table`): email + password sign-in, httpOnly JWT cookie, five roles,
-`require_roles()` on the API and role-based menus/route guards on the frontend, seeded demo users.
-Building hash-chained ledger table behind `record_action()` (#31).
+In progress (`feature/F5-ledger-page`, based on #31): sign-in, role checks, and the hash-chained
+ledger are implemented. This step adds a paginated ledger API and user-facing integrity timeline.
 
 ## Scope
 
@@ -71,7 +70,7 @@ From WBS 9.x and the design report:
 | POST | `/api/auth/logout` | any | Clear the session cookie |
 | GET | `/api/auth/me` | signed-in | Current user |
 | GET | `/api/auth/demo-accounts` | public (dev only) | Demo accounts for the sign-in page |
-| GET | `/api/ledger` | verifier, registry_staff, buyer, admin | List ledger entries, newest first |
+| GET | `/api/ledger` | verifier, registry_staff, buyer, admin | Paginated ledger entries, newest first |
 | GET | `/api/ledger/verify` | verifier, registry_staff, admin | Verify cryptographic integrity of ledger chain |
 
 ## Pages
@@ -79,7 +78,7 @@ From WBS 9.x and the design report:
 | Route | Roles | Shows |
 |---|---|---|
 | `/login` | public | Sign-in + demo accounts (dev) |
-| `/ledger` | verifier, registry_staff, buyer, admin | Audit ledger — placeholder |
+| `/ledger` | verifier, registry_staff, buyer, admin | Paginated audit timeline with chain integrity status |
 | `/admin/users` | admin | User management — placeholder |
 
 ## Data model
@@ -100,6 +99,11 @@ From WBS 9.x and the design report:
 - Should failed sign-ins and 403s go into the ledger or a separate security log?
 
 ## Progress log
+
+### 2026-11-15 · feature/F5-ledger-page
+- Goal: complete #32 on top of the #31 ledger implementation.
+- Plan: add a paginated ledger endpoint; implement the responsive timeline, status alert, and role-aware integrity check; test API and UI behavior; validate and update this doc.
+- Dependency: #31 is not yet merged; this branch is based on its open implementation branch.
 
 ### 2026-11-14 · feature/F5-ledger-table
 - Goal: store critical actions in an append-only, hash-chained ledger table behind `record_action()` (#31)
