@@ -13,9 +13,8 @@
 
 ## Status
 
-Partly in place (app shell): email + password sign-in, httpOnly JWT cookie, five roles,
-`require_roles()` on the API and role-based menus/route guards on the frontend, seeded demo users.
-Ledger, user management and separation-of-duties enforcement not started.
+In progress (`feature/F5-user-management`): implementing admin-only user listing, creation, role
+changes and deactivation, with audit calls and the `/admin/users` page.
 
 ## Scope
 
@@ -63,6 +62,9 @@ From WBS 9.x and the design report:
 | POST | `/api/auth/logout` | any | Clear the session cookie |
 | GET | `/api/auth/me` | signed-in | Current user |
 | GET | `/api/auth/demo-accounts` | public (dev only) | Demo accounts for the sign-in page |
+| GET | `/api/admin/users` | admin | List users without credential data |
+| POST | `/api/admin/users` | admin | Create a user with an admin-provided initial password |
+| PATCH | `/api/admin/users/{user_id}` | admin | Change a user's role or active status |
 | GET | `/api/ledger` | verifier, registry_staff, buyer, admin | Ledger entries (placeholder) |
 
 ## Pages
@@ -71,7 +73,7 @@ From WBS 9.x and the design report:
 |---|---|---|
 | `/login` | public | Sign-in + demo accounts (dev) |
 | `/ledger` | verifier, registry_staff, buyer, admin | Audit ledger — placeholder |
-| `/admin/users` | admin | User management — placeholder |
+| `/admin/users` | admin | Search/list accounts, create users, change roles and deactivate accounts |
 
 ## Data model
 
@@ -91,6 +93,15 @@ From WBS 9.x and the design report:
 - Should failed sign-ins and 403s go into the ledger or a separate security log?
 
 ## Progress log
+
+### 2026-11-15 · feature/F5-user-management
+- Goal: complete #33 with admin-only user listing, creation, role changes and deactivation.
+- Decision: an admin supplies the new account's initial password because no invite or reset flow
+  exists; the API stores only its password hash and never returns the password.
+- Plan: add typed admin-user schemas and service/router with role enforcement and `record_action()`
+  calls; cover validation, RBAC, self/last-admin safeguards and audit calls; implement the Users
+  page and focused frontend tests; update this doc and run the relevant Docker checks.
+- Dependency: persisted admin-action audit entries require the hash-chain implementation in #31.
 
 ### 2026-10-27 · main (initial setup)
 - Done: users table, login/logout/me, require_roles, demo seed, frontend sign-in, Guarded routes,
