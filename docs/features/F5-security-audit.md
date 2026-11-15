@@ -13,9 +13,9 @@
 
 ## Status
 
-In progress (`feature/F5-production-settings`): production JWT secrets are validated, login
-cookies use `Secure`, and demo seeding is blocked. Cloud Run Secret Manager settings are documented
-for #38.
+In progress: production JWT secrets are validated, login cookies use `Secure`, and demo seeding is
+blocked (`feature/F5-production-settings`). Hash-chained ledger table behind `record_action()`
+(#31, `feature/F5-ledger-table`).
 
 ## Scope
 
@@ -41,6 +41,14 @@ From WBS 9.x and the design report:
 7. Admins can create users, assign roles and deactivate accounts.
 
 ## Decisions
+
+- 2026-11-14 — **Hash-chained ledger table design (#31)**:
+  `ledger_entries` table with auto-incrementing `id`, `created_at` (UTC), `action` (string),
+  `actor_id` (FK `users.id`, nullable for system actions), `actor_email` (snapshot), `entity`,
+  `entity_id`, `payload` (JSON), `prev_hash` (hex sha256), and `hash` (hex sha256).
+  Formula: `hash = sha256(prev_hash || canonical_json(entry))`. Genesis `prev_hash` is `'0' * 64`.
+  An `immutable_ledger_entries` PostgreSQL BEFORE UPDATE OR DELETE trigger blocks modifications
+  at the DB level. `record_action()` signature remains unchanged and inserts into caller transaction.
 
 - 2026-10-28 — **F2 added a `record_action()` stub** in `backend/app/features/audit/ledger.py`
   (`record_action(db, *, actor, action, entity, entity_id, payload)`, logs only). Replace the body
@@ -74,7 +82,8 @@ From WBS 9.x and the design report:
 | POST | `/api/auth/logout` | any | Clear the session cookie |
 | GET | `/api/auth/me` | signed-in | Current user |
 | GET | `/api/auth/demo-accounts` | public (dev only) | Demo accounts for the sign-in page |
-| GET | `/api/ledger` | verifier, registry_staff, buyer, admin | Ledger entries (placeholder) |
+| GET | `/api/ledger` | verifier, registry_staff, buyer, admin | List ledger entries, newest first |
+| GET | `/api/ledger/verify` | verifier, registry_staff, admin | Verify cryptographic integrity of ledger chain |
 
 ## Pages
 
@@ -89,7 +98,7 @@ From WBS 9.x and the design report:
 | Table | Key columns | Notes |
 |---|---|---|
 | `users` | email (unique), full_name, organization, role, password_hash, is_active | migration 0001 |
-| — | | `ledger_entries` (seq, action, actor_id, payload, prev_hash, hash) to be designed |
+| `ledger_entries` | id, created_at, action, actor_id, actor_email, entity, entity_id, payload, prev_hash, hash | migration e24ad4024afd (append-only trigger blocks UPDATE/DELETE) |
 
 ## Depends on / used by
 
@@ -102,6 +111,17 @@ From WBS 9.x and the design report:
 - Should failed sign-ins and 403s go into the ledger or a separate security log?
 
 ## Progress log
+
+### 2026-11-14 · feature/F5-ledger-table
+- Goal: store critical actions in an append-only, hash-chained ledger table behind `record_action()` (#31)
+- Done:
+  - `ledger_entries` model and Alembic migration `e24ad4024afd`.
+  - Database-level trigger `ledger_entries_no_update_delete` raising `insufficient_privilege` on UPDATE or DELETE.
+  - Implemented `record_action()` in `backend/app/features/audit/ledger.py` with transaction advisory lock and deterministic canonical JSON hash calculation `sha256(prev_hash || canonical_json(entry))`.
+  - Added `verify_ledger_chain(db)` utility to detect tampering, gap deletion, or link breakage.
+  - Added `GET /api/ledger` and `GET /api/ledger/verify` with role checks.
+  - Tests: 9 backend tests in `backend/tests/test_audit.py` covering hash chaining, canonical JSON determinism, tampering detection, deletion gap detection, DB trigger enforcement, rollback on caller error, and RBAC; all 24 boundary tests pass with live ledger writes.
+- Next: frontend LedgerPage UI from mock-up, admin user management endpoints & UI, separation-of-duties helper.
 
 ### 2026-10-27 · main (initial setup)
 - Done: users table, login/logout/me, require_roles, demo seed, frontend sign-in, Guarded routes,
