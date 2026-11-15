@@ -1,3 +1,5 @@
+import pytest
+
 from app.auth.models import Role, User
 from app.core.security import verify_password
 
@@ -195,3 +197,38 @@ def test_user_update_rejects_empty_patch_and_missing_user(client, login):
 
     assert client.patch("/api/admin/users/1", json={}).status_code == 422
     assert client.patch("/api/admin/users/999999", json={"is_active": False}).status_code == 404
+
+
+def test_admin_can_create_user_on_the_team_local_domain(client, login):
+    # demo and team accounts use *.local (e.g. staff@crvr.local), a reserved domain EmailStr rejects
+    login(Role.ADMIN)
+
+    res = client.post(
+        "/api/admin/users",
+        json={
+            "email": "new.verifier@crvr.local",
+            "full_name": "New Verifier",
+            "role": "verifier",
+            "initial_password": "a-long-initial-password",
+        },
+    )
+
+    assert res.status_code == 201
+    assert res.json()["email"] == "new.verifier@crvr.local"
+
+
+@pytest.mark.parametrize("email", ["no-at-sign", "a@b", "two@@example.com", "sp ace@example.com"])
+def test_create_user_rejects_malformed_email(client, login, email):
+    login(Role.ADMIN)
+
+    res = client.post(
+        "/api/admin/users",
+        json={
+            "email": email,
+            "full_name": "Bad Email",
+            "role": "buyer",
+            "initial_password": "a-long-initial-password",
+        },
+    )
+
+    assert res.status_code == 422

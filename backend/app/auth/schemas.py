@@ -1,10 +1,13 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+import re
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.auth.models import Role
 
-# Emails are plain strings here: sign-in only compares them with stored accounts.
-# Validate format (EmailStr) where accounts are created, so demo/test domains like
-# *.local keep working.
+# Emails are plain strings: sign-in only compares them with stored accounts. Where accounts are
+# created, only the basic shape is checked (not EmailStr), because EmailStr rejects reserved
+# domains such as *.local, which the demo and team accounts use (e.g. staff@crvr.local).
+EMAIL_SHAPE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class LoginRequest(BaseModel):
@@ -29,7 +32,7 @@ class AdminUserOut(UserOut):
 class AdminUserCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    email: EmailStr = Field(max_length=255)
+    email: str = Field(max_length=255)
     full_name: str = Field(min_length=1, max_length=120)
     organization: str | None = Field(default=None, max_length=160)
     role: Role
@@ -39,6 +42,13 @@ class AdminUserCreate(BaseModel):
     @classmethod
     def normalize_email(cls, value: object) -> object:
         return value.strip().lower() if isinstance(value, str) else value
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_shape(cls, value: str) -> str:
+        if not EMAIL_SHAPE.match(value):
+            raise ValueError("Enter a valid email address")
+        return value
 
     @field_validator("full_name", mode="before")
     @classmethod
