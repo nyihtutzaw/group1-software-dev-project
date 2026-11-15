@@ -112,7 +112,7 @@ on their feature: they direct the assistant, review and test its output, and mak
 | Jingqing (F1) | Claude Code (model not recorded) | F1 registration and evidence code, tests and docs |
 | Pyae Phyo Hein (F3) | Antigravity (model not recorded) | F3 verification workflow code, tests and docs |
 | Zay Yar Phyo (F4) | Codex (model not recorded) | F4 public registry code, tests and docs |
-| Put Thitisawat (F5) | Not declared yet | — |
+| Put Thitisawat (F5) | GitHub Copilot (model not recorded) | F5 security and audit code, tests and docs: hash-chained ledger, ledger page, security event log and sign-in lockout, admin user management, production settings |
 
 **How each member used it**
 
@@ -142,7 +142,12 @@ on their feature: they direct the assistant, review and test its output, and mak
     session.
   - **Manual review of each PR:** reads the diff, runs the tests and checks the public registry
     pages in the app before merging.
-- **Put Thitisawat (F5)**: not declared yet.
+- **Put Thitisawat (F5)**: GitHub Copilot
+  - **Context management:** works from `AGENTS.md`, the skills and the F5 context doc
+    ([docs/features/F5-security-audit.md](docs/features/F5-security-audit.md)); each branch starts
+    with a plan entry in the progress log and ends with what was done and how it was checked.
+  - **Manual review of each PR:** reads the diff, runs the backend and frontend tests and checks the
+    ledger, sign-in and user pages in the app before merging.
 
 **Extent (whole team)**
 
