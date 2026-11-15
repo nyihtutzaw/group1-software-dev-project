@@ -13,9 +13,9 @@
 
 ## Status
 
-In progress (`feature/F5-production-settings`): login cookies already use `Secure` in production.
-This branch validates the production JWT secret, prevents production demo seeding, and documents
-the Cloud Run configuration for #38.
+In progress (`feature/F5-production-settings`): production JWT secrets are validated, login
+cookies use `Secure`, and demo seeding is blocked. Cloud Run Secret Manager settings are documented
+for #38.
 
 ## Scope
 
@@ -52,8 +52,19 @@ From WBS 9.x and the design report:
   see [ADR 0002](../decisions/0002-database-backed-authentication.md).
 - 2026-10-27 — Session = JWT (HS256, 8 h) in an httpOnly, SameSite=Lax cookie named
   `crvr_session`; `Secure` in production. The frontend never sees the token.
+- 2026-11-15 — **Production authentication settings (#38)**: production requires a non-default
+  `JWT_SECRET` with at least 32 bytes. Cloud Run supplies it from Secret Manager as an environment
+  variable; the app does not fetch secrets directly. Production blocks demo-data seeding.
 - 2026-10-27 — Roles: `developer`, `verifier`, `registry_staff`, `buyer`, `admin` (Charter FR-10).
 - 2026-10-27 — Ledger lives in a PostgreSQL table (append-only), not a separate service.
+
+### Cloud Run production configuration
+
+- Set `APP_ENV=production`; the login endpoint then sets the cookie's `Secure` flag.
+- Generate a cryptographically random `JWT_SECRET` with `openssl rand -base64 32` and store it in
+  Google Secret Manager. Configure Cloud Run to expose that secret as `JWT_SECRET`, and grant the
+  service account Secret Manager Secret Accessor on that secret.
+- Set `SEED_DEMO_USERS=false`. The seed functions also reject calls when `APP_ENV=production`.
 
 ## API
 
@@ -100,3 +111,7 @@ From WBS 9.x and the design report:
 ### 2026-11-15 · feature/F5-production-settings
 - Goal: complete #38 by making production authentication settings fail safely before Cloud Run deployment.
 - Plan: validate the production JWT secret at settings load, guard demo-data seed functions, test production cookie/secret/seeding behavior, and document Cloud Run Secret Manager configuration.
+- Done: reject the development or shorter-than-32-byte JWT secret in production; keep the login cookie secure in production; prevent both demo seed functions from running in production; document Secret Manager injection and Cloud Run settings.
+- Validation: focused config, seed, and auth tests passed (14); full backend pytest passed; Ruff
+  checks passed and all 67 backend files are formatted. One existing Starlette/httpx deprecation
+  warning remains.

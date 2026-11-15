@@ -1,7 +1,11 @@
 from functools import lru_cache
+from typing import Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+DEVELOPMENT_JWT_SECRET = "dev-only-change-me-in-production"
+MIN_PRODUCTION_JWT_SECRET_BYTES = 32
 
 
 class OverlapRuleSetting(BaseModel):
@@ -14,13 +18,17 @@ class OverlapRuleSetting(BaseModel):
 class Settings(BaseSettings):
     """Runtime configuration, read from environment variables (see docker-compose.yml)."""
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+        hide_input_in_errors=True,
+    )
 
     app_env: str = "development"
     database_url: str = "postgresql+psycopg://crvr:crvr@localhost:5432/crvr"
     test_database_url: str = "postgresql+psycopg://crvr:crvr@localhost:5432/crvr_test"
 
-    jwt_secret: str = "dev-only-change-me-in-production"
+    jwt_secret: str = DEVELOPMENT_JWT_SECRET
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 480
     session_cookie: str = "crvr_session"
@@ -51,6 +59,20 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
+
+    @model_validator(mode="after")
+    def validate_production_jwt_secret(self) -> Self:
+        if self.is_production:
+            secret_length = len(self.jwt_secret.encode("utf-8"))
+            if (
+                self.jwt_secret == DEVELOPMENT_JWT_SECRET
+                or secret_length < MIN_PRODUCTION_JWT_SECRET_BYTES
+            ):
+                raise ValueError(
+                    "Production requires a non-default JWT_SECRET with at least 32 bytes; "
+                    "load it from Secret Manager."
+                )
+        return self
 
 
 @lru_cache
