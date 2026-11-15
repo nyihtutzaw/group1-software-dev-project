@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, FastAPI, Request, Response, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.auth.admin_router import router as admin_users_router
 from app.auth.models import User
 from app.auth.router import router as auth_router
 from app.core.db import get_db
@@ -55,6 +56,7 @@ def health(db: Session = Depends(get_db)) -> dict[str, str]:
 
 
 api.include_router(auth_router)
+api.include_router(admin_users_router)
 api.include_router(registration_router)  # F1
 api.include_router(boundary_router)  # F2
 api.include_router(verification_router)  # F3

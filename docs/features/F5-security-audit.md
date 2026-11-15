@@ -16,8 +16,10 @@
 In progress: production JWT secrets are validated, login cookies use `Secure`, and demo seeding is
 blocked. The hash-chained ledger behind `record_action()` (#31), the paginated ledger API and the
 integrity timeline page are complete. Failed sign-ins and forbidden requests are recorded in a
-separate security log, and repeated sign-in failures are temporarily blocked. Retention periods are
-documented; automated log cleanup is not implemented.
+separate security log, and repeated sign-in failures are temporarily blocked. Admins can list and
+create accounts, change roles, and deactivate or reactivate users from `/admin/users`, and each
+change is written to the ledger. Retention periods are documented; automated log cleanup is not
+implemented.
 
 ## Scope
 
@@ -75,6 +77,11 @@ From WBS 9.x and the design report:
   variable; the app does not fetch secrets directly. Production blocks demo-data seeding.
 - 2026-10-27 — Roles: `developer`, `verifier`, `registry_staff`, `buyer`, `admin` (Charter FR-10).
 - 2026-10-27 — Ledger lives in a PostgreSQL table (append-only), not a separate service.
+- 2026-11-15 — User creation requires an admin-provided initial password of at least 12 characters
+  and at most 72 UTF-8 bytes (bcrypt's input limit). Only the password hash is stored; the password
+  is never returned or included in audit payloads. Admins cannot change their own role or deactivate
+  themselves; active admin rows are locked while changing an admin account to prevent concurrent
+  changes from removing all active admins.
 
 ### Cloud Run production configuration
 
@@ -92,6 +99,9 @@ From WBS 9.x and the design report:
 | POST | `/api/auth/logout` | any | Clear the session cookie |
 | GET | `/api/auth/me` | signed-in | Current user |
 | GET | `/api/auth/demo-accounts` | public (dev only) | Demo accounts for the sign-in page |
+| GET | `/api/admin/users` | admin | List users without credential data |
+| POST | `/api/admin/users` | admin | Create a user with an admin-provided initial password |
+| PATCH | `/api/admin/users/{user_id}` | admin | Change a user's role or active status |
 | GET | `/api/ledger` | verifier, registry_staff, buyer, admin | Paginated ledger entries, newest first |
 | GET | `/api/ledger/verify` | verifier, registry_staff, buyer, admin | Verify cryptographic integrity of ledger chain |
 
@@ -101,7 +111,7 @@ From WBS 9.x and the design report:
 |---|---|---|
 | `/login` | public | Sign-in + demo accounts (dev) |
 | `/ledger` | verifier, registry_staff, buyer, admin | Paginated audit timeline with chain integrity status |
-| `/admin/users` | admin | User management — placeholder |
+| `/admin/users` | admin | List accounts, create users, change roles, and deactivate or reactivate accounts |
 
 ## Data model
 
@@ -121,8 +131,30 @@ From WBS 9.x and the design report:
 - Automatic evidence expiry requires production object-storage lifecycle support; the current local
   filesystem does not enforce the agreed 7-year retention period.
 - Automated deletion of security events after 90 days is not implemented.
+- User invitation, password-change and password-reset flows are not included; users receive their
+  initial password out of band.
 
 ## Progress log
+
+### 2026-11-15 · feature/F5-user-management
+- Goal: complete #33 with admin-only user listing, creation, role changes and deactivation.
+- Decision: an admin supplies the new account's initial password because no invite or reset flow
+  exists; the API stores only its password hash and never returns the password.
+- Plan: add typed admin-user schemas and service/router with role enforcement and `record_action()`
+  calls; cover validation, RBAC, self/last-admin safeguards and audit calls; implement the Users
+  page and focused frontend tests; update this doc and run the relevant Docker checks.
+- Dependency: persisted admin-action audit entries require the hash-chain implementation in #31.
+- Done: `/api/admin/users` supports admin-only list/create/patch; creation normalizes and validates
+  email, rejects duplicates, hashes the initial password, and returns no credential data. Role
+  changes, activation and deactivation emit audit calls; self-access changes are blocked. The
+  responsive page lists accounts and provides create, role-change and confirm-before-deactivate
+  controls. No migration was needed.
+- Validation: 13 backend auth/admin-user tests and 5 Users page tests passed; backend Ruff,
+  frontend ESLint, TypeScript, Prettier and production build passed. Tests used a new isolated
+  database because the existing local database is stamped at #31's unmerged ledger migration;
+  that database was left untouched.
+- Next: after #31 lands, verify admin actions are persisted by the ledger, then complete review and
+  merge #33.
 
 ### 2026-11-15 · feature/F5-security-controls
 - Goal: complete #34 and #35: record failed sign-ins and 403s, enforce temporary login lockout, and document retention periods.
