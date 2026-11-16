@@ -163,3 +163,15 @@ seeds on normal startup. These are fictional demo credits and approvals, never r
   (origin, verification & approval, history, with the authenticity check beside them) and the
   evidence pack opens in a dialog. Search and page live in the URL, so Back returns to the same
   results. No API change.
+
+### 2026-11-16 · feature/F4-real-integrations
+- Goal: #39 real F3-issued credits and #40 F1 buyer-safe evidence summaries, reusing PR #11 and
+  the current `/registry/:id` detail/dialog implementation on main at `bb0940f`.
+- Dependency inspection: PR #11 is merged. #23 and #25 remain open with no implementing open PR.
+  F3 `decide()` moves projects only to `verified`; no credit batch or issuance operation exists.
+  F1 stores real sealed evidence but has no buyer-safe summary service.
+- Plan: establish the Docker test baseline; preserve F4 API/UI and buyer grant enforcement;
+  implement available integration steps and privacy tests; document any unresolved upstream
+  contracts rather than treating approved projects as issued credits.
+- Delivery: local branch/commits and a prepared PR description only. No push, PR creation, merge,
+  issue updates or environment publication without the user's explicit approval.
