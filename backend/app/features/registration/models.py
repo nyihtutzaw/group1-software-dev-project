@@ -18,7 +18,7 @@ class ProjectStatus(enum.StrEnum):
     DRAFT = "draft"  # being filled in by the developer; evidence can still be added
     SUBMITTED = "submitted"  # sealed and waiting for verification (F3)
     VERIFIED = "verified"  # set by F3
-    ISSUED = "issued"  # set by F4
+    ISSUED = "issued"  # set by F3 issuance; the batch is published through F4
 
 
 class EvidenceKind(enum.StrEnum):

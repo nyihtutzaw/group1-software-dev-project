@@ -69,3 +69,11 @@ class ProjectDetail(ProjectOut):
     # F2: why the boundary blocks submission/issuance, or None when it is clear
     boundary_blocked: str | None
     can_edit: bool
+
+
+class BuyerEvidenceSummary(BaseModel):
+    """Only non-personal sealed metadata; no filename, owner, uploader or storage identifiers."""
+
+    kind: EvidenceKind
+    sealed_at: datetime
+    sha256: str

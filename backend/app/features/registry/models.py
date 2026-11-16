@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -17,6 +17,10 @@ class RegistryCredit(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # Source links are internal; F3 owns approval and F4 reuses this row as its issued batch.
+    source_project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), index=True)
+    source_approval_id: Mapped[int | None] = mapped_column(ForeignKey("approvals.id"), unique=True)
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     serial: Mapped[str] = mapped_column(String(120), unique=True)
     project_reference: Mapped[str] = mapped_column(String(80), index=True)
     project_name: Mapped[str] = mapped_column(String(200))

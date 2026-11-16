@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.features.registration.schemas import BuyerEvidenceSummary
+
 
 class PublicationIn(BaseModel):
     """Trusted F3 handoff of public fields, not an HTTP issuance request."""
@@ -57,8 +59,10 @@ class EvidenceOut(BaseModel):
 
 class EvidencePackOut(BaseModel):
     serial: str
-    items: list[EvidenceOut]
-    notice: str = "Reviewed buyer-safe summaries only. Original evidence files are not exposed."
+    items: list[BuyerEvidenceSummary | EvidenceOut]
+    notice: str = (
+        "Sealed evidence metadata only: kind, date and SHA-256. Original files are not exposed."
+    )
 
 
 class IntegrityOut(BaseModel):

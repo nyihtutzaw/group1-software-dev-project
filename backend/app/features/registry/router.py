@@ -15,7 +15,6 @@ from app.features.registry.schemas import (
     CreditEventOut,
     CreditOut,
     CreditPage,
-    EvidenceOut,
     EvidencePackOut,
     IntegrityOut,
 )
@@ -67,7 +66,13 @@ def credit_evidence(
 ) -> EvidencePackOut:
     credit, items = service.evidence_pack(db, credit_id, user)
     return EvidencePackOut(
-        serial=credit.serial, items=[EvidenceOut.model_validate(item) for item in items]
+        serial=credit.serial,
+        items=items,
+        notice=(
+            "Synthetic demo summaries only. No real evidence is represented."
+            if credit.is_demo
+            else EvidencePackOut.model_fields["notice"].default
+        ),
     )
 
 
