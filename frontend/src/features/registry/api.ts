@@ -27,9 +27,14 @@ export type CreditDetail = Credit & {
   monitoring: 'not_available'
   ledger_status: 'not_available'
 }
+export type BuyerEvidenceSummary = {
+  kind: 'land_title' | 'survey' | 'photo' | 'gps' | 'spreadsheet' | 'additionality_proof' | 'other'
+  sealed_at: string
+  sha256: string
+}
 export type EvidencePack = {
   serial: string
-  items: { id: number; title: string; summary: string }[]
+  items: (BuyerEvidenceSummary | { id: number; title: string; summary: string })[]
   notice: string
 }
 export type Integrity = {

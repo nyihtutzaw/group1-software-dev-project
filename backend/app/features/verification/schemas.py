@@ -132,3 +132,12 @@ class VerifierOut(BaseModel):
     id: int
     full_name: str
     email: str
+
+
+class IssueIn(BaseModel):
+    """Explicit staff-confirmed batch values; approval alone does not issue estimates."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    country: str = Field(min_length=2, max_length=100)
+    vintage: int = Field(ge=1900, le=2200, strict=True)
+    quantity: int = Field(gt=0, le=1_000_000_000, strict=True)

@@ -131,6 +131,35 @@ describe('Public registry', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('renders real F1 metadata in the evidence dialog without filenames or owner data', async () => {
+    const sha256 = 'ab'.repeat(32)
+    responses({
+      '/api/registry/credits/7/evidence': {
+        serial: credit.serial,
+        notice: 'Sealed evidence metadata only: kind, date and SHA-256.',
+        items: [
+          {
+            kind: 'land_title',
+            sealed_at: '2026-01-02T00:00:00Z',
+            sha256,
+            filename: 'private-owner-phone.pdf',
+            owner_name: 'Private owner',
+          },
+        ],
+      },
+    })
+    renderRegistry(makeUser('buyer'))
+    const panel = await selectCredit()
+    await userEvent.click(within(panel).getByRole('button', { name: 'Evidence pack' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Evidence pack' })
+    expect(within(dialog).getByText('land title')).toBeInTheDocument()
+    expect(within(dialog).getByText('2 Jan 2026')).toBeInTheDocument()
+    expect(within(dialog).getByText(sha256)).toBeInTheDocument()
+    expect(dialog).not.toHaveTextContent('private-owner-phone')
+    expect(dialog).not.toHaveTextContent('Private owner')
+    expect(within(dialog).queryByRole('link')).not.toBeInTheDocument()
+  })
+
   it('handles empty evidence and denied evidence without exposing data', async () => {
     const fetch = responses({
       '/api/registry/credits/7/evidence': { serial: credit.serial, notice: '', items: [] },

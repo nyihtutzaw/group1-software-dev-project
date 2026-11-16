@@ -1,7 +1,7 @@
 """Public read model and trusted handoff functions for F1/F3 integration.
 
 No HTTP write routes: F3 must validate approval/issuance before calling publish_credit.
-F1 must review/redact evidence before adding buyer-visible summaries. F5 ledger
+F1 supplies an allowlisted projection of real sealed evidence metadata. F5 ledger
 verification remains explicitly unavailable; a stored digest is not an audit seal.
 """
 
@@ -16,13 +16,16 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.models import Role, User
+from app.core.config import get_settings
+from app.features.registration.schemas import BuyerEvidenceSummary
+from app.features.registration.service import buyer_evidence_summaries
 from app.features.registry.models import (
     RegistryCredit,
     RegistryCreditEvent,
     RegistryEvidence,
     RegistryProjectAccess,
 )
-from app.features.registry.schemas import CreditPage, PublicationIn
+from app.features.registry.schemas import CreditPage, EvidenceOut, PublicationIn
 
 
 def _staff(actor: User) -> None:
@@ -43,9 +46,10 @@ def publish_credit(
 ) -> RegistryCredit:
     """Persist an already-approved public snapshot in the caller's transaction.
 
-    The source approval cannot be looked up until F3 exists. Callers must verify
-    its reference, approved quantity, serial allocation and maker/checker chain.
-    Serial is opaque here; F4 must not invent a competing serial allocator.
+    F3's issuance service validates the real approval, supplies the batch values
+    and links this row to the source project/approval before committing. The demo
+    command also uses this low-level handoff; it marks synthetic rows explicitly.
+    Serial allocation belongs to F3, not to registry read endpoints.
     """
     _staff(actor)
     if developer.role != Role.DEVELOPER or developer.id == actor.id:
@@ -104,10 +108,18 @@ def _buyer_projects(user: User) -> Select[tuple[str]]:
     )
 
 
+def _visible_credits() -> Select[tuple[RegistryCredit]]:
+    stmt = select(RegistryCredit)
+    settings = get_settings()
+    if settings.app_env != "development" or not settings.seed_demo_users:
+        stmt = stmt.where(RegistryCredit.is_demo.is_(False))
+    return stmt
+
+
 def list_credits(
     db: Session, *, user: User | None, q: str, page: int, page_size: int
 ) -> CreditPage:
-    stmt = select(RegistryCredit)
+    stmt = _visible_credits()
     if user and user.role == Role.BUYER:
         stmt = stmt.where(RegistryCredit.project_reference.in_(_buyer_projects(user)))
     if term := q.strip():
@@ -129,7 +141,7 @@ def list_credits(
 
 
 def get_credit(db: Session, credit_id: int, user: User | None) -> RegistryCredit:
-    stmt = select(RegistryCredit).where(RegistryCredit.id == credit_id)
+    stmt = _visible_credits().where(RegistryCredit.id == credit_id)
     if user and user.role == Role.BUYER:
         stmt = stmt.where(RegistryCredit.project_reference.in_(_buyer_projects(user)))
     credit = db.scalar(stmt)
@@ -140,12 +152,23 @@ def get_credit(db: Session, credit_id: int, user: User | None) -> RegistryCredit
 
 def evidence_pack(
     db: Session, credit_id: int, user: User
-) -> tuple[RegistryCredit, list[RegistryEvidence]]:
-    # Grants apply even to direct requests with guessed credit IDs.
+) -> tuple[RegistryCredit, list[BuyerEvidenceSummary | EvidenceOut]]:
+    # Authorize the credit before even asking F1 for the project's safe metadata.
+    if not user.is_active or user.role not in (Role.BUYER, Role.REGISTRY_STAFF, Role.ADMIN):
+        raise HTTPException(403, "Buyer or registry staff access required")
     credit = get_credit(db, credit_id, user)
-    items = db.scalars(
-        select(RegistryEvidence)
-        .where(RegistryEvidence.credit_id == credit.id, RegistryEvidence.buyer_visible.is_(True))
-        .order_by(RegistryEvidence.id)
-    ).all()
-    return credit, list(items)
+    if credit.is_demo:
+        items = db.scalars(
+            select(RegistryEvidence)
+            .where(
+                RegistryEvidence.credit_id == credit.id, RegistryEvidence.buyer_visible.is_(True)
+            )
+            .order_by(RegistryEvidence.id)
+        )
+        return credit, [EvidenceOut.model_validate(item) for item in items]
+    if credit.source_project_id is None:
+        return (
+            credit,
+            [],
+        )  # Legacy unlinked publications must never borrow a guessed project's files.
+    return credit, list(buyer_evidence_summaries(db, credit.source_project_id))

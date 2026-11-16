@@ -6,11 +6,15 @@ from sqlalchemy.orm import Session
 from app.auth.deps import require_roles
 from app.auth.models import Role, User
 from app.core.db import get_db
+from app.features.registry.models import RegistryCredit
+from app.features.registry.schemas import CreditOut
 from app.features.verification import service
+from app.features.verification.issuance import issue_credits
 from app.features.verification.schemas import (
     ApprovalIn,
     AssignIn,
     ChainOut,
+    IssueIn,
     NoteOut,
     QueueItem,
     QueueOut,
@@ -98,3 +102,15 @@ def chain(
 ) -> ChainOut:
     """The full verification chain for one project."""
     return service.project_chain(db, user, project_id)
+
+
+@router.post(
+    "/projects/{project_id}/issue", response_model=CreditOut, status_code=status.HTTP_201_CREATED
+)
+def issue_project_credits(
+    project_id: int,
+    body: IssueIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles(*STAFF_ROLES)),
+) -> RegistryCredit:
+    return issue_credits(db, user, project_id, body)

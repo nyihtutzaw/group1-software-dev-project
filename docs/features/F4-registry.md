@@ -13,10 +13,12 @@
 
 ## Status
 
-In progress — F4's persisted read model, API and responsive UI are implemented and tested.
-Public search, buyer project grants, reviewed evidence summaries and credit lifecycle history
-work. Integration with real F1 evidence, F3 approval/issuance and the F5 audit ledger remains
-blocked by those features being placeholders. No automatic issuance or ledger authenticity claim.
+Issues #39 and #40 implemented locally on `feature/F4-real-integrations`, based on main `bb0940f`.
+Reuses merged PR #11 and the current registry table, credit page and evidence dialog. Real F3
+issuance publishes into the existing F4 batch table; evidence reads F1's safe sealed metadata.
+Because #23/#25 were absent on main, this branch includes their minimal service prerequisites
+(see F1/F3 docs), which require cross-feature review. No remote issue status was changed.
+Independent F4 ledger authenticity integration and entitlement administration remain separate work.
 
 ## Scope
 
@@ -49,7 +51,7 @@ From WBS 8.x and the design report:
 |---|---|---|---|
 | GET | `/api/registry/credits?q=&page=1&page_size=20` | public | Search published credits; literal case-insensitive project, reference, serial or country match; newest vintage first |
 | GET | `/api/registry/credits/{id}` | public | Public origin, approval and verification references, lifecycle history, explicit monitoring/ledger availability |
-| GET | `/api/registry/credits/{id}/evidence` | buyer, registry staff, admin | Reviewed buyer-safe evidence summaries; no original uploads |
+| GET | `/api/registry/credits/{id}/evidence` | buyer, registry staff, admin | F1 buyer-safe kind/date/SHA-256 metadata; no original uploads |
 | GET | `/api/registry/credits/{id}/integrity` | public | Compare public publication fields with stored SHA-256 digest; **not** independent ledger verification |
 
 List response: `{items, total, page, page_size}`. Default page size 20, maximum 100. Search
@@ -71,35 +73,42 @@ No HTTP write routes are exposed.
 
 | Table | Key columns | Notes |
 |---|---|---|
-| `registry_credits` | unique serial, project reference/name, country, vintage, quantity, methodology, verifier/approval references, dates, status, digest | Immutable issuance snapshot plus lifecycle status; private developer/publisher user IDs excluded from API schemas |
+| `registry_credits` | unique serial, project reference/name, country, vintage, quantity, methodology, verifier/approval references, dates, status, digest | Issuance snapshot plus status, source project/approval FKs and explicit `is_demo`; private IDs excluded from responses |
 | `registry_credit_events` | credit ID, issued/retired/revoked, timestamp | Public lifecycle history, separate from F5's tamper-evident ledger |
 | `registry_project_access` | project reference + buyer ID composite key | Explicit buyer grants, default deny |
-| `registry_evidence` | credit ID, title, summary, internal source reference, buyer-visible flag | Default hidden; only reviewed/redacted buyer-safe summaries may be marked visible |
+| `registry_evidence` | credit ID, title, summary, internal source reference, buyer-visible flag | Legacy synthetic demo summaries only; never used as fallback for real credits |
 
 Migration: `20261028_b873ff0f1830_add_registry_publications.py` after `0001`. No F1/F3/F5 tables
 are created by F4, and no dependency or lockfile changes are needed.
 
 ### Handoff contract for F1/F3/F5
 
-- F3 calls `registry.service.publish_credit(db, data=PublicationIn(...), developer=..., actor=...)`
-  **only after** validating the source approval, approved quantity, serial allocation and full
-  maker/checker chain. F4 additionally requires active staff/admin, an independent developer,
-  timezone-aware sign-off before issuance, non-future issuance and a unique serial. The caller
-  commits the surrounding transaction so issuance and registry publication can be atomic.
-- The serial is opaque. F4 does not allocate serial ranges or independently establish approval.
-  `verification_status=approved` describes the trusted publication contract, not a live F3 lookup.
-- F3 calls `change_status` for active → retired/revoked. It locks the credit, rejects repeat/terminal
-  transitions and appends history in the same transaction. The caller commits.
-- Authorised provisioning code adds `RegistryProjectAccess` for a buyer and a project reference.
-  There is no self-service grant endpoint; F5/admin integration must manage real entitlements.
-- F1 must review and redact text **before** adding a buyer-visible `RegistryEvidence` summary.
-  This is an explicit allowlist, not automatic PII detection. Unreviewed rows default hidden.
-  F4 never reads original files or exposes internal source references, contacts or storage paths.
-  Only public-safe project/verifier names and references may be handed to `PublicationIn`.
-- F5 must supply a real ledger reference and verification implementation before audit authenticity
-  can be shown. Current digest checks only compare publication fields with a co-stored digest;
-  they do not cover lifecycle history, replace a signature or prove origin. Both API and UI state
-  that independent ledger verification is unavailable. Monitoring remains deferred.
+- F3's staff-only `POST /api/verifications/projects/{id}/issue` validates the approved chain and
+  F2 gate, then calls the existing F4 `publish_credit`. `registry_credits` is the issued batch;
+  list/detail endpoints already read it, so there is no separate registry copy or sync job.
+- Additive migration `ea0deeaddd26` (after `a6c41d9e8f20`) adds nullable source project/approval FKs,
+  a unique approval constraint, and `is_demo` defaulting false. Existing public fields/history and
+  credit IDs remain unchanged. Only the three exact legacy demo serial/reference pairs are
+  marked synthetic; no real project/approval links are guessed for old publications.
+- Explicit issuance supplies staff-confirmed country, vintage and tonnes; estimates are not
+  automatically issued. One batch per approval, deterministic serial range and independent
+  maker/checker checks are documented in F3. Source FKs and publisher/developer IDs stay internal.
+- Buyer grants in `registry_project_access` continue to filter list/detail/integrity/evidence.
+  Real source links do not grant access automatically. Entitlement provisioning remains an
+  authorised administrative operation, not buyer self-service.
+- For a real credit, F4 authorizes access **before** calling F1
+  `buyer_evidence_summaries(db, credit.source_project_id)`. Each item is exactly
+  `{kind, sealed_at, sha256}`. The dialog shows these fields, with no filenames, owner/uploader
+  IDs, contacts, internal paths, private project text or file download link. No raw bytes are read.
+- An old non-demo publication without an explicit source link returns an empty pack. It never
+  borrows a project's files by matching a serial/reference and never falls back to legacy text.
+- Synthetic demo packs retain `{id, title, summary}` for the existing local demonstration only.
+  Demo credits are hidden from every read endpoint outside `APP_ENV=development`, or whenever
+  `SEED_DEMO_USERS` is false, including when demo rows remain in the database.
+- F3 writes real `credit.issued` entries through F5's hash-chained ledger in the issuance
+  transaction. F4's independent authenticity endpoint is still the original publication-digest
+  check, explicitly reporting ledger verification as unavailable. It is not upgraded by this work.
+  Monitoring remains deferred.
 
 ### Local demonstration
 
@@ -111,7 +120,7 @@ docker compose exec backend python -m app.features.registry.demo
 
 This opt-in command is idempotent and rejects non-development environments or disabled demo
 accounts. It creates three clearly labelled synthetic records and reviewed synthetic summaries;
-only two project grants go to `buyer@crvr.local`. The third remains publicly discoverable but is
+Each credit is marked `is_demo`; only two project grants go to `buyer@crvr.local`. The third remains publicly discoverable but is
 not accessible to that signed-in buyer. One credit is retired to demonstrate history. Nothing
 seeds on normal startup. These are fictional demo credits and approvals, never real issuance.
 
@@ -121,8 +130,8 @@ seeds on normal startup. These are fictional demo credits and approvals, never r
 
 ## Open questions
 
-- F3 must choose the actual issuance entry point and serial allocator, then call the trusted handoff.
-- F1 must supply reviewed summaries from real evidence; originals remain outside this API.
+- Cross-feature review of the minimal #23/#25 prerequisites included on this local branch.
+- Multiple issuance batches or vintages per approval require a separate issuance policy.
 - F5 must integrate entitlement administration and independent ledger authenticity verification.
 
 ## Progress log
@@ -163,3 +172,35 @@ seeds on normal startup. These are fictional demo credits and approvals, never r
   (origin, verification & approval, history, with the authenticity check beside them) and the
   evidence pack opens in a dialog. Search and page live in the URL, so Back returns to the same
   results. No API change.
+
+### 2026-11-16 · feature/F4-real-integrations
+- Goal: #39 real F3-issued credits and #40 F1 buyer-safe evidence summaries, reusing PR #11 and
+  the current `/registry/:id` detail/dialog implementation on main at `bb0940f`.
+- Dependency inspection: PR #11 is merged. #23 and #25 remain open with no implementing open PR.
+  F3 `decide()` moves projects only to `verified`; no credit batch or issuance operation exists.
+  F1 stores real sealed evidence but has no buyer-safe summary service.
+- Plan: establish the Docker test baseline; preserve F4 API/UI and buyer grant enforcement;
+  implement available integration steps and privacy tests; document any unresolved upstream
+  contracts rather than treating approved projects as issued credits.
+- Delivery: local branch/commits and a prepared PR description only. No push, PR creation, merge,
+  issue updates or environment publication without the user's explicit approval.
+
+- Implemented #39: real F3 staff issuance uses the existing F4 batch and read endpoints, explicit
+  internal source links, unique approval protection, local-only demo visibility and legacy backfill.
+- Implemented #40: the existing evidence dialog consumes the real F1 per-project safe service;
+  buyer grant checks precede retrieval and sensitive metadata/raw bytes are excluded.
+- Cross-feature code changes: F1 safe summary schema/service; F3 explicit issuance schema/service/
+  route. No new dependencies or shared core/auth/UI-kit/layout changes.
+- Validation: 221 backend tests and 66 frontend tests passed, backend lint/format/schema drift,
+  frontend lint/format/typecheck/production build, and fresh database migration/legacy backfill/
+  downgrade/reapply checks. One existing Starlette/httpx deprecation warning remains.
+- Environment: built repository images with a local CA-secret override; the restored old database
+  has a stale pre-F2 schema. Preserved its volumes and used a separate `crvr-f4-integration` stack
+  with fresh volumes to verify the complete current migration chain without altering old data.
+- Live browser validation: created a clearly labelled synthetic smoke-test project through real
+  F1/F2/F3 APIs (not the registry demo seed), issued it, and opened `/registry/1`. Guest evidence
+  access is disabled; the granted local buyer sees only kind/date/full SHA-256. Checked 1280 px
+  desktop and 420 px mobile in light/dark themes, no page/dialog horizontal overflow, and no
+  confidential filename/content in the dialog. Test data lives only in the isolated local stack.
+- Review preparation: local commits only; no push, PR creation, merge, GitHub issue mutation or
+  environment configuration/publication performed. PR text saved outside the checkout for review.

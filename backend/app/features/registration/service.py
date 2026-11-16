@@ -22,7 +22,13 @@ from app.features.audit.ledger import record_action
 from app.features.boundary.models import BLOCKING_STATUSES, OverlapFlag
 from app.features.boundary.service import issuance_blocked
 from app.features.registration.models import EvidenceFile, EvidenceKind, Project, ProjectStatus
-from app.features.registration.schemas import EvidenceOut, ProjectDetail, ProjectIn, ProjectOut
+from app.features.registration.schemas import (
+    BuyerEvidenceSummary,
+    EvidenceOut,
+    ProjectDetail,
+    ProjectIn,
+    ProjectOut,
+)
 
 # FR-02 / WBS 4.2.1: documents, photographs, spreadsheets, GPS and land records
 EVIDENCE_EXTENSIONS = {
@@ -344,3 +350,20 @@ def project_detail(db: Session, project: Project, user: User) -> ProjectDetail:
         boundary_blocked=issuance_blocked(db, project.id),
         can_edit=can_edit(project, user),
     )
+
+
+def buyer_evidence_summaries(db: Session, project_id: int) -> list[BuyerEvidenceSummary]:
+    """F4 internal handoff (#23): caller must authorize access to this project first.
+
+    Select only allowlisted columns, never load/serialize a project detail or filename.
+    This is sealed metadata, not a promise that original file contents are redacted.
+    """
+    rows = db.execute(
+        select(EvidenceFile.kind, EvidenceFile.sealed_at, EvidenceFile.sha256)
+        .where(EvidenceFile.project_id == project_id)
+        .order_by(EvidenceFile.sealed_at, EvidenceFile.id)
+    )
+    return [
+        BuyerEvidenceSummary(kind=kind, sealed_at=sealed_at, sha256=sha256)
+        for kind, sealed_at, sha256 in rows
+    ]

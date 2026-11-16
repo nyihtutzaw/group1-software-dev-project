@@ -79,6 +79,7 @@ From WBS 7.x and the design report:
 | GET | `/api/verifications/assignments/{id}` | assigned verifier, registry_staff, admin | Evidence summary, F2 overlap check, checklist, chain |
 | POST | `/api/verifications/assignments/{id}/report` | assigned verifier | Checklist + note: `sign_off` or `request_changes` |
 | POST | `/api/verifications/reports/{id}/decision` | registry_staff, admin, not the maker or owner | Approve or reject a sign-off with a rationale |
+| POST | `/api/verifications/projects/{id}/issue` | registry_staff, admin (independent of maker/owner) | Explicit post-approval issuance; returns the F4 credit batch (201) |
 | GET | `/api/verifications/projects/{id}/chain` | owner, assigned verifier, registry_staff, admin | Full chain for one project |
 | GET | `/api/verifications/notes` | developer (own projects) | Latest "request changes" note |
 
@@ -157,3 +158,29 @@ From WBS 7.x and the design report:
   in tabs grouped by where each assignment is in the maker-checker flow, as a compact table, and
   each row opens `/verify/:id` with its own Review / Evidence & checks / History tabs and a summary
   panel. Staff open on "Awaiting approval" when something is waiting. No API change.
+
+### 2026-11-16 · feature/F4-real-integrations (#25 prerequisite / #39)
+- Added `issuance.issue_credits` behind `POST /api/verifications/projects/{id}/issue`.
+  A registry staff member/admin explicitly triggers issuance **after** staff approval. Approval
+  still sets `verified`; it does not silently turn estimated removal into issued tonnes.
+- Request: `{"country":"Thailand","vintage":2026,"quantity":73}`. These are staff-confirmed
+  public country and batch values; F1 has no country field and only stores estimated tonnes.
+  Vintage must fall in `[crediting_start_year, crediting_end_year)` and cannot be in the future.
+  Quantity is a strict positive integer, capped at 1 billion (not copied from the estimate).
+- Requires a verified, unissued project, its approved assignment and latest signed-off report,
+  an approved staff decision, complete checklist, and independent approver/issuer (neither
+  verifier nor project owner). Calls F2 `issuance_blocked()` immediately before issuance.
+- Reuses F4 `registry_credits` as the authoritative batch rather than creating a second credits
+  table: public snapshot, serial, vintage and quantity plus internal source project/approval FKs.
+  Serial format: `<project-code>-<vintage>-A<approval-id:08d>-000000001-<quantity:09d>`.
+  The approval ID gives each batch a unique namespace; one batch per approval. A second issue
+  request returns 409 with no second credit, history row or issuance entry. Subsequent vintages
+  or multiple batches per approval are outside this minimal prerequisite and need their own policy.
+- Locks/refetches project and assignment, publishes through existing F4 `publish_credit`, changes
+  the project to `issued`, and writes `credit.issued` through the real F5 `record_action`.
+  The event contains credit/approval IDs, serial, vintage and quantity. Publication, source links,
+  lifecycle event, project status and audit write share one transaction; ledger failure rolls back
+  all issuance changes. Existing sign-off/approval APIs and UI remain unchanged.
+- Real tests cover registration/upload/boundary/submission → sign-off → approve → issue → public
+  registry, repeated issuance, unauthorized roles, invalid states/values, live F2 blocking and
+  rollback when audit writing fails. This supplies the minimal #25 prerequisite locally for #39.

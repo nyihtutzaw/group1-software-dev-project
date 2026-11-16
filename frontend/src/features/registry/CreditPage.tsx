@@ -150,8 +150,8 @@ function CreditBody({
           <Card className="p-4">
             <p className="text-sm font-semibold">Check this credit</p>
             <p className="mt-1 text-[13px] text-faint">
-              Compare the published record with its stored fingerprint, or read the reviewed
-              evidence behind it.
+              Compare the published record with its stored fingerprint, or read the reviewed sealed
+              evidence metadata behind it.
             </p>
             <div className="mt-4 grid gap-2.5">
               <Button disabled={pending !== null} onClick={() => void load('integrity')}>
@@ -176,7 +176,7 @@ function CreditBody({
               ) : !mayReadEvidence ? (
                 'Evidence packs require buyer, registry staff or admin access.'
               ) : (
-                'Evidence packs contain reviewed buyer-safe summaries. Original files are not exposed.'
+                'Evidence packs show kind, sealed date and SHA-256 only. Original files are not exposed.'
               )}
             </p>
           </Card>
@@ -202,16 +202,28 @@ function CreditBody({
             {pack.notice && <p className="mb-3 text-sm text-faint">{pack.notice}</p>}
             {pack.items.length === 0 ? (
               <EmptyState icon="registry" title="No permitted evidence">
-                No reviewed evidence summaries are available for this credit.
+                No buyer-safe sealed evidence metadata is available for this credit.
               </EmptyState>
             ) : (
               <div className="grid gap-3">
-                {pack.items.map((item) => (
-                  <Card key={item.id} className="p-4">
-                    <h4 className="text-sm font-semibold">{item.title}</h4>
-                    <p className="mt-1 text-sm whitespace-pre-wrap text-muted">{item.summary}</p>
-                  </Card>
-                ))}
+                {pack.items.map((item, index) =>
+                  'kind' in item ? (
+                    <Card key={`${item.sha256}-${index}`} className="overflow-hidden">
+                      <KeyValue
+                        items={[
+                          { label: 'File kind', value: item.kind.replaceAll('_', ' ') },
+                          { label: 'Sealed date', value: date(item.sealed_at) },
+                          { label: 'SHA-256', value: item.sha256, mono: true },
+                        ]}
+                      />
+                    </Card>
+                  ) : (
+                    <Card key={`demo-${item.id}`} className="p-4">
+                      <h4 className="text-sm font-semibold">{item.title}</h4>
+                      <p className="mt-1 text-sm whitespace-pre-wrap text-muted">{item.summary}</p>
+                    </Card>
+                  ),
+                )}
               </div>
             )}
           </>

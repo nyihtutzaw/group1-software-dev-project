@@ -152,3 +152,16 @@ Migration: `20261102_47c89f71feec_add_registration_fields_and_evidence.py` (also
   kit's `w-full` won), and dates read "12 Sept" in newer browsers instead of the mock-up's "12 Sep".
 - Next: F5 replaces the `record_action()` stub; F3 moves `submitted` projects on and may narrow
   verifier access; check the form on a real phone.
+
+### 2026-11-16 · feature/F4-real-integrations (#23 prerequisite / #40)
+- Added the internal F1 service `buyer_evidence_summaries(db, project_id)` and schema
+  `BuyerEvidenceSummary`. Each item contains exactly `kind`, `sealed_at` (UTC timestamp) and
+  `sha256`. It selects these columns only, ordered by sealing date and evidence ID.
+- F4 calls it only after registry credit and buyer project-grant authorization. It is not a new
+  public endpoint and does not open project details or original-file downloads to buyers.
+- Filenames, file bytes, storage keys, uploader/owner IDs, names, contacts, baseline and
+  additionality free text are excluded. A kind/date/hash summary does not mean the original
+  file contents have been redacted; originals remain private.
+- Real API integration tests upload files whose names/content contain confidential markers,
+  issue the project through F3, and prove no such markers or sensitive fields reach buyer/public
+  registry responses. This implements the minimal #23 service contract locally for #40.

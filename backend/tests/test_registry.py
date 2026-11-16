@@ -90,6 +90,7 @@ def test_buyer_grants_enforced_on_every_endpoint(client, db, login, publication)
 
 def test_evidence_is_allowlisted_and_excludes_sources(client, db, login, publication):
     credit = publication()
+    credit.is_demo = True
     buyer = login(Role.BUYER)
     db.add(RegistryProjectAccess(project_reference=credit.project_reference, buyer_id=buyer.id))
     db.add_all(

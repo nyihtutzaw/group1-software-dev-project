@@ -39,7 +39,9 @@ def seed_registry_demo(db: Session) -> None:
         start=1,
     ):
         serial = f"DEMO-{index:04d}-2026-A-00001-00100"
-        if db.scalar(select(RegistryCredit.id).where(RegistryCredit.serial == serial)):
+        existing = db.scalar(select(RegistryCredit).where(RegistryCredit.serial == serial))
+        if existing:
+            existing.is_demo = True
             continue
         credit = publish_credit(
             db,
@@ -60,6 +62,7 @@ def seed_registry_demo(db: Session) -> None:
             developer=users["developer"],
             actor=users["staff"],
         )
+        credit.is_demo = True
         db.add(
             RegistryEvidence(
                 credit_id=credit.id,
