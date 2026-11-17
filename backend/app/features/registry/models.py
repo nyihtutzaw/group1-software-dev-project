@@ -69,3 +69,43 @@ class RegistryCreditEvent(Base):
     credit_id: Mapped[int] = mapped_column(ForeignKey("registry_credits.id"), index=True)
     action: Mapped[str] = mapped_column(String(16))
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class RegistryHolding(Base):
+    """A contiguous unit range of one issued batch held by a buyer (#44).
+
+    Staff allocate ranges from the batch's unallocated tail; a buyer retires all or part of a
+    held range, which splits it. Retired rows are permanently locked by a database trigger
+    (no update or delete), so retired credits can never be transferred, resold or unretired.
+    """
+
+    __tablename__ = "registry_holdings"
+    __table_args__ = (
+        CheckConstraint("first_unit >= 1", name="ck_registry_holding_first_unit"),
+        CheckConstraint("last_unit >= first_unit", name="ck_registry_holding_range"),
+        CheckConstraint("status IN ('held', 'retired')", name="ck_registry_holding_status"),
+        CheckConstraint(
+            "(status = 'held' AND retired_at IS NULL AND beneficiary IS NULL"
+            " AND reason IS NULL AND reporting_year IS NULL)"
+            " OR (status = 'retired' AND retired_at IS NOT NULL AND beneficiary IS NOT NULL"
+            " AND reason IS NOT NULL AND reporting_year IS NOT NULL)",
+            name="ck_registry_holding_retirement",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    credit_id: Mapped[int] = mapped_column(ForeignKey("registry_credits.id"), index=True)
+    buyer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    first_unit: Mapped[int]
+    last_unit: Mapped[int]
+    status: Mapped[str] = mapped_column(String(16), default="held")
+    allocated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    allocated_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    beneficiary: Mapped[str | None] = mapped_column(String(200))
+    reason: Mapped[str | None] = mapped_column(String(500))
+    reporting_year: Mapped[int | None]
+
+    @property
+    def quantity(self) -> int:
+        return self.last_unit - self.first_unit + 1
