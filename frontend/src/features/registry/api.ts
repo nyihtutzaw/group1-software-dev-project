@@ -25,7 +25,6 @@ export type CreditPage = { items: Credit[]; total: number; page: number; page_si
 export type CreditDetail = Credit & {
   history: { action: 'issued' | 'retired' | 'revoked'; occurred_at: string }[]
   monitoring: 'not_available'
-  ledger_status: 'not_available'
 }
 export type BuyerEvidenceSummary = {
   kind: 'land_title' | 'survey' | 'photo' | 'gps' | 'spreadsheet' | 'additionality_proof' | 'other'
@@ -37,9 +36,11 @@ export type EvidencePack = {
   items: (BuyerEvidenceSummary | { id: number; title: string; summary: string })[]
   notice: string
 }
+export type LedgerEntryRef = { id: number; action: string; created_at: string; hash: string }
 export type Integrity = {
   snapshot_matches: boolean
-  ledger_status: 'not_available'
+  ledger_status: 'intact' | 'broken' | 'not_recorded'
+  entries: LedgerEntryRef[]
   notice: string
 }
 

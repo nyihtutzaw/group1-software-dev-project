@@ -18,7 +18,7 @@ Reuses merged PR #11 and the current registry table, credit page and evidence di
 issuance publishes into the existing F4 batch table; evidence reads F1's safe sealed metadata.
 Because #23/#25 were absent on main, this branch includes their minimal service prerequisites
 (see F1/F3 docs), which require cross-feature review. No remote issue status was changed.
-Independent F4 ledger authenticity integration and entitlement administration remain separate work.
+Verify authenticity now checks the F5 audit ledger (#29). Entitlement administration remains separate work.
 
 ## Scope
 
@@ -44,15 +44,20 @@ From WBS 8.x and the design report:
 ## Decisions
 
 - 2026-10-27 — The registry list is public (no sign-in); evidence packs require a buyer account.
+- 2026-11-17 — Authenticity is `intact` only when the **whole** ledger chain verifies and exactly one
+  sealed issuance entry matches the published batch: a forger who edits the registry row can
+  recompute its digest, but not the hash-chained ledger entry. No issuance entry (demo or
+  pre-ledger rows) is `not_recorded`, never `intact`. The public response lists only entry
+  id/action/time/hash — payloads and actors stay behind the role-restricted ledger API (#29).
 
 ## API
 
 | Method | Path | Roles | Purpose |
 |---|---|---|---|
 | GET | `/api/registry/credits?q=&page=1&page_size=20` | public | Search published credits; literal case-insensitive project, reference, serial or country match; newest vintage first |
-| GET | `/api/registry/credits/{id}` | public | Public origin, approval and verification references, lifecycle history, explicit monitoring/ledger availability |
+| GET | `/api/registry/credits/{id}` | public | Public origin, approval and verification references, lifecycle history, explicit monitoring availability |
 | GET | `/api/registry/credits/{id}/evidence` | buyer, registry staff, admin | F1 buyer-safe kind/date/SHA-256 metadata; no original uploads |
-| GET | `/api/registry/credits/{id}/integrity` | public | Compare public publication fields with stored SHA-256 digest; **not** independent ledger verification |
+| GET | `/api/registry/credits/{id}/integrity` | public | Verify the F5 ledger chain and the credit's sealed `credit.issued` entry (`ledger_status` intact/broken/not_recorded, entry id/action/time/hash), plus the publication digest |
 
 List response: `{items, total, page, page_size}`. Default page size 20, maximum 100. Search
 maximum 200 characters. Retired and revoked credits remain discoverable with their status.
@@ -106,8 +111,10 @@ are created by F4, and no dependency or lockfile changes are needed.
   Demo credits are hidden from every read endpoint outside `APP_ENV=development`, or whenever
   `SEED_DEMO_USERS` is false, including when demo rows remain in the database.
 - F3 writes real `credit.issued` entries through F5's hash-chained ledger in the issuance
-  transaction. F4's independent authenticity endpoint is still the original publication-digest
-  check, explicitly reporting ledger verification as unavailable. It is not upgraded by this work.
+  transaction. F4's authenticity endpoint finds the credit's entries (`credit.*` actions whose
+  payload `credit_id` is this credit, plus any `entity="credit"` entries), runs F5's
+  `verify_ledger_chain`, and compares the sealed serial/quantity/vintage/project with the
+  published row (#29).
   Monitoring remains deferred.
 
 ### Local demonstration
@@ -132,7 +139,9 @@ seeds on normal startup. These are fictional demo credits and approvals, never r
 
 - Cross-feature review of the minimal #23/#25 prerequisites included on this local branch.
 - Multiple issuance batches or vintages per approval require a separate issuance policy.
-- F5 must integrate entitlement administration and independent ledger authenticity verification.
+- F5 must integrate entitlement administration.
+- `verify_ledger_chain` walks the whole ledger on each public authenticity check; fine at
+  class-project scale, but a cached chain checkpoint is needed if the ledger grows large.
 
 ## Progress log
 
@@ -204,3 +213,13 @@ seeds on normal startup. These are fictional demo credits and approvals, never r
   confidential filename/content in the dialog. Test data lives only in the isolated local stack.
 - Review preparation: local commits only; no push, PR creation, merge, GitHub issue mutation or
   environment configuration/publication performed. PR text saved outside the checkout for review.
+
+### 2026-11-17 · feature/F4-ledger-authenticity
+- Goal: #29 — "Verify authenticity" checks the credit's ledger entries and hash chain.
+- Done: `service.check_authenticity` uses F5's `verify_ledger_chain` and the sealed
+  `credit.issued` payload; `/integrity` returns `ledger_status` + entry hashes; the credit page
+  shows intact / failed / not recorded with each entry's full hash. Removed the stale
+  `ledger_status: not_available` field from the detail response.
+- Tests: real approve → issue → intact; tampered payload, tampered `prev_hash`, tampered earlier
+  entry and a forged registry row (digest recomputed) all report broken; other credits'
+  entries are ignored; frontend intact/broken/not-recorded/snapshot-mismatch states.
