@@ -38,7 +38,6 @@ const credit: CreditDetail = {
   issued_at: '2026-02-02T00:00:00Z',
   history: [{ action: 'issued', occurred_at: '2026-02-02T00:00:00Z' }],
   monitoring: 'not_available',
-  ledger_status: 'not_available',
 }
 const page: CreditPageData = { items: [credit], total: 1, page: 1, page_size: 20 }
 
@@ -67,7 +66,7 @@ describe('Public registry', () => {
     const panel = await selectCredit()
     expect(await within(panel).findByText('TUV Nord (VVB-114)')).toBeInTheDocument()
     expect(within(panel).getByText('Not available — monitoring is deferred')).toBeInTheDocument()
-    expect(within(panel).getByText('Not available — ledger not connected')).toBeInTheDocument()
+    expect(within(panel).getByText('Checked by Verify authenticity')).toBeInTheDocument()
     expect(within(panel).getByRole('button', { name: 'Evidence pack' })).toBeDisabled()
     expect(
       within(panel).getByRole('link', { name: 'Sign in as an authorised buyer' }),
@@ -182,31 +181,65 @@ describe('Public registry', () => {
     expect(await within(panel).findByRole('button', { name: 'Evidence pack' })).toBeDisabled()
   })
 
-  it.each([true, false])(
-    'reports snapshot integrity %s without claiming ledger verification',
-    async (matches) => {
-      responses({
-        '/api/registry/credits/7/integrity': {
-          snapshot_matches: matches,
-          ledger_status: 'not_available',
-          notice: 'Independent ledger verification is not available.',
-        },
-      })
-      renderRegistry()
-      const panel = await selectCredit()
-      await userEvent.click(
-        await within(panel).findByRole('button', { name: 'Verify authenticity' }),
-      )
-      expect(
-        await screen.findByText(
-          matches ? 'Publication snapshot matches' : 'Publication snapshot mismatch',
-        ),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByText('Independent ledger verification is not available.'),
-      ).toBeInTheDocument()
-    },
-  )
+  it('shows an intact ledger result with the sealed entry hash', async () => {
+    const hash = 'cd'.repeat(32)
+    responses({
+      '/api/registry/credits/7/integrity': {
+        snapshot_matches: true,
+        ledger_status: 'intact',
+        entries: [{ id: 41, action: 'credit.issued', created_at: '2026-02-02T00:00:00Z', hash }],
+        notice: 'The audit ledger hash chain verifies.',
+      },
+    })
+    renderRegistry()
+    const panel = await selectCredit()
+    await userEvent.click(await within(panel).findByRole('button', { name: 'Verify authenticity' }))
+    const result = await screen.findByRole('status')
+    expect(result).toHaveTextContent('Ledger intact')
+    expect(result).toHaveTextContent('The audit ledger hash chain verifies.')
+    expect(within(result).getByRole('list', { name: 'Ledger entries' })).toHaveTextContent(
+      'credit.issued',
+    )
+    expect(within(result).getByText(hash)).toBeInTheDocument()
+  })
+
+  it.each([
+    ['broken', 'Ledger check failed'],
+    ['not_recorded', 'Not recorded in the ledger'],
+  ] as const)('warns when the ledger status is %s', async (status, title) => {
+    responses({
+      '/api/registry/credits/7/integrity': {
+        snapshot_matches: true,
+        ledger_status: status,
+        entries: [],
+        notice: 'The audit ledger does not vouch for this record.',
+      },
+    })
+    renderRegistry()
+    const panel = await selectCredit()
+    await userEvent.click(await within(panel).findByRole('button', { name: 'Verify authenticity' }))
+    const result = await screen.findByRole('alert')
+    expect(result).toHaveTextContent(title)
+    expect(result).toHaveTextContent('The audit ledger does not vouch for this record.')
+    expect(within(result).queryByRole('list')).not.toBeInTheDocument()
+  })
+
+  it('warns when the publication snapshot does not match', async () => {
+    responses({
+      '/api/registry/credits/7/integrity': {
+        snapshot_matches: false,
+        ledger_status: 'intact',
+        entries: [],
+        notice: 'The audit ledger hash chain verifies.',
+      },
+    })
+    renderRegistry()
+    const panel = await selectCredit()
+    await userEvent.click(await within(panel).findByRole('button', { name: 'Verify authenticity' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Publication snapshot does not match its stored fingerprint.',
+    )
+  })
 
   it('paginates through the results', async () => {
     responses({

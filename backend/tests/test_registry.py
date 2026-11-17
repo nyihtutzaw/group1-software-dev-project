@@ -52,7 +52,7 @@ def test_public_search_and_safe_detail(client, publication):
         assert response.json()["items"][0]["id"] == credit.id
     detail = client.get(f"/api/registry/credits/{credit.id}").json()
     assert detail["history"][0]["action"] == "issued"
-    assert detail["monitoring"] == detail["ledger_status"] == "not_available"
+    assert detail["monitoring"] == "not_available"
     assert set(detail).isdisjoint({"developer_id", "published_by_id", "snapshot_sha256"})
     assert client.get("/api/registry/credits", params={"q": "%"}).json()["total"] == 0
     assert client.get("/api/registry/credits", params={"q": "_"}).json()["total"] == 0
@@ -168,12 +168,13 @@ def test_inactive_buyer_cannot_use_old_session(client, db, login, publication):
     assert client.get("/api/registry/credits").status_code == 401
 
 
-def test_integrity_detects_changes_without_claiming_ledger_authenticity(client, db, publication):
+def test_integrity_without_ledger_entry_is_not_recorded(client, db, publication):
     credit = publication()
     url = f"/api/registry/credits/{credit.id}/integrity"
     response = client.get(url).json()
     assert response["snapshot_matches"] is True
-    assert response["ledger_status"] == "not_available"
+    assert response["ledger_status"] == "not_recorded"
+    assert response["entries"] == []
     credit.quantity = 1
     db.flush()
     assert client.get(url).json()["snapshot_matches"] is False

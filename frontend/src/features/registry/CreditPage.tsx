@@ -124,7 +124,7 @@ function CreditBody({
                 { label: 'Approval', value: credit.approval_reference, mono: true },
                 { label: 'Issued', value: date(credit.issued_at) },
                 { label: 'Monitoring', value: 'Not available — monitoring is deferred' },
-                { label: 'Audit ledger', value: 'Not available — ledger not connected' },
+                { label: 'Audit ledger', value: 'Checked by Verify authenticity' },
               ]}
             />
           </Card>
@@ -150,8 +150,8 @@ function CreditBody({
           <Card className="p-4">
             <p className="text-sm font-semibold">Check this credit</p>
             <p className="mt-1 text-[13px] text-faint">
-              Compare the published record with its stored fingerprint, or read the reviewed sealed
-              evidence metadata behind it.
+              Check the published record against the tamper-evident audit ledger, or read the
+              reviewed sealed evidence metadata behind it.
             </p>
             <div className="mt-4 grid gap-2.5">
               <Button disabled={pending !== null} onClick={() => void load('integrity')}>
@@ -181,18 +181,7 @@ function CreditBody({
             </p>
           </Card>
           {error && <Alert title="Request failed">{error}</Alert>}
-          {integrity && (
-            <Alert
-              tone={integrity.snapshot_matches ? 'ok' : 'warn'}
-              title={
-                integrity.snapshot_matches
-                  ? 'Publication snapshot matches'
-                  : 'Publication snapshot mismatch'
-              }
-            >
-              {integrity.notice}
-            </Alert>
-          )}
+          {integrity && <IntegrityResult integrity={integrity} />}
         </aside>
       </div>
 
@@ -230,5 +219,40 @@ function CreditBody({
         )}
       </Modal>
     </section>
+  )
+}
+
+const LEDGER_TITLES: Record<Integrity['ledger_status'], string> = {
+  intact: 'Ledger intact',
+  broken: 'Ledger check failed',
+  not_recorded: 'Not recorded in the ledger',
+}
+
+/** The authenticity result: ledger chain status, the credit's sealed entries and snapshot check. */
+function IntegrityResult({ integrity }: { integrity: Integrity }) {
+  const intact = integrity.ledger_status === 'intact'
+  return (
+    <Alert
+      tone={intact && integrity.snapshot_matches ? 'ok' : 'warn'}
+      title={LEDGER_TITLES[integrity.ledger_status]}
+    >
+      <p>{integrity.notice}</p>
+      {integrity.entries.length > 0 && (
+        <ul aria-label="Ledger entries" className="mt-2 grid gap-1.5">
+          {integrity.entries.map((entry) => (
+            <li key={entry.id}>
+              <span className="font-medium text-ink">{entry.action}</span> · #{entry.id} ·{' '}
+              <time dateTime={entry.created_at}>{date(entry.created_at)}</time>
+              <span className="block font-mono text-xs break-all">{entry.hash}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-2">
+        {integrity.snapshot_matches
+          ? 'Publication snapshot matches its stored fingerprint.'
+          : 'Publication snapshot does not match its stored fingerprint.'}
+      </p>
+    </Alert>
   )
 }

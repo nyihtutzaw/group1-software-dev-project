@@ -82,5 +82,5 @@ def credit_integrity(
     db: Session = Depends(get_db),
     user: User | None = Depends(optional_user),
 ) -> IntegrityOut:
-    credit = service.get_credit(db, credit_id, user)
-    return IntegrityOut(snapshot_matches=credit.snapshot_sha256 == service.snapshot_digest(credit))
+    """Check the published batch against its stored digest and the F5 audit ledger."""
+    return service.check_authenticity(db, service.get_credit(db, credit_id, user))
