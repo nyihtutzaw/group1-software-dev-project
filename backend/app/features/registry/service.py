@@ -1,8 +1,8 @@
 """Public read model and trusted handoff functions for F1/F3 integration.
 
 No HTTP write routes: F3 must validate approval/issuance before calling publish_credit.
-F1 supplies an allowlisted projection of real sealed evidence metadata. F5 ledger
-verification remains explicitly unavailable; a stored digest is not an audit seal.
+F1 supplies an allowlisted projection of real sealed evidence metadata. Authenticity is
+checked against F5's hash-chained ledger (#29); the stored digest alone is not an audit seal.
 """
 
 import hashlib
@@ -11,12 +11,14 @@ from datetime import UTC, datetime
 from typing import Literal
 
 from fastapi import HTTPException
-from sqlalchemy import Select, func, or_, select
+from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.models import Role, User
 from app.core.config import get_settings
+from app.features.audit.ledger import verify_ledger_chain
+from app.features.audit.models import LedgerEntry
 from app.features.registration.schemas import BuyerEvidenceSummary
 from app.features.registration.service import buyer_evidence_summaries
 from app.features.registry.models import (
@@ -25,7 +27,13 @@ from app.features.registry.models import (
     RegistryEvidence,
     RegistryProjectAccess,
 )
-from app.features.registry.schemas import CreditPage, EvidenceOut, PublicationIn
+from app.features.registry.schemas import (
+    CreditPage,
+    EvidenceOut,
+    IntegrityOut,
+    LedgerEntryRef,
+    PublicationIn,
+)
 
 
 def _staff(actor: User) -> None:
@@ -172,3 +180,72 @@ def evidence_pack(
             [],
         )  # Legacy unlinked publications must never borrow a guessed project's files.
     return credit, list(buyer_evidence_summaries(db, credit.source_project_id))
+
+
+_LEDGER_NOTICES = {
+    "intact": (
+        "The audit ledger hash chain verifies and its sealed issuance entry matches this "
+        "published batch."
+    ),
+    "broken": (
+        "The audit ledger does not vouch for this record: the hash chain is broken or the "
+        "sealed issuance entry differs from what is published."
+    ),
+    "not_recorded": (
+        "No issuance entry exists in the audit ledger for this record, so its authenticity "
+        "cannot be independently verified."
+    ),
+}
+
+
+def credit_ledger_entries(db: Session, credit: RegistryCredit) -> list[LedgerEntry]:
+    """Ledger entries about this batch: F3 issuance (keyed by payload) and credit-level actions."""
+    return list(
+        db.scalars(
+            select(LedgerEntry)
+            .where(
+                or_(
+                    # Compare as text so an unrelated payload can never fail an integer cast.
+                    and_(
+                        LedgerEntry.action.startswith("credit."),
+                        LedgerEntry.payload["credit_id"].as_string() == str(credit.id),
+                    ),
+                    and_(LedgerEntry.entity == "credit", LedgerEntry.entity_id == credit.id),
+                )
+            )
+            .order_by(LedgerEntry.id)
+        )
+    )
+
+
+def _issuance_matches(entry: LedgerEntry, credit: RegistryCredit) -> bool:
+    sealed = entry.payload or {}
+    return (
+        sealed.get("credit_id") == credit.id
+        and sealed.get("serial") == credit.serial
+        and sealed.get("quantity") == credit.quantity
+        and sealed.get("vintage") == credit.vintage
+        and (credit.source_project_id is None or entry.entity_id == credit.source_project_id)
+    )
+
+
+def check_authenticity(db: Session, credit: RegistryCredit) -> IntegrityOut:
+    """Verify a credit against F5's ledger: the whole chain, then its sealed issuance entry.
+
+    The chain check is F5's ``verify_ledger_chain``; an entry is only trustworthy if every
+    entry before it is intact, so the full chain is walked, not just this credit's rows.
+    """
+    entries = credit_ledger_entries(db, credit)
+    issuances = [entry for entry in entries if entry.action == "credit.issued"]
+    if not issuances:
+        status = "not_recorded"
+    else:
+        chain_valid, _error = verify_ledger_chain(db)
+        consistent = len(issuances) == 1 and _issuance_matches(issuances[0], credit)
+        status = "intact" if chain_valid and consistent else "broken"
+    return IntegrityOut(
+        snapshot_matches=credit.snapshot_sha256 == snapshot_digest(credit),
+        ledger_status=status,
+        entries=[LedgerEntryRef.model_validate(entry) for entry in entries],
+        notice=_LEDGER_NOTICES[status],
+    )

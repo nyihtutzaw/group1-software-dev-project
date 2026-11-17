@@ -1,20 +1,22 @@
 """Real F1 → F3 approval → issuance → F4 reads, including privacy and atomicity."""
 
 import hashlib
+import json
 from datetime import UTC, date, datetime
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from app.auth.models import Role
 from app.core.config import get_settings
-from app.features.audit.ledger import verify_ledger_chain
+from app.features.audit.ledger import record_action, verify_ledger_chain
 from app.features.audit.models import LedgerEntry
 from app.features.boundary.models import BoundarySource, FlagStatus, OverlapFlag
 from app.features.boundary.service import save_boundary
 from app.features.registration.models import Project, ProjectStatus
 from app.features.registration.service import buyer_evidence_summaries
 from app.features.registry.models import RegistryCredit, RegistryCreditEvent, RegistryProjectAccess
+from app.features.registry.service import snapshot_digest
 from app.features.verification.models import CHECKLIST
 from tests.conftest import PASSWORD
 from tests.geo import BASE, square
@@ -140,6 +142,95 @@ def test_approve_issue_and_read_real_credit_in_registry(client, db, workflow):
     assert duplicate.status_code == 409
     assert db.scalar(select(func.count()).select_from(RegistryCredit)) == 1
     assert db.scalar(select(func.count()).select_from(RegistryCreditEvent)) == 1
+
+
+def tamper(db, sql, params):
+    """Simulate direct database tampering by bypassing the ledger's write-once trigger."""
+    db.execute(text("ALTER TABLE ledger_entries DISABLE TRIGGER ledger_entries_no_update_delete"))
+    db.execute(text(sql), params)
+    db.execute(text("ALTER TABLE ledger_entries ENABLE TRIGGER ledger_entries_no_update_delete"))
+    db.expire_all()
+
+
+def test_authenticity_checks_real_issuance_against_ledger(client, db, workflow):
+    credit = issue(client, workflow)
+    client.post("/api/auth/logout")
+    entry = db.scalar(select(LedgerEntry).where(LedgerEntry.action == "credit.issued"))
+    response = client.get(f"/api/registry/credits/{credit['id']}/integrity")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["snapshot_matches"] is True
+    assert body["ledger_status"] == "intact"
+    assert [(item["id"], item["action"], item["hash"]) for item in body["entries"]] == [
+        (entry.id, "credit.issued", entry.hash)
+    ]
+    # Public pointers only: no payload, actor or chain internals.
+    assert set(body["entries"][0]) == {"id", "action", "created_at", "hash"}
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "UPDATE ledger_entries SET payload = CAST(:value AS json) WHERE id = :id",
+        "UPDATE ledger_entries SET prev_hash = :value WHERE id = :id",
+    ],
+)
+def test_authenticity_fails_when_ledger_entry_is_tampered(client, db, workflow, sql):
+    credit = issue(client, workflow)
+    entry = db.scalar(select(LedgerEntry).where(LedgerEntry.action == "credit.issued"))
+    value = json.dumps({"credit_id": credit["id"], "serial": "FORGED", "quantity": 999999})
+    if "prev_hash" in sql:
+        value = "f" * 64
+    tamper(db, sql, {"value": value, "id": entry.id})
+    body = client.get(f"/api/registry/credits/{credit['id']}/integrity").json()
+    assert body["ledger_status"] == "broken"
+    assert "broken" in body["notice"]
+
+
+def test_authenticity_fails_when_an_earlier_entry_is_tampered(client, db, workflow):
+    first = db.scalar(select(LedgerEntry).order_by(LedgerEntry.id).limit(1))
+    credit = issue(client, workflow)
+    tamper(
+        db,
+        "UPDATE ledger_entries SET action = 'project.deleted' WHERE id = :id",
+        {"id": first.id},
+    )
+    body = client.get(f"/api/registry/credits/{credit['id']}/integrity").json()
+    assert body["ledger_status"] == "broken"
+
+
+def test_authenticity_fails_when_published_batch_differs_from_sealed_issuance(client, db, workflow):
+    credit = issue(client, workflow)
+    row = db.get(RegistryCredit, credit["id"])
+    row.quantity = 1_000_000
+    row.snapshot_sha256 = snapshot_digest(row)  # a forger can recompute the digest...
+    db.flush()
+    body = client.get(f"/api/registry/credits/{credit['id']}/integrity").json()
+    assert body["snapshot_matches"] is True
+    assert body["ledger_status"] == "broken"  # ...but not the sealed ledger entry.
+
+
+def test_authenticity_ignores_other_credits_entries(client, db, workflow):
+    credit = issue(client, workflow)
+    record_action(
+        db,
+        actor=workflow["staff"],
+        action="credit.issued",
+        entity="project",
+        entity_id=999,
+        payload={"credit_id": credit["id"] + 1, "serial": "OTHER"},
+    )
+    record_action(
+        db,
+        actor=workflow["staff"],
+        action="project.created",
+        entity="project",
+        entity_id=999,
+        payload={"credit_id": "not-a-number"},
+    )
+    body = client.get(f"/api/registry/credits/{credit['id']}/integrity").json()
+    assert body["ledger_status"] == "intact"
+    assert [item["action"] for item in body["entries"]] == ["credit.issued"]
 
 
 def test_f1_safe_summary_contract_and_f4_pack_never_expose_sensitive_fields(client, db, workflow):

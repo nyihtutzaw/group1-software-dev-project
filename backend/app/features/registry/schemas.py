@@ -47,7 +47,6 @@ class CreditEventOut(BaseModel):
 class CreditDetail(CreditOut):
     history: list[CreditEventOut]
     monitoring: Literal["not_available"] = "not_available"
-    ledger_status: Literal["not_available"] = "not_available"
 
 
 class EvidenceOut(BaseModel):
@@ -65,10 +64,21 @@ class EvidencePackOut(BaseModel):
     )
 
 
+class LedgerEntryRef(BaseModel):
+    """Public pointer to one sealed ledger entry; the payload and actor stay in the F5 ledger."""
+
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    action: str
+    created_at: datetime
+    hash: str
+
+
 class IntegrityOut(BaseModel):
     snapshot_matches: bool
-    ledger_status: Literal["not_available"] = "not_available"
-    notice: str = (
-        "This checks published fields against their stored digest. "
-        "Independent authenticity verification requires the F5 audit ledger, not yet connected."
-    )
+    # intact: chain verifies and the issuance entry agrees with the published batch.
+    # broken: chain fails, or the sealed issuance disagrees with what is published.
+    # not_recorded: no issuance entry exists (demo or pre-ledger publication).
+    ledger_status: Literal["intact", "broken", "not_recorded"]
+    entries: list[LedgerEntryRef]
+    notice: str
