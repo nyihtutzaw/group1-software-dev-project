@@ -8,7 +8,7 @@ from app.auth.deps import get_current_user, require_roles
 from app.auth.models import Role, User
 from app.core.config import get_settings
 from app.core.db import get_db
-from app.features.registry import service
+from app.features.registry import access, service
 from app.features.registry.models import RegistryCreditEvent
 from app.features.registry.schemas import (
     CreditDetail,
@@ -20,6 +20,7 @@ from app.features.registry.schemas import (
 )
 
 router = APIRouter(prefix="/registry", tags=["F4 registry"])
+router.include_router(access.router)  # staff buyer-access administration (#30)
 
 
 def optional_user(request: Request, db: Session = Depends(get_db)) -> User | None:

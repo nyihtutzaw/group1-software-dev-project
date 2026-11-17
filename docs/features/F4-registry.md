@@ -18,7 +18,8 @@ Reuses merged PR #11 and the current registry table, credit page and evidence di
 issuance publishes into the existing F4 batch table; evidence reads F1's safe sealed metadata.
 Because #23/#25 were absent on main, this branch includes their minimal service prerequisites
 (see F1/F3 docs), which require cross-feature review. No remote issue status was changed.
-Verify authenticity now checks the F5 audit ledger (#29). Entitlement administration remains separate work.
+Verify authenticity now checks the F5 audit ledger (#29). Registry staff manage buyer access on
+`/buyer-access` (#30).
 
 ## Scope
 
@@ -49,6 +50,12 @@ From WBS 8.x and the design report:
   recompute its digest, but not the hash-chained ledger entry. No issuance entry (demo or
   pre-ledger rows) is `not_recorded`, never `intact`. The public response lists only entry
   id/action/time/hash — payloads and actors stay behind the role-restricted ledger API (#29).
+- 2026-11-17 — Staff may grant access only to projects with a visible published credit and only to
+  active buyer accounts; other roles already have their own permissions. Grants stay keyed by
+  project reference, so one grant covers every batch of that project. Each grant/revoke is a
+  ledger entry (`entity="user"`, the buyer's id; payload `project_reference` only — no emails).
+  The page lives at `/buyer-access`, not under `/registry/…`, so the Registry menu item is not
+  highlighted at the same time (#30).
 
 ## API
 
@@ -65,13 +72,24 @@ Authenticated buyers see only project references granted in `registry_project_ac
 endpoints (including direct detail, integrity and evidence requests). Unpermitted and missing IDs
 both return 404. An invalid/inactive session returns 401; it never silently becomes anonymous.
 Public metadata is intentionally accessible without an account; grants protect evidence access.
-No HTTP write routes are exposed.
+No HTTP write routes are exposed for credits; the only write routes manage buyer grants (below).
+
+| Method | Path | Roles | Purpose |
+|---|---|---|---|
+| GET | `/api/registry/access` | registry staff, admin | All buyer grants with project name and buyer name/email/active flag |
+| GET | `/api/registry/access/options` | registry staff, admin | Active buyers and projects with published credits, for the grant form |
+| POST | `/api/registry/access` | registry staff, admin | `{project_reference, buyer_id}` → 201; 404 unpublished project, 422 not an active buyer, 409 duplicate; ledger `registry_access.granted` |
+| DELETE | `/api/registry/access/{project_reference}/{buyer_id}` | registry staff, admin | 204; 404 if no such grant; ledger `registry_access.revoked` |
+
+Grant routes live in `backend/app/features/registry/access.py` (schemas, service and router in one
+module, mounted under `/registry`).
 
 ## Pages
 
 | Route | Roles | Shows |
 |---|---|---|
 | `/registry` | public + all signed-in | Search and a paginated results table; search text and page are kept in the URL |
+| `/buyer-access` | registry staff, admin | Grant form (project + buyer) and the current grants with Revoke (confirmation dialog) |
 | `/registry/:id` | public + all signed-in | One credit: origin, verification & approval, history; Verify authenticity result beside it; the evidence pack opens in a dialog |
 
 ## Data model
@@ -139,7 +157,6 @@ seeds on normal startup. These are fictional demo credits and approvals, never r
 
 - Cross-feature review of the minimal #23/#25 prerequisites included on this local branch.
 - Multiple issuance batches or vintages per approval require a separate issuance policy.
-- F5 must integrate entitlement administration.
 - `verify_ledger_chain` walks the whole ledger on each public authenticity check; fine at
   class-project scale, but a cached chain checkpoint is needed if the ledger grows large.
 
@@ -223,3 +240,13 @@ seeds on normal startup. These are fictional demo credits and approvals, never r
 - Tests: real approve → issue → intact; tampered payload, tampered `prev_hash`, tampered earlier
   entry and a forged registry row (digest recomputed) all report broken; other credits'
   entries are ignored; frontend intact/broken/not-recorded/snapshot-mismatch states.
+### 2026-11-17 · feature/F4-buyer-access-admin
+- Goal: #30 — a screen for staff to grant and revoke buyers' project access.
+- Done: `registry/access.py` (list/options/grant/revoke, `require_roles(registry_staff, admin)`,
+  `record_action()` for each change); `/buyer-access` page with grant form, grant list and
+  revoke confirmation; `Access` menu item for registry staff and admins.
+- Tests: grant → buyer sees the credit and evidence on the next request → revoke → 404 again,
+  with both ledger entries and an intact chain (staff and admin); developer/verifier/buyer 403,
+  anonymous 401, inactive staff 401; validation (unpublished project, non-buyer, inactive buyer,
+  duplicate, missing grant) writes nothing to the ledger; frontend grant/refusal/revoke/empty/
+  error states and nav roles.

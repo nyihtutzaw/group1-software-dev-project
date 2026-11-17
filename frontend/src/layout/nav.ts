@@ -54,6 +54,15 @@ export const NAV_ITEMS: NavItem[] = [
     feature: 'F4',
   },
   {
+    id: 'access',
+    label: 'Access',
+    path: '/buyer-access',
+    icon: 'lock',
+    // Staff grant buyers access to projects (#30); the API enforces the same roles
+    roles: ['registry_staff', 'admin'],
+    feature: 'F4',
+  },
+  {
     id: 'ledger',
     label: 'Ledger',
     path: '/ledger',

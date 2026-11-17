@@ -7,6 +7,7 @@ import { UsersPage } from '@/features/audit/UsersPage'
 import { HomePage } from '@/features/registration/HomePage'
 import { ProjectPage } from '@/features/registration/ProjectPage'
 import { SubmitPage } from '@/features/registration/SubmitPage'
+import { AccessPage } from '@/features/registry/AccessPage'
 import { CreditPage } from '@/features/registry/CreditPage'
 import { RegistryPage } from '@/features/registry/RegistryPage'
 import { ReviewPage } from '@/features/verification/ReviewPage'
@@ -98,6 +99,14 @@ export function App() {
           element={
             <Guarded page="registry">
               <RegistryPage />
+            </Guarded>
+          }
+        />
+        <Route
+          path="/buyer-access"
+          element={
+            <Guarded page="access">
+              <AccessPage />
             </Guarded>
           }
         />

@@ -17,6 +17,12 @@ describe('navFor', () => {
     expect(ids('buyer')).toEqual(['home', 'registry', 'ledger'])
   })
 
+  it('gives registry staff and admins buyer access management', () => {
+    expect(ids('registry_staff')).toContain('access')
+    expect(ids('admin')).toContain('access')
+    expect(ids('buyer')).not.toContain('access')
+  })
+
   it('gives admins user management', () => {
     expect(ids('admin')).toContain('users')
   })
