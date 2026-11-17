@@ -40,6 +40,8 @@ const credit: CreditDetail = {
   monitoring: 'not_available',
 }
 const page: CreditPageData = { items: [credit], total: 1, page: 1, page_size: 20 }
+const noRetirements = { quantity: 8400, retired_quantity: 0, items: [] }
+const noHoldings = { quantity: 8400, allocated: 0, unallocated: 8400, retired: 0, items: [] }
 
 function responses(overrides: Record<string, unknown> = {}) {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
@@ -50,6 +52,8 @@ function responses(overrides: Record<string, unknown> = {}) {
     }
     if (path.startsWith('/api/registry/credits?')) return Response.json(page)
     if (path === '/api/registry/credits/7') return Response.json(credit)
+    if (path === '/api/registry/credits/7/retirements') return Response.json(noRetirements)
+    if (path === '/api/registry/credits/7/holdings') return Response.json(noHoldings)
     throw new Error(`Unexpected request ${path}`)
   })
 }

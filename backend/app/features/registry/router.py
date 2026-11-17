@@ -9,6 +9,8 @@ from app.auth.models import Role, User
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.features.registry import access, service
+from app.features.registry.holdings import RetirementsOut, retirements
+from app.features.registry.holdings import router as holdings_router
 from app.features.registry.models import RegistryCreditEvent
 from app.features.registry.schemas import (
     CreditDetail,
@@ -28,6 +30,10 @@ def optional_user(request: Request, db: Session = Depends(get_db)) -> User | Non
     if not request.cookies.get(get_settings().session_cookie):
         return None
     return get_current_user(request, db)
+
+
+# Holdings and buyer retirement (#44): allocation, buyer holdings and the retire action.
+router.include_router(holdings_router)
 
 
 @router.get("/credits", response_model=CreditPage)
@@ -57,6 +63,16 @@ def credit_detail(
         **CreditOut.model_validate(credit).model_dump(),
         history=[CreditEventOut.model_validate(event) for event in history],
     )
+
+
+@router.get("/credits/{credit_id}/retirements", response_model=RetirementsOut)
+def credit_retirements(
+    credit_id: int,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(optional_user),
+) -> RetirementsOut:
+    """Public retirement records: unit range, beneficiary, reason, reporting year and date."""
+    return retirements(db, credit_id, user)
 
 
 @router.get("/credits/{credit_id}/evidence", response_model=EvidencePackOut)
