@@ -17,6 +17,8 @@ import { api } from '@/lib/api'
 import { type CreditDetail, type EvidencePack, type Integrity, useCredit } from './api'
 import { CreditStatus } from './CreditStatus'
 import { date } from './format'
+import { Holdings } from './Holdings'
+import { Retirements } from './Retirements'
 
 /** One credit's traceability: origin, verification, approval, history, evidence and integrity. */
 export function CreditPage() {
@@ -144,6 +146,8 @@ function CreditBody({
               ))}
             </ol>
           </Card>
+          <Retirements creditId={credit.id} />
+          <Holdings credit={credit} />
         </div>
 
         <aside aria-label="Check this credit" className="grid gap-3 desk:sticky desk:top-24">

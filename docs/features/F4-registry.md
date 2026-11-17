@@ -19,7 +19,7 @@ issuance publishes into the existing F4 batch table; evidence reads F1's safe se
 Because #23/#25 were absent on main, this branch includes their minimal service prerequisites
 (see F1/F3 docs), which require cross-feature review. No remote issue status was changed.
 Verify authenticity now checks the F5 audit ledger (#29). Registry staff manage buyer access on
-`/buyer-access` (#30).
+`/buyer-access` (#30). Buyers can retire allocated credits (#44).
 
 ## Scope
 
@@ -56,6 +56,16 @@ From WBS 8.x and the design report:
   ledger entry (`entity="user"`, the buyer's id; payload `project_reference` only — no emails).
   The page lives at `/buyer-access`, not under `/registry/…`, so the Registry menu item is not
   highlighted at the same time (#30).
+- 2026-11-17 — Retirement (#44) needs credits a buyer *holds*, which did not exist. Holdings are
+  contiguous unit ranges of a batch, allocated by registry staff (the registry's record of a
+  sale, from the batch's unallocated tail) to an active buyer who already has project access.
+  The buyer retires all or part of a range; partial retirement keeps the retired part in the row
+  and moves the rest to a new held row, so serial ranges never overlap. A database trigger
+  makes retired rows immutable (no update/delete), so they cannot be transferred, resold or
+  unretired even by direct SQL. Retiring every unit of a batch sets the batch status `retired`
+  with a history event. Retirement records are public (as in other registries); holder
+  identities are not. Reporting year may not be in the future. Allocation and retirement are
+  ledger entries with `entity="credit"`. No transfer between buyers is built.
 
 ## API
 
@@ -64,6 +74,10 @@ From WBS 8.x and the design report:
 | GET | `/api/registry/credits?q=&page=1&page_size=20` | public | Search published credits; literal case-insensitive project, reference, serial or country match; newest vintage first |
 | GET | `/api/registry/credits/{id}` | public | Public origin, approval and verification references, lifecycle history, explicit monitoring availability |
 | GET | `/api/registry/credits/{id}/evidence` | buyer, registry staff, admin | F1 buyer-safe kind/date/SHA-256 metadata; no original uploads |
+| GET | `/api/registry/credits/{id}/retirements` | public (buyer grants apply) | Retirement records: unit-range serial, quantity, beneficiary, reason, reporting year, date — never the buyer's identity |
+| GET | `/api/registry/credits/{id}/holdings` | buyer, registry staff, admin | Staff: every holding with buyer email and allocated/unallocated/retired totals. Buyer: own holdings only |
+| POST | `/api/registry/credits/{id}/holdings` | registry staff, admin | `{buyer_email, quantity}` → 201; allocates the next contiguous unit range to an active buyer who already has project access (409 otherwise); ledger `credit.allocated` |
+| POST | `/api/registry/holdings/{id}/retire` | buyer (holder only) | `{quantity, beneficiary, reason, reporting_year}`; partial quantity splits the range; 404 for another buyer's holding, 409 if already retired or batch not active; ledger `credit.retired` |
 | GET | `/api/registry/credits/{id}/integrity` | public | Verify the F5 ledger chain and the credit's sealed `credit.issued` entry (`ledger_status` intact/broken/not_recorded, entry id/action/time/hash), plus the publication digest |
 
 List response: `{items, total, page, page_size}`. Default page size 20, maximum 100. Search
@@ -90,7 +104,7 @@ module, mounted under `/registry`).
 |---|---|---|
 | `/registry` | public + all signed-in | Search and a paginated results table; search text and page are kept in the URL |
 | `/buyer-access` | registry staff, admin | Grant form (project + buyer) and the current grants with Revoke (confirmation dialog) |
-| `/registry/:id` | public + all signed-in | One credit: origin, verification & approval, history; Verify authenticity result beside it; the evidence pack opens in a dialog |
+| `/registry/:id` | public + all signed-in | One credit: origin, verification & approval, history, public retirements; Verify authenticity result beside it; the evidence pack opens in a dialog. Staff also see **Holdings** with an allocate form; buyers see **Your credits** with Retire (dialog with permanence warning, quantity, beneficiary, reason, reporting year) |
 
 ## Data model
 
@@ -98,10 +112,12 @@ module, mounted under `/registry`).
 |---|---|---|
 | `registry_credits` | unique serial, project reference/name, country, vintage, quantity, methodology, verifier/approval references, dates, status, digest | Issuance snapshot plus status, source project/approval FKs and explicit `is_demo`; private IDs excluded from responses |
 | `registry_credit_events` | credit ID, issued/retired/revoked, timestamp | Public lifecycle history, separate from F5's tamper-evident ledger |
+| `registry_holdings` | credit ID, buyer ID, first/last unit, held/retired, allocated at/by, retired at, beneficiary, reason, reporting year | Contiguous unit ranges of a batch held by a buyer (#44). Trigger `registry_holdings_retired_lock` rejects UPDATE/DELETE of retired rows |
 | `registry_project_access` | project reference + buyer ID composite key | Explicit buyer grants, default deny |
 | `registry_evidence` | credit ID, title, summary, internal source reference, buyer-visible flag | Legacy synthetic demo summaries only; never used as fallback for real credits |
 
-Migration: `20261028_b873ff0f1830_add_registry_publications.py` after `0001`. No F1/F3/F5 tables
+Migration: `20261028_b873ff0f1830_add_registry_publications.py` after `0001`;
+`20261117_a8dd7b5de443_add_registry_holdings_and_retirement.py` adds `registry_holdings` and its lock trigger. No F1/F3/F5 tables
 are created by F4, and no dependency or lockfile changes are needed.
 
 ### Handoff contract for F1/F3/F5
@@ -155,6 +171,12 @@ seeds on normal startup. These are fictional demo credits and approvals, never r
 
 ## Open questions
 
+- #44 impact analysis and decision on the change request are still for the owner/team to record
+  on the issue; this branch implements the minimal holdings model described above.
+- Buffer credits (#42) are not built. When they are, allocation and retirement must refuse
+  buffer batches (`holdings.py` notes this).
+- Revoking a buyer's project access hides their holdings and the retire action with the credit;
+  their retired records stay public. Decide whether holders keep access automatically.
 - Cross-feature review of the minimal #23/#25 prerequisites included on this local branch.
 - Multiple issuance batches or vintages per approval require a separate issuance policy.
 - `verify_ledger_chain` walks the whole ledger on each public authenticity check; fine at
@@ -250,3 +272,16 @@ seeds on normal startup. These are fictional demo credits and approvals, never r
   anonymous 401, inactive staff 401; validation (unpublished project, non-buyer, inactive buyer,
   duplicate, missing grant) writes nothing to the ledger; frontend grant/refusal/revoke/empty/
   error states and nav roles.
+### 2026-11-17 · feature/F4-credit-retirement
+- Goal: #44 — buyers retire credits they hold, permanently, with beneficiary, reason and
+  reporting year.
+- Done: `registry_holdings` table + migration with retired-row lock trigger;
+  `registry/holdings.py` (allocate, list, retire, public retirements); credit page sections
+  *Retirements* (public), *Holdings* (staff, allocate form) and *Your credits* (buyer, retire
+  dialog).
+- Tests: allocation ranges and per-buyer visibility; partial retirement splits and is public
+  without buyer identity; retired rows cannot be updated/deleted (trigger); retiring every unit
+  retires the batch; allocation/retirement role and validation rules; revoked batches; ledger
+  entries and intact chain; frontend public/buyer/staff/developer states.
+- Live check: demo credit, staff allocated 100, buyer retired 30 → split 1–30 retired /
+  31–100 held, public record shown, direct SQL UPDATE of the retired row rejected.
