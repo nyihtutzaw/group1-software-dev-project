@@ -108,4 +108,13 @@ which only trusts workflows running on `main` of `nyihtutzaw/group1-software-dev
   Cloud Run, FastAPI serves the built frontend (`STATIC_DIR`), 503 when the database is down.
 - Infra: production Dockerfile, migrate/seed/reset job, bootstrap/deploy/power scripts, Deploy /
   Demo power / Reset demo data workflows. Production image tested locally against PostGIS.
-- Next: run bootstrap, set repository variables, first deploy, buy and map the domain.
+- Bootstrap run on `zaw-personal-project`; repository variables set. Fixed two issues found on
+  the way: Cloud Scheduler cannot send PATCH (now POST + `X-HTTP-Method-Override`), and the
+  generated demo password had a trailing newline (stripped; Settings also strips it).
+- First deploy done from a laptop (the workflow only runs from `main`): live at
+  https://crvr-icik34im6a-as.a.run.app. Smoke-tested: all six demo accounts sign in with the
+  private password and `crvr-demo` is rejected; evidence upload lands in the bucket and downloads
+  intact; the security log records the real client IP and ignores a forged one; the reset job
+  works on Cloud SQL; the 06:00 start job returns 200.
+- Next: map `crvr.zaw27.com` once the domain is verified in Search Console; merge this PR so
+  later deploys run from GitHub Actions.
