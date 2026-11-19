@@ -15,12 +15,19 @@ import {
   Select,
   Textarea,
 } from '@/components/ui'
+import { useProjectBoundary } from '@/features/boundary/api'
 import { cn } from '@/lib/cn'
 
 import { useCreateProject, useProject, useSubmitProject, useUpdateProject } from './api'
 import { BoundaryBanner } from './BoundaryBanner'
 import { EvidenceDrop, EvidenceList } from './Evidence'
-import { formatNumber, METHODOLOGIES, MIN_ADDITIONALITY_CHARS, projectFacts } from './format'
+import {
+  boundaryLink,
+  formatNumber,
+  METHODOLOGIES,
+  MIN_ADDITIONALITY_CHARS,
+  projectFacts,
+} from './format'
 import { ProgressSteps } from './ProjectRow'
 import type { Methodology, ProjectDetail, ProjectIn } from './types'
 
@@ -401,12 +408,14 @@ function EvidenceStep({ project }: { project: ProjectDetail }) {
         <EvidenceList projectId={project.id} files={files} />
       </div>
       <SectionHeader title="Boundary" />
-      <BoundaryBanner projectId={project.id} />
+      <BoundaryBanner projectId={project.id} fromSubmit />
     </>
   )
 }
 
 function ReviewStep({ project }: { project: ProjectDetail }) {
+  const navigate = useNavigate()
+  const boundary = useProjectBoundary(project.id)
   return (
     <>
       <Card>
@@ -414,13 +423,25 @@ function ReviewStep({ project }: { project: ProjectDetail }) {
       </Card>
       <div className="mt-3.5">
         {project.missing.length > 0 ? (
-          <Alert title="Before you can submit">
-            <ul className="list-disc pl-4">
-              {project.missing.map((m) => (
-                <li key={m}>{m}</li>
-              ))}
-            </ul>
-          </Alert>
+          <>
+            <Alert title="Before you can submit">
+              <ul className="list-disc pl-4">
+                {project.missing.map((m) => (
+                  <li key={m}>{m}</li>
+                ))}
+              </ul>
+            </Alert>
+            {/* The boundary is drawn on F2's map; it brings the developer back here when saved. */}
+            {project.boundary_blocked && (
+              <Button
+                variant="ghost"
+                className="mt-2.5"
+                onClick={() => navigate(boundaryLink(project.id))}
+              >
+                {boundary.data ? 'Fix the boundary' : 'Add boundary'}
+              </Button>
+            )}
+          </>
         ) : (
           <Alert tone="ok" title="Ready to submit">
             Once submitted the project is sealed for independent verification and can no longer be

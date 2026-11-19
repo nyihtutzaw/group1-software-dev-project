@@ -4,14 +4,20 @@ import { Link } from 'react-router'
 import { Alert } from '@/components/ui'
 import { useProjectBoundary } from '@/features/boundary/api'
 
-import { formatNumber } from './format'
+import { boundaryLink, formatNumber } from './format'
 
 /** F2's overlap check, inline (mock-up "Boundary drawn — no overlap"). */
-export function BoundaryBanner({ projectId }: { projectId: number }) {
+export function BoundaryBanner({
+  projectId,
+  fromSubmit = false,
+}: {
+  projectId: number
+  fromSubmit?: boolean
+}) {
   const boundary = useProjectBoundary(projectId)
   const mapLink = (label: string): ReactNode => (
     <Link
-      to={`/boundary?project=${projectId}`}
+      to={boundaryLink(projectId, fromSubmit)}
       // inline-flex + min-h-11 keeps this a 44 px tap target on a phone (#21); as a plain
       // block link it was 20 px tall, under the 24 px minimum.
       className="mt-1 inline-flex min-h-11 items-center font-semibold text-accent"

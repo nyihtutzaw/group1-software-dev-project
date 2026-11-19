@@ -1,5 +1,6 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { Route as Page, Routes } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
 import { makeUser, renderWithProviders } from '@/test/render'
@@ -235,6 +236,47 @@ describe('BoundaryPage', () => {
     expect(save).toHaveBeenCalledWith(
       expect.objectContaining({ body: JSON.stringify({ geometry: DRAWN, source: 'drawn' }) }),
     )
+  })
+
+  it('sends a developer who came from registration back to step 4 once saved', async () => {
+    const clear = saved({ project_id: 5, check: CLEAR_CHECK, flags: [], issuance_blocked: null })
+    mockApi({
+      'GET /projects': PROJECTS,
+      'GET /boundaries': COLLECTION,
+      'POST /boundaries/check': CLEAR_CHECK,
+      'PUT /boundaries/5': clear,
+    })
+    renderWithProviders(
+      <Routes>
+        <Page path="/boundary" element={<BoundaryPage />} />
+        <Page path="/projects/:id/edit" element={<p>Registration step 4</p>} />
+      </Routes>,
+      { route: '/boundary?project=5&from=submit', user: makeUser('developer') },
+    )
+
+    await screen.findByText('Phetchabun Agroforestry · no boundary yet')
+    expect(screen.queryByRole('button', { name: 'Back to submission' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'simulate drawing' }))
+    await screen.findByText('Boundary drawn — no overlap')
+    await userEvent.click(screen.getByRole('button', { name: 'Save boundary' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Back to submission' }))
+
+    expect(await screen.findByText('Registration step 4')).toBeInTheDocument()
+  })
+
+  it('keeps the way back hidden while the saved boundary still blocks submission', async () => {
+    mockApi({
+      'GET /projects': PROJECTS,
+      'GET /boundaries': COLLECTION,
+      'GET /boundaries/4': saved(),
+    })
+    renderWithProviders(<BoundaryPage />, {
+      route: '/boundary?project=4&from=submit',
+      user: makeUser('developer'),
+    })
+
+    expect(await screen.findByText('Overlap found — 38.4 ha')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Back to submission' })).not.toBeInTheDocument()
   })
 
   it('lets registry staff resolve an open flag', async () => {

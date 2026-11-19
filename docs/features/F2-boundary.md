@@ -112,7 +112,15 @@ and `boundary.overlap_cleared` (actor = system), `boundary.overlap_disputed`,
 |---|---|---|
 | `/boundary?project=<id>` | developer, verifier, registry_staff, admin | Map (draw/edit/upload for owner + admin), live overlap alert, key figures, overlap flags with dispute/resolve |
 
-Deep link from F1/F3: `/boundary?project=<id>`.
+Deep link from F1/F3: `/boundary?project=<id>`. From F1's registration (step 3 link, step 4
+*Add boundary* button) the link carries `&from=submit`; once a boundary that does not block
+submission is saved, the page offers **Back to submission** (→ `/projects/<id>/edit?step=4`).
+Saving also refreshes F1's project detail, so step 4 no longer lists the boundary as missing.
+
+Sample files (`frontend/public/tutorials/samples/`): `sample-boundary.geojson` (Nam Wa, final,
+367.7 ha), `sample-boundary-draft.geojson` (Nam Wa's first survey, 378.4 ha; overlaps the live
+demo's neighbour by 17.5 ha = 4.6%) and `sample-neighbour-boundary.geojson` (Huai Nam Rin,
+494.9 ha, 162 m east of the final Nam Wa).
 
 ## Data model
 
@@ -134,6 +142,11 @@ Migrations: `…_add_projects_table_f1_stub.py`, `…_add_boundaries_and_overlap
 None at the moment.
 
 ## Progress log
+
+### 2026-11-19 · chore/live-demo-flow
+- *Back to submission* after saving when opened from registration; project detail refreshed on
+  save; the draft and neighbour sample boundaries for the live demo (overlap measured in PostGIS
+  and covered by `tests/test_demo_data.py`).
 
 ### 2026-10-28 · feature/F2-boundary-overlap
 - Goal: the whole of F2 (issue #4) on one branch, one PR.

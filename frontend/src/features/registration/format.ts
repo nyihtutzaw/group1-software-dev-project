@@ -125,3 +125,8 @@ export function projectFacts(p: ProjectDetail): KeyValueItem[] {
     { label: 'Evidence files', value: String(p.evidence.length), mono: true },
   ]
 }
+
+/** F2's map for a project; `fromSubmit` makes the map offer the way back to step 4. */
+export function boundaryLink(projectId: number, fromSubmit = true): string {
+  return `/boundary?project=${projectId}${fromSubmit ? '&from=submit' : ''}`
+}

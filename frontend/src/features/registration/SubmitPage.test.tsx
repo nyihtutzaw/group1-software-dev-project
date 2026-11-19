@@ -1,6 +1,6 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Route, Routes } from 'react-router'
+import { Route, Routes, useLocation } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 
 import { makeUser, renderWithProviders } from '@/test/render'
@@ -46,12 +46,20 @@ function server(routes: Record<string, Handler | unknown>) {
   })
 }
 
+function Where() {
+  const { pathname, search } = useLocation()
+  return <p>At {pathname + search}</p>
+}
+
+const NO_BOUNDARY = () => Response.json({ detail: 'No boundary' }, { status: 404 })
+
 function renderAt(route: string) {
   return renderWithProviders(
     <Routes>
       <Route path="/projects/new" element={<SubmitPage />} />
       <Route path="/projects/:id/edit" element={<SubmitPage />} />
       <Route path="/projects/:id" element={<p>Project page</p>} />
+      <Route path="/boundary" element={<Where />} />
     </Routes>,
     { route, user: makeUser('developer') },
   )
@@ -164,11 +172,37 @@ describe('SubmitPage', () => {
   })
 
   it('lists what is missing and only submits a complete draft', async () => {
-    server({ 'GET /api/projects/200': draft, 'GET /api/projects': [] })
+    server({
+      'GET /api/projects/200': draft,
+      'GET /api/projects': [],
+      'GET /api/boundaries/200': NO_BOUNDARY,
+    })
     renderAt('/projects/200/edit?step=4')
 
     expect(await screen.findByText('Additionality proof upload')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Submit project' })).toBeDisabled()
+  })
+
+  it('takes a draft without a boundary to the map, which brings it back here', async () => {
+    server({
+      'GET /api/projects/200': draft,
+      'GET /api/projects': [],
+      'GET /api/boundaries/200': NO_BOUNDARY,
+    })
+    renderAt('/projects/200/edit?step=4')
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Add boundary' }))
+
+    expect(await screen.findByText('At /boundary?project=200&from=submit')).toBeInTheDocument()
+  })
+
+  it('offers no boundary button once only other things are missing', async () => {
+    const bounded = { ...draft, missing: ['Additionality proof upload'], boundary_blocked: null }
+    server({ 'GET /api/projects/200': bounded, 'GET /api/boundaries/200': NO_BOUNDARY })
+    renderAt('/projects/200/edit?step=4')
+
+    expect(await screen.findByText('Additionality proof upload')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /(Add|Fix the) boundary/ })).not.toBeInTheDocument()
   })
 
   it('submits a complete draft and opens the project page', async () => {
