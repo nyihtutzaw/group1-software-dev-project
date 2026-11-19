@@ -1,0 +1,25 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Nam Wa Hillside Reforestation (SAMPLE)",
+        "note": "Fictional boundary for the CRVR tutorial"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [100.8535, 18.786],
+            [100.852, 18.7985],
+            [100.865, 18.803],
+            [100.8755, 18.795],
+            [100.871, 18.7845],
+            [100.8535, 18.786]
+          ]
+        ]
+      }
+    }
+  ]
+}
