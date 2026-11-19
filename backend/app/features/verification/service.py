@@ -214,17 +214,22 @@ def _reassignments(db: Session, assignment_id: int) -> list[VerificationReassign
 
 def _chain(db: Session, assignment: VerificationAssignment, project: Project) -> list[ChainEvent]:
     assigner = _user(db, assignment.assigned_by_id)
-    verifier = _user(db, assignment.verifier_id)
+    changes = _reassignments(db, assignment.id)
+    # The assignment row holds the current verifier and due date. After a reassignment, the
+    # first entry must still show what was originally assigned, so read it from the first change.
+    first = changes[0] if changes else None
+    verifier = _user(db, first.previous_verifier_id if first else assignment.verifier_id)
+    due = first.previous_due_date if first else assignment.due_date
     events = [
         ChainEvent(
             id=f"assigned-{assignment.id}",
             kind="assigned",
             at=assignment.created_at,
             actor_name=assigner.full_name,
-            summary=f"Assigned to {verifier.full_name} · due {assignment.due_date.isoformat()}",
+            summary=f"Assigned to {verifier.full_name} · due {due.isoformat()}",
         )
     ]
-    for change in _reassignments(db, assignment.id):
+    for change in changes:
         previous = _user(db, change.previous_verifier_id)
         current = _user(db, change.verifier_id)
         events.append(
