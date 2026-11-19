@@ -18,6 +18,7 @@ import { cn } from '@/lib/cn'
 
 import { AnnotatedScreenshot, MarkNumber } from './AnnotatedScreenshot'
 import { TUTORIALS, tutorialById } from './content'
+import { DownloadManual } from './DownloadManual'
 import type { Tutorial, TutorialStep } from './types'
 
 /** True when `role` may open the page at `path` (so a "Open this page" link would work). */
@@ -169,6 +170,7 @@ export function TutorialPage() {
         title={tutorial.title}
         subtitle={`${tutorial.feature} · ${total} steps · ${tutorial.summary}`}
         back={{ to: '/system/tutorials', label: 'Tutorials' }}
+        actions={<DownloadManual />}
       />
       <StepList steps={tutorial.steps} index={index} onPick={go} />
 

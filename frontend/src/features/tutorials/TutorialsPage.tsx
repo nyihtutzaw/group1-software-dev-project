@@ -4,6 +4,7 @@ import { ROLE_LABELS } from '@/auth/types'
 import { Alert, Card, Icon, PageHeader, StatusChip } from '@/components/ui'
 
 import { TUTORIALS } from './content'
+import { DownloadManual } from './DownloadManual'
 import type { Tutorial } from './types'
 
 function TutorialCard({ tutorial }: { tutorial: Tutorial }) {
@@ -54,6 +55,7 @@ export function TutorialsPage() {
       <PageHeader
         title="Tutorials"
         subtitle="Step-by-step walkthroughs of every feature, with annotated screenshots"
+        actions={<DownloadManual />}
       />
       <Alert tone="ok" icon="book" title="One sample project, start to finish">
         Every walkthrough follows the same fictional project, “Nam Wa Hillside Reforestation”, from

@@ -6,7 +6,8 @@ import { describe, expect, it } from 'vitest'
 import { navFor } from '@/layout/nav'
 import { makeUser, renderWithProviders } from '@/test/render'
 
-import { TUTORIALS } from './content'
+import { MANUAL, TUTORIALS } from './content'
+import { ManualPage } from './ManualPage'
 import { TutorialPage } from './TutorialPage'
 import { TutorialsPage } from './TutorialsPage'
 
@@ -40,6 +41,39 @@ describe('TutorialsPage', () => {
     expect(
       within(list).getByRole('link', { name: /Project registration & evidence/ }),
     ).toHaveAttribute('href', '/system/tutorials/registration')
+  })
+
+  it('downloads the PDF user manual', () => {
+    renderWithProviders(<TutorialsPage />, { user: makeUser('admin') })
+    const link = screen.getByRole('link', { name: 'Download PDF' })
+    expect(link).toHaveAttribute('href', MANUAL.file)
+    expect(link).toHaveAttribute('download', MANUAL.downloadName)
+  })
+})
+
+describe('ManualPage', () => {
+  it('prints every chapter and every step, numbered', () => {
+    renderWithProviders(<ManualPage />, { user: makeUser('admin') })
+    expect(screen.getByRole('heading', { name: 'User Manual' })).toBeInTheDocument()
+    for (const [c, t] of TUTORIALS.entries()) {
+      expect(screen.getByRole('heading', { level: 2, name: t.title })).toBeInTheDocument()
+      for (const [i, step] of t.steps.entries()) {
+        expect(
+          screen.getByRole('heading', { level: 3, name: `${c + 1}.${i + 1}${step.title}` }),
+        ).toBeInTheDocument()
+      }
+    }
+    const steps = TUTORIALS.reduce((n, t) => n + t.steps.length, 0)
+    expect(screen.getAllByRole('img').length).toBeGreaterThanOrEqual(steps)
+  })
+
+  it('prints in the light theme and restores the viewer theme afterwards', () => {
+    document.documentElement.dataset.theme = 'dark'
+    const { unmount } = renderWithProviders(<ManualPage />, { user: makeUser('admin') })
+    expect(document.documentElement.dataset.theme).toBe('light')
+    unmount()
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    delete document.documentElement.dataset.theme
   })
 })
 
@@ -89,6 +123,11 @@ describe('TutorialPage', () => {
       screen.getByRole('heading', { name: 'Geospatial boundary & overlap detection' }),
     ).toBeInTheDocument()
     expect(screen.getByText('Step 1 of 4')).toBeInTheDocument()
+  })
+
+  it('offers the PDF manual on every walkthrough', () => {
+    renderTutorial('/system/tutorials/verification')
+    expect(screen.getByRole('link', { name: 'Download PDF' })).toHaveAttribute('href', MANUAL.file)
   })
 
   it('links to the real page only when the signed-in role can open it', () => {

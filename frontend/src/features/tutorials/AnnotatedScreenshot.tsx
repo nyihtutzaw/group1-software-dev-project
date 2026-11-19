@@ -42,25 +42,35 @@ function markStyle(m: Mark) {
  */
 export function AnnotatedScreenshot({
   step,
-  active,
-  onActive,
+  active = null,
+  onActive = () => {},
+  link = true,
 }: {
   step: TutorialStep
-  active: number | null
-  onActive: (index: number | null) => void
+  active?: number | null
+  onActive?: (index: number | null) => void
+  /** Wrap the image in a link to the full-size file (off for the printed manual). */
+  link?: boolean
 }) {
   const [width, height] = step.size
+  const image = (
+    <img
+      src={step.image}
+      alt={step.alt}
+      width={width}
+      height={height}
+      className="block h-auto w-full rounded-lg border border-line bg-surface-2"
+    />
+  )
   return (
     <figure className="relative">
-      <a href={step.image} target="_blank" rel="noreferrer" title="Open the full-size screenshot">
-        <img
-          src={step.image}
-          alt={step.alt}
-          width={width}
-          height={height}
-          className="block h-auto w-full rounded-lg border border-line bg-surface-2"
-        />
-      </a>
+      {link ? (
+        <a href={step.image} target="_blank" rel="noreferrer" title="Open the full-size screenshot">
+          {image}
+        </a>
+      ) : (
+        image
+      )}
       {step.marks.map((mark, i) => (
         <div
           key={mark.label}

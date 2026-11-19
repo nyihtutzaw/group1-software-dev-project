@@ -29,6 +29,9 @@ const TutorialsPage = lazy(() =>
 const TutorialPage = lazy(() =>
   import('@/features/tutorials/TutorialPage').then((m) => ({ default: m.TutorialPage })),
 )
+const ManualPage = lazy(() =>
+  import('@/features/tutorials/ManualPage').then((m) => ({ default: m.ManualPage })),
+)
 
 // Every page route is guarded by its entry in layout/nav.ts (roles + public flag).
 // Feature sub-pages (e.g. /projects/:id) go here too, guarded by their parent's id.
@@ -36,6 +39,17 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      {/* Printable user manual: a full page without the app shell */}
+      <Route
+        path="/system/tutorials/manual"
+        element={
+          <Guarded page="tutorials">
+            <Suspense fallback={<p className="p-6 text-sm text-faint">Loading manual…</p>}>
+              <ManualPage />
+            </Suspense>
+          </Guarded>
+        }
+      />
       <Route element={<AppShell />}>
         <Route
           index

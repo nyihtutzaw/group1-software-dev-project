@@ -2,6 +2,8 @@
 // fictional sample project ("Nam Wa Hillside Reforestation") taken through the whole flow.
 // Mark positions are percentages of each screenshot. To refresh a screenshot, retake it at
 // 1280 px wide and update its `size` and marks. See docs/features/F5-security-audit.md.
+import type { Role } from '@/auth/types'
+
 import f1Additionality from './images/f1-additionality.webp'
 import f1Details from './images/f1-details.webp'
 import f1Evidence from './images/f1-evidence.webp'
@@ -33,6 +35,33 @@ import f5Users from './images/f5-users.webp'
 import type { Tutorial } from './types'
 
 const SAMPLES = '/tutorials/samples'
+
+/**
+ * The PDF user manual. It is generated from /system/tutorials/manual (Print → Save as PDF, A4)
+ * and saved to frontend/public/tutorials/. Regenerate it whenever TUTORIALS change.
+ */
+export const MANUAL = {
+  file: '/tutorials/CRVR-User-Manual.pdf',
+  downloadName: 'CRVR-User-Manual.pdf',
+  version: '1.0',
+  date: '19 November 2026',
+}
+
+/** What each role does, for the manual's introduction. */
+export const ROLE_GUIDE: { role: Role; duties: string }[] = [
+  {
+    role: 'developer',
+    duties: 'Registers projects, draws their land boundaries and uploads evidence.',
+  },
+  { role: 'verifier', duties: 'Reviews assigned projects, completes the checklist and signs off.' },
+  {
+    role: 'registry_staff',
+    duties:
+      'Assigns verifiers, approves or rejects sign-offs, issues credits, grants buyer access.',
+  },
+  { role: 'buyer', duties: 'Traces credits to their evidence and retires the credits they hold.' },
+  { role: 'admin', duties: 'Manages user accounts and has every registry staff permission.' },
+]
 
 const SAMPLE_PROJECT = 'Nam Wa Hillside Reforestation'
 
