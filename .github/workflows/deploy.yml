@@ -1,0 +1,66 @@
+# Deploy the hosted class demo to Google Cloud Run after CI passes on main.
+# Setup and runbook: docs/deployment.md. Also runnable by hand (Actions → Deploy → Run workflow).
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time; a newer one waits instead of cancelling a half-finished rollout.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # keyless sign-in to Google Cloud (Workload Identity Federation)
+
+jobs:
+  deploy:
+    # Only after a successful CI run for a push to main (not for pull requests).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    environment:
+      name: demo
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Image name
+        id: image
+        run: |
+          . infra/gcp/config.sh
+          echo "name=${IMAGE_REPO}:$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "registry=${REGION}-docker.pkg.dev" >> "$GITHUB_OUTPUT"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker ${{ steps.image.outputs.registry }} --quiet
+
+      - uses: docker/setup-buildx-action@v3
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/cloudrun/Dockerfile
+          push: true
+          tags: ${{ steps.image.outputs.name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Migrate, seed and deploy
+        id: deploy
+        run: |
+          sh infra/gcp/deploy.sh "${{ steps.image.outputs.name }}" | tee deploy.log
+          echo "url=$(sed -n 's/^== Live: //p' deploy.log)" >> "$GITHUB_OUTPUT"

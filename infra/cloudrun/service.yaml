@@ -1,0 +1,60 @@
+# Cloud Run service: API + frontend. Rendered and applied by infra/gcp/deploy.sh
+# (the double-underscore placeholders are filled from infra/gcp/config.sh). Cheapest settings: scales to zero,
+# one instance at most, CPU billed only while a request is being handled.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: __SERVICE__
+  labels:
+    cloud.googleapis.com/location: __REGION__
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "1"
+        run.googleapis.com/cpu-throttling: "true"
+        run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/cloudsql-instances: __PROJECT_ID__:__REGION__:__DB_INSTANCE__
+    spec:
+      serviceAccountName: __RUN_SA__
+      containerConcurrency: 40
+      timeoutSeconds: 60
+      containers:
+        - image: __IMAGE__
+          ports:
+            - name: http1
+              containerPort: 8080
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          env:
+            - name: DEMO_MODE
+              value: "true"
+            - name: UNAVAILABLE_MESSAGE
+              value: >-
+                CRVR is closed from 23:00 to 06:00 (Bangkok time) to save cost. If it is daytime,
+                the database is starting up: please try again in 2 minutes.
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: crvr-database-url, key: latest }
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef: { name: crvr-jwt-secret, key: latest }
+            - name: DEMO_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: crvr-demo-password, key: latest }
+          volumeMounts:
+            - name: evidence
+              mountPath: /data/evidence
+      volumes:
+        - name: evidence
+          csi:
+            driver: gcsfuse.run.googleapis.com
+            readOnly: false
+            volumeAttributes:
+              bucketName: __BUCKET__

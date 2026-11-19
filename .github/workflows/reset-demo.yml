@@ -1,0 +1,36 @@
+# Wipe the hosted demo's data and load the sample data again (e.g. before the presentation, or
+# after testers changed things). Redeploys the image that is live now. Actions → "Reset demo data".
+name: Reset demo data
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "reset" to wipe all demo data and reseed it'
+        required: true
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  reset:
+    if: inputs.confirm == 'reset'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Reset with the live image
+        run: |
+          . infra/gcp/config.sh
+          image=$(gcloud run services describe "$SERVICE" --region="$REGION" \
+            --format='value(spec.template.spec.containers[0].image)')
+          sh infra/gcp/deploy.sh "$image" reset

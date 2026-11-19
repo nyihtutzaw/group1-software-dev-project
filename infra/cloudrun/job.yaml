@@ -1,0 +1,41 @@
+# Cloud Run job, same image as the service. Default: `migrate` (alembic + demo seed), run before
+# every deploy. The "Reset demo data" workflow runs it with `reset` instead.
+# Rendered and applied by infra/gcp/deploy.sh.
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: __JOB__
+  labels:
+    cloud.googleapis.com/location: __REGION__
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/cloudsql-instances: __PROJECT_ID__:__REGION__:__DB_INSTANCE__
+    spec:
+      taskCount: 1
+      template:
+        spec:
+          serviceAccountName: __RUN_SA__
+          maxRetries: 0
+          timeoutSeconds: 600
+          containers:
+            - image: __IMAGE__
+              command: [sh]
+              args: [scripts/cloud-run-job.sh, migrate]
+              resources:
+                limits:
+                  cpu: "1"
+                  memory: 512Mi
+              env:
+                - name: DEMO_MODE
+                  value: "true"
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef: { name: crvr-database-url, key: latest }
+                - name: JWT_SECRET
+                  valueFrom:
+                    secretKeyRef: { name: crvr-jwt-secret, key: latest }
+                - name: DEMO_PASSWORD
+                  valueFrom:
+                    secretKeyRef: { name: crvr-demo-password, key: latest }
