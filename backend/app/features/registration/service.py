@@ -22,6 +22,12 @@ from app.features.audit.ledger import record_action
 from app.features.boundary.models import BLOCKING_STATUSES, OverlapFlag
 from app.features.boundary.service import issuance_blocked
 from app.features.registration.models import EvidenceFile, EvidenceKind, Project, ProjectStatus
+from app.features.registration.scanning import (
+    EvidenceRejectedError,
+    NoVirusScanner,
+    VirusScanner,
+    check_content_matches_extension,
+)
 from app.features.registration.schemas import (
     BuyerEvidenceSummary,
     EvidenceOut,
@@ -173,6 +179,14 @@ def update_project(db: Session, project: Project, data: ProjectIn) -> Project:
 # --- evidence -------------------------------------------------------------------------
 
 
+def get_scanner() -> VirusScanner | NoVirusScanner:
+    """The virus scanner named in the settings. Built per call so tests can repoint them."""
+    settings = get_settings()
+    if not settings.virus_scan_enabled:
+        return NoVirusScanner()
+    return VirusScanner(settings.clamav_host, settings.clamav_port)
+
+
 def get_storage() -> EvidenceStorage:
     """The backend named in the settings. Built per call so tests can repoint the settings."""
     settings = get_settings()
@@ -223,6 +237,13 @@ def store_evidence(
         ) from None
     except EvidenceEmptyError:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"“{name}” is empty") from None
+    # Both checks need the bytes, and both run before sealing, which cannot be undone.
+    try:
+        check_content_matches_extension(name, buffer)
+        get_scanner().scan(name, buffer)
+    except EvidenceRejectedError as rejected:
+        buffer.close()
+        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, str(rejected)) from None
     try:
         get_storage().seal(key, buffer)
     finally:
