@@ -6,7 +6,7 @@ import { mockFetch, renderWithProviders } from '@/test/render'
 
 import { LoginPage } from './LoginPage'
 
-const account = (password: string | null): DemoAccount => ({
+const account = (password: string): DemoAccount => ({
   email: 'verifier@crvr.local',
   full_name: 'Malee Wong',
   role: 'verifier',
@@ -29,15 +29,14 @@ describe('LoginPage demo accounts', () => {
     })
   })
 
-  it('only fills in the email when the demo password is private (hosted demo)', async () => {
-    const fetch = mockFetch([account(null)])
+  it('shows no demo accounts when the server lists none (hosted demo)', async () => {
+    const fetch = mockFetch([])
     renderWithProviders(<LoginPage />)
 
-    expect(await screen.findByText('password from your instructor')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /Malee Wong/ }))
-
-    expect(screen.getByLabelText('Email')).toHaveValue('verifier@crvr.local')
-    expect(screen.getByLabelText('Password')).toHaveFocus()
-    expect(fetch.mock.calls.some(([url]) => url === '/api/auth/login')).toBe(false)
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith('/api/auth/demo-accounts', expect.anything()),
+    )
+    expect(screen.queryByText('Demo accounts')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument()
   })
 })

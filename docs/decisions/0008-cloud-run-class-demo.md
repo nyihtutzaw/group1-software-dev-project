@@ -13,7 +13,7 @@ accounts the professor needs, and the public demo password `crvr-demo` is in the
 
 - **One environment**, run as production with `DEMO_MODE=true`: demo accounts and sample data are
   seeded, but with a private `DEMO_PASSWORD` (≥ 12 characters, never `crvr-demo`) from Secret
-  Manager. The sign-in page lists the accounts without the password.
+  Manager. The sign-in page does not list the demo accounts (only local development does).
 - **One Cloud Run service** serves both the API and the built frontend (`STATIC_DIR`), so the
   browser stays on one origin and the httpOnly cookie needs no CORS. Scales to zero, max 1
   instance, CPU billed only during requests.

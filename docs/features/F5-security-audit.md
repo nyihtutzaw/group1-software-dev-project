@@ -121,7 +121,7 @@ From WBS 9.x and the design report:
 | POST | `/api/auth/login` | public | Sign in; sets cookie, records failures, and rate-limits repeated failures |
 | POST | `/api/auth/logout` | any | Clear the session cookie |
 | GET | `/api/auth/me` | signed-in | Current user |
-| GET | `/api/auth/demo-accounts` | public (dev only) | Demo accounts for the sign-in page |
+| GET | `/api/auth/demo-accounts` | public (dev only) | Demo accounts for one-click sign-in; empty on the hosted demo |
 | GET | `/api/admin/users` | admin | List users without credential data |
 | POST | `/api/admin/users` | admin | Create a user with an admin-provided initial password |
 | PATCH | `/api/admin/users/{user_id}` | admin | Change a user's role or active status |
@@ -159,6 +159,13 @@ From WBS 9.x and the design report:
   initial password out of band.
 
 ## Progress log
+
+### 2026-11-19 · fix/hide-hosted-demo-accounts
+- Fix: the hosted demo's public sign-in page listed every demo account (including admin), which
+  advertises the accounts to anyone who finds the URL. `/api/auth/demo-accounts` now returns the
+  list only when the demo password is the public development one, so only local development shows
+  it (one-click sign-in unchanged). Account e-mails go to the professor with the private password
+  (`docs/deployment.md`). Tests updated in `test_deployment.py` and `LoginPage.test.tsx`.
 
 ### 2026-11-19 · feature/F5-role-access-matrix
 - Goal: a **System** menu group for admins, with a first child page **Role & Access** that shows the
