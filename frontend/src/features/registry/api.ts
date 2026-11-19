@@ -13,7 +13,7 @@ export type Credit = {
   vintage: number
   quantity: number
   verification_status: 'approved'
-  status: 'active' | 'retired' | 'revoked'
+  status: 'active' | 'retired' | 'revoked' | 'buffer'
   verifier_name: string
   verification_reference: string
   approval_reference: string

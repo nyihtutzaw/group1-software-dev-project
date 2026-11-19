@@ -28,7 +28,7 @@ class CreditOut(PublicationIn):
     model_config = ConfigDict(from_attributes=True)
     id: int
     verification_status: Literal["approved"] = "approved"
-    status: Literal["active", "retired", "revoked"]
+    status: Literal["active", "retired", "revoked", "buffer"]
 
 
 class CreditPage(BaseModel):

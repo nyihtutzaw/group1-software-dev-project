@@ -83,6 +83,7 @@ def workflow(client, db, make_user, tmp_path, monkeypatch):
             "decision": "sign_off",
             "note": PRIVATE,
             "checklist": {key: True for key, _label in CHECKLIST},
+            "risk_rating": "low",
         },
     )
     assert report.status_code == 200, report.text
@@ -119,29 +120,49 @@ def test_approve_issue_and_read_real_credit_in_registry(client, db, workflow):
     credit = issue(client, workflow)
     db.refresh(workflow["project"])
     assert workflow["project"].status == ProjectStatus.ISSUED
-    assert credit["quantity"] == ISSUE["quantity"] != workflow["project"].est_removal_tco2e
-    row = db.get(RegistryCredit, credit["id"])
-    assert row.source_project_id == workflow["project"].id
-    assert row.source_approval_id == workflow["approval_id"]
-    assert not row.is_demo
+    # Low risk keeps 10% (7 of 73, half-up) in the buffer. The response is the tradable batch.
+    assert credit["status"] == "active"
+    assert credit["quantity"] == 66
+    assert credit["quantity"] != workflow["project"].est_removal_tco2e
+    rows = db.scalars(select(RegistryCredit).order_by(RegistryCredit.id)).all()
+    assert [(row.status, row.quantity) for row in rows] == [("active", 66), ("buffer", 7)]
+    assert sum(row.quantity for row in rows) == ISSUE["quantity"]
+    assert all(row.source_project_id == workflow["project"].id for row in rows)
+    assert all(row.source_approval_id == workflow["approval_id"] for row in rows)
+    assert not rows[0].is_demo
     client.post("/api/auth/logout")
     results = client.get("/api/registry/credits", params={"q": workflow["project"].code}).json()
-    assert results["total"] == 1
-    assert results["items"][0] == credit
+    assert results["total"] == 2
+    active = next(item for item in results["items"] if item["status"] == "active")
+    assert active == credit
     detail = client.get(f"/api/registry/credits/{credit['id']}").json()
     assert detail["history"][0]["action"] == "issued"
     assert client.get(f"/api/registry/credits/{credit['id']}/integrity").json()["snapshot_matches"]
-    entry = db.scalar(select(LedgerEntry).where(LedgerEntry.action == "credit.issued"))
-    assert entry.payload["serial"] == credit["serial"]
-    assert entry.payload["quantity"] == 73
+    buffer = next(row for row in rows if row.status == "buffer")
+    assert (
+        client.get(f"/api/registry/credits/{buffer.id}/integrity").json()["ledger_status"]
+        == "intact"
+    )
+    entries = db.scalars(
+        select(LedgerEntry).where(LedgerEntry.action == "credit.issued").order_by(LedgerEntry.id)
+    ).all()
+    assert [entry.payload["quantity"] for entry in entries] == [66, 7]
+    assert entries[0].payload["serial"] == credit["serial"]
     assert verify_ledger_chain(db) == (True, None)
     duplicate = (
         sign_in(client, workflow["staff"]),
         client.post(f"/api/verifications/projects/{workflow['project'].id}/issue", json=ISSUE),
     )[1]
     assert duplicate.status_code == 409
-    assert db.scalar(select(func.count()).select_from(RegistryCredit)) == 1
-    assert db.scalar(select(func.count()).select_from(RegistryCreditEvent)) == 1
+    assert db.scalar(select(func.count()).select_from(RegistryCredit)) == 2
+    assert db.scalar(select(func.count()).select_from(RegistryCreditEvent)) == 2
+    sign_in(client, workflow["staff"])
+    blocked = client.post(
+        f"/api/registry/credits/{buffer.id}/holdings",
+        json={"buyer_email": workflow["buyer"].email, "quantity": 1},
+    )
+    assert blocked.status_code == 409
+    assert "Buffer" in blocked.json()["detail"]
 
 
 def tamper(db, sql, params):

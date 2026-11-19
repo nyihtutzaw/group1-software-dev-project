@@ -31,12 +31,19 @@ def sign_in(client, user):
     return user
 
 
-def report_body(decision="sign_off", note="Checked the project record and the boundary."):
-    return {
+def report_body(
+    decision="sign_off",
+    note="Checked the project record and the boundary.",
+    risk_rating="low",
+):
+    body = {
         "checklist": {key: True for key, _label in CHECKLIST},
         "note": note,
         "decision": decision,
     }
+    if risk_rating is not None:
+        body["risk_rating"] = risk_rating
+    return body
 
 
 def assign(client, project, verifier, due=DUE):
@@ -442,3 +449,103 @@ def test_review_lists_the_sealed_evidence_files(client, login, db, make_user, ma
 
     assert evidence[1]["title"] == "Land title · title-deed.pdf"
     assert "SHA-256 abababababab" in evidence[1]["detail"]
+    baseline = next(
+        line
+        for line in client.get(f"/api/verifications/assignments/{created['id']}").json()[
+            "checklist"
+        ]
+        if line["key"] == "baseline"
+    )
+    assert baseline["source"] == "1 file · 1 land title"
+
+
+def test_sign_off_requires_a_reversal_risk_rating(client, login, make_user, make_project):
+    login(Role.REGISTRY_STAFF)
+    verifier = make_user(Role.VERIFIER, email="v@test.local")
+    created = assign(client, make_project(), verifier)
+    sign_in(client, verifier)
+    missing = client.post(
+        f"/api/verifications/assignments/{created['id']}/report",
+        json=report_body(risk_rating=None),
+    )
+    assert missing.status_code == 422
+
+
+def test_buffer_split_follows_the_risk_rating():
+    from app.features.verification.issuance import _split_buffer
+
+    assert _split_buffer(100, "low") == (90, 10, 10)
+    assert _split_buffer(100, "medium") == (85, 15, 15)
+    assert _split_buffer(100, "high") == (80, 20, 20)
+
+
+def test_staff_can_reassign_after_request_changes(
+    client, login, make_user, make_project, monkeypatch
+):
+    calls = []
+    monkeypatch.setattr(
+        "app.features.verification.service.record_action",
+        lambda db, **kw: calls.append(kw),
+    )
+    staff = login(Role.REGISTRY_STAFF)
+    verifier = make_user(Role.VERIFIER, email="first@test.local")
+    replacement = make_user(Role.VERIFIER, email="second@test.local")
+    project = make_project(name="Needs another verifier")
+    created = assign(client, project, verifier)
+    sign_in(client, verifier)
+    assert (
+        client.post(
+            f"/api/verifications/assignments/{created['id']}/report",
+            json=report_body("request_changes", "Land title name does not match."),
+        ).status_code
+        == 200
+    )
+
+    sign_in(client, verifier)
+    denied = client.patch(
+        f"/api/verifications/assignments/{created['id']}",
+        json={"verifier_id": replacement.id, "due_date": DUE.isoformat()},
+    )
+    assert denied.status_code == 403
+
+    sign_in(client, staff)
+    too_soon = client.patch(
+        f"/api/verifications/assignments/{created['id']}",
+        json={"verifier_id": verifier.id, "due_date": created["due_date"]},
+    )
+    # The due date on the queue item is the original one; same verifier and date is a no-op.
+    assert too_soon.status_code == 409
+
+    new_due = date.today() + timedelta(days=40)
+    changed = client.patch(
+        f"/api/verifications/assignments/{created['id']}",
+        json={"verifier_id": replacement.id, "due_date": new_due.isoformat()},
+    )
+    assert changed.status_code == 200, changed.text
+    body = changed.json()
+    assert body["item"]["verifier_name"] == replacement.full_name
+    assert body["item"]["due_date"] == new_due.isoformat()
+    assert body["item"]["status"] == "changes_requested"
+    reassigned = [event for event in body["chain"] if event["kind"] == "reassigned"]
+    assert len(reassigned) == 1
+    assert reassigned[0]["summary"].startswith("Reassigned to")
+    assert calls[-1]["action"] == "verification.reassigned"
+
+    sign_in(client, verifier)
+    assert client.get("/api/verifications/queue").json()["items"] == []
+    sign_in(client, replacement)
+    names = [
+        item["project_name"] for item in client.get("/api/verifications/queue").json()["items"]
+    ]
+    assert names == ["Needs another verifier"]
+
+
+def test_cannot_reassign_an_open_assignment(client, login, make_user, make_project):
+    login(Role.ADMIN)
+    verifier = make_user(Role.VERIFIER, email="v@test.local")
+    created = assign(client, make_project(), verifier)
+    response = client.patch(
+        f"/api/verifications/assignments/{created['id']}",
+        json={"verifier_id": verifier.id, "due_date": (DUE + timedelta(days=1)).isoformat()},
+    )
+    assert response.status_code == 409

@@ -8,9 +8,11 @@ import {
   Card,
   Field,
   Icon,
+  Input,
   KeyValue,
   PageHeader,
   SectionHeader,
+  Select,
   StatusChip,
   TabPanel,
   Tabs,
@@ -18,13 +20,70 @@ import {
 } from '@/components/ui'
 import { cn } from '@/lib/cn'
 
-import { type Review, useDecide, useReview, useSubmitReport } from './api'
+import {
+  type Review,
+  useDecide,
+  useReassign,
+  useReview,
+  useSubmitReport,
+  useVerifiers,
+} from './api'
 import { Checklist } from './Checklist'
 import { dueLabel, longDate, overdueLabel } from './format'
 
 type Tab = 'review' | 'evidence' | 'history'
 
 const BACK = { to: '/verify', label: 'Verification queue' }
+
+function ReassignForm({ review }: { review: Review }) {
+  const verifiers = useVerifiers(true)
+  const reassign = useReassign(review.item.id)
+  const [verifierId, setVerifierId] = useState('')
+  const [dueDate, setDueDate] = useState(review.item.due_date)
+
+  return (
+    <>
+      <SectionHeader title="Reassign" />
+      <Card>
+        <Field label="Verifier" htmlFor="reassign-verifier">
+          <Select
+            id="reassign-verifier"
+            value={verifierId}
+            onChange={(event) => setVerifierId(event.target.value)}
+          >
+            <option value="">Choose a verifier</option>
+            {verifiers.data?.map((verifier) => (
+              <option key={verifier.id} value={verifier.id}>
+                {verifier.full_name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Due date" htmlFor="reassign-due">
+          <Input
+            id="reassign-due"
+            type="date"
+            value={dueDate}
+            onChange={(event) => setDueDate(event.target.value)}
+          />
+        </Field>
+      </Card>
+      {reassign.isError && (
+        <Alert className="mt-3" title="Could not reassign">
+          {reassign.error.message}
+        </Alert>
+      )}
+      <ButtonRow>
+        <Button
+          disabled={!verifierId || !dueDate || reassign.isPending}
+          onClick={() => reassign.mutate({ verifier_id: Number(verifierId), due_date: dueDate })}
+        >
+          {reassign.isPending ? 'Saving…' : 'Save assignment'}
+        </Button>
+      </ButtonRow>
+    </>
+  )
+}
 
 /** One assignment: the verifier's checklist and sign-off, staff's decision, evidence and history. */
 export function ReviewPage() {
@@ -64,6 +123,7 @@ function ReviewBody({ data }: { data: Review }) {
     Object.fromEntries(data.checklist.map((line) => [line.key, line.checked])),
   )
   const [note, setNote] = useState(data.note)
+  const [risk, setRisk] = useState<'' | 'low' | 'medium' | 'high'>(data.risk_rating ?? '')
   const [rationale, setRationale] = useState('')
   const done = data.checklist.filter((line) => checked[line.key]).length
   const failing = data.automatic_checks.filter((check) => !check.passed).length
@@ -141,6 +201,25 @@ function ReviewBody({ data }: { data: Review }) {
                     />
                   </Field>
                 </Card>
+                <Card className="mt-3">
+                  <Field
+                    label="Reversal risk"
+                    htmlFor="risk-rating"
+                    hint="Sets the non-tradable buffer pool when credits are issued."
+                  >
+                    <Select
+                      id="risk-rating"
+                      value={risk}
+                      disabled={!data.can_submit}
+                      onChange={(event) => setRisk(event.target.value as typeof risk)}
+                    >
+                      <option value="">Choose a rating</option>
+                      <option value="low">Low · 10% buffer</option>
+                      <option value="medium">Medium · 15% buffer</option>
+                      <option value="high">High · 20% buffer</option>
+                    </Select>
+                  </Field>
+                </Card>
                 {data.can_submit && (
                   <>
                     {submit.isError && (
@@ -153,15 +232,25 @@ function ReviewBody({ data }: { data: Review }) {
                         variant="ghost"
                         disabled={submit.isPending || note.trim() === ''}
                         onClick={() =>
-                          submit.mutate({ checklist: checked, note, decision: 'request_changes' })
+                          submit.mutate({
+                            checklist: checked,
+                            note,
+                            decision: 'request_changes',
+                            risk_rating: risk || null,
+                          })
                         }
                       >
                         Request changes
                       </Button>
                       <Button
-                        disabled={submit.isPending || note.trim() === ''}
+                        disabled={submit.isPending || note.trim() === '' || risk === ''}
                         onClick={() =>
-                          submit.mutate({ checklist: checked, note, decision: 'sign_off' })
+                          submit.mutate({
+                            checklist: checked,
+                            note,
+                            decision: 'sign_off',
+                            risk_rating: risk || null,
+                          })
                         }
                       >
                         {submit.isPending ? 'Submitting…' : 'Sign off'}
@@ -172,6 +261,7 @@ function ReviewBody({ data }: { data: Review }) {
                     </p>
                   </>
                 )}
+                {data.can_reassign && <ReassignForm review={data} />}
                 {data.can_decide && (
                   <>
                     <SectionHeader title="Decision" />
@@ -300,6 +390,14 @@ function ReviewBody({ data }: { data: Review }) {
                 { label: 'Project', value: item.project_code, mono: true },
                 { label: 'Verifier', value: item.verifier_name },
                 { label: 'Due', value: longDate(item.due_date) },
+                ...(data.risk_rating
+                  ? [
+                      {
+                        label: 'Reversal risk',
+                        value: `${data.risk_rating} · ${data.risk_rating === 'high' ? '20' : data.risk_rating === 'medium' ? '15' : '10'}% buffer`,
+                      },
+                    ]
+                  : []),
                 ...(overdueLabel(item)
                   ? [
                       {

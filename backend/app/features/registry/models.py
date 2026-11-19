@@ -2,7 +2,16 @@
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, String, Text, false
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+    UniqueConstraint,
+    false,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -13,13 +22,20 @@ class RegistryCredit(Base):
     __table_args__ = (
         CheckConstraint("quantity > 0", name="ck_registry_quantity"),
         CheckConstraint("vintage BETWEEN 1900 AND 2200", name="ck_registry_vintage"),
-        CheckConstraint("status IN ('active', 'retired', 'revoked')", name="ck_registry_status"),
+        CheckConstraint(
+            "status IN ('active', 'retired', 'revoked', 'buffer')", name="ck_registry_status"
+        ),
+        # One tradable batch and one buffer batch may share an approval. NULL approvals
+        # (demo rows) are not treated as equal, so several of those can stay 'active'.
+        UniqueConstraint(
+            "source_approval_id", "status", name="uq_registry_credits_approval_status"
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     # Source links are internal; F3 owns approval and F4 reuses this row as its issued batch.
     source_project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), index=True)
-    source_approval_id: Mapped[int | None] = mapped_column(ForeignKey("approvals.id"), unique=True)
+    source_approval_id: Mapped[int | None] = mapped_column(ForeignKey("approvals.id"))
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     serial: Mapped[str] = mapped_column(String(120), unique=True)
     project_reference: Mapped[str] = mapped_column(String(80), index=True)

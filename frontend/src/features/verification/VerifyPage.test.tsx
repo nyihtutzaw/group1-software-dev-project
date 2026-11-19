@@ -81,7 +81,9 @@ const review: Review = {
     },
   ],
   note: '',
+  risk_rating: null,
   can_submit: true,
+  can_reassign: false,
   can_decide: false,
   decision_block: null,
   report_id: null,
@@ -198,6 +200,10 @@ describe('Verification queue', () => {
       within(panel).getByRole('textbox', { name: 'Verifier note' }),
       'Title matches the applicant.',
     )
+    await userEvent.selectOptions(
+      within(panel).getByRole('combobox', { name: 'Reversal risk' }),
+      'medium',
+    )
     await userEvent.click(within(panel).getByRole('button', { name: 'Sign off' }))
 
     expect(fetch).toHaveBeenCalledWith(
@@ -209,6 +215,7 @@ describe('Verification queue', () => {
         .body as string,
     )
     expect(body.decision).toBe('sign_off')
+    expect(body.risk_rating).toBe('medium')
     expect(body.note).toBe('Title matches the applicant.')
     expect(body.checklist.land_title).toBe(true)
   })
