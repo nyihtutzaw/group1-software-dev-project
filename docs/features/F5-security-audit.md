@@ -20,7 +20,8 @@ separate security log, and repeated sign-in failures are temporarily blocked. Ad
 create accounts, change roles, and deactivate or reactivate users from `/admin/users`, and each
 change is written to the ledger. Security events older than 90 days are deleted automatically.
 A **System** menu holds admin settings; its *Role & Access* page shows the role, page-access and
-API-access matrices read-only.
+API-access matrices read-only, and *Tutorials* walks through every feature (F1–F5) with annotated
+screenshots and a sample project.
 
 ## Scope
 
@@ -84,6 +85,16 @@ From WBS 9.x and the design report:
   shown.
 - 2026-11-19 — **System menu**: admin settings pages go under one collapsible *System* parent
   (`NavItem.group = 'system'`, paths `/system/<slug>`). *Users* stays a top-level menu for now.
+- 2026-11-19 — **Tutorials are static, frontend-only content**: walkthroughs live in
+  `frontend/src/features/tutorials/content.ts` with real screenshots (WebP, 1280 px wide) in
+  `images/`, and sample files in `frontend/public/tutorials/samples/`. No API or database, because
+  the content only changes when the UI does, through a reviewed PR. Every walkthrough follows one
+  fictional project, *Nam Wa Hillside Reforestation* (crediting 2025–2044, 368 ha, vintage 2026,
+  4,800 t issued), so the screens connect from registration to a retired credit. A mark's
+  `x/y/w/h` are percentages of its screenshot, so marks scale with the image. Issuing credits has
+  no button yet, so that step shows the API docs. Admin-only for now, like the rest of System.
+  **Refreshing a screenshot:** sign in locally with the demo accounts, take a 1280 px-wide
+  screenshot of the same state, save it as WebP, then update the step's `size` and marks.
 
 - 2026-10-28 — **F2 added a `record_action()` stub** in `backend/app/features/audit/ledger.py`
   (`record_action(db, *, actor, action, entity, entity_id, payload)`, logs only). Replace the body
@@ -137,6 +148,8 @@ From WBS 9.x and the design report:
 | `/ledger` | verifier, registry_staff, buyer, admin | Paginated audit timeline with chain integrity status |
 | `/admin/users` | admin | List accounts, create users, change roles, and deactivate or reactivate accounts |
 | `/system/roles-access` | admin | System › Role & Access: roles, page-access and API-access matrices, read-only |
+| `/system/tutorials` | admin | System › Tutorials: one walkthrough card per feature (F1–F5) |
+| `/system/tutorials/:id?step=N` | admin | One walkthrough: annotated screenshot per step, numbered legend, who does the step, link to the real page, sample data and files |
 
 ## Data model
 
@@ -166,6 +179,16 @@ From WBS 9.x and the design report:
 - Plan: 1) sample files and screenshots of a fictional project taken through the whole flow
   2) tutorial content, annotated-screenshot component, list and walkthrough pages + route/menu
   3) tests 4) docs.
+- Done: 28 screenshots taken with Playwright while the sample project went through registration,
+  boundary, assignment, sign-off, approval, issuance, buyer access, allocation and retirement.
+  Five walkthroughs (6 + 4 + 8 + 6 + 4 steps). The legend and marks highlight each other on
+  hover/focus; on phones the legend follows the screenshot. Pages are lazy-loaded (main bundle
+  434 → 341 kB). New shared `book` icon.
+- Validation: frontend format, lint, typecheck, 102 tests and production build pass; checked in
+  light and dark themes and at 420 px.
+- Note: making the screenshots added two projects to the local dev DB: CRVR-0203 (a first try,
+  verified but not issued because its crediting period started in the future) and CRVR-0204 (the
+  sample). `sh scripts/start.sh --fresh --yes` clears them.
 
 ### 2026-11-19 · fix/hide-hosted-demo-accounts
 - Fix: the hosted demo's public sign-in page listed every demo account (including admin), which
