@@ -153,17 +153,18 @@ echo "  ${GITHUB_REPO}@main → crvr-deployer"
 
 step "Database schedule: stop ${DB_STOP_CRON}, start ${DB_START_CRON} (${TIME_ZONE})"
 SQL_API="https://sqladmin.googleapis.com/v1/projects/${PROJECT_ID}/instances/${DB_INSTANCE}"
+# Scheduler cannot send PATCH (what instances.patch needs): POST + X-HTTP-Method-Override.
 schedule() { # name cron activation-policy
   if exists gcloud scheduler jobs describe "$1" --location="$REGION"; then
     verb=update
-    headers=--update-headers=Content-Type=application/json
+    headers=--update-headers=Content-Type=application/json,X-HTTP-Method-Override=PATCH
   else
     verb=create
-    headers=--headers=Content-Type=application/json
+    headers=--headers=Content-Type=application/json,X-HTTP-Method-Override=PATCH
   fi
   gcloud scheduler jobs "$verb" http "$1" --location="$REGION" \
     --schedule="$2" --time-zone="$TIME_ZONE" \
-    --http-method=PATCH --uri="$SQL_API" "$headers" \
+    --http-method=POST --uri="$SQL_API" "$headers" \
     --message-body="{\"settings\":{\"activationPolicy\":\"$3\"}}" \
     --oauth-service-account-email="$SCHEDULER_SA" \
     --oauth-token-scope=https://www.googleapis.com/auth/cloud-platform >/dev/null
