@@ -6,6 +6,7 @@ repeatedly: existing records are left alone.
 """
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.auth.models import Role, User
 from app.core.config import get_settings
@@ -62,32 +63,38 @@ def _ensure_demo_seeding_allowed() -> None:
         )
 
 
-def seed_demo_users() -> int:
+def seed_demo_users(db: Session | None = None) -> int:
+    """Create the demo accounts that do not exist yet. Uses `db` when given (the demo reset)."""
     _ensure_demo_seeding_allowed()
+    if db is None:
+        with SessionLocal() as session:
+            return seed_demo_users(session)
     created = 0
     password_hash = hash_password(get_settings().demo_password)
-    with SessionLocal() as db:
-        for data in DEMO_USERS:
-            if db.scalar(select(User).where(User.email == data["email"])):
-                continue
-            db.add(User(**data, password_hash=password_hash))
-            created += 1
-        db.commit()
+    for data in DEMO_USERS:
+        if db.scalar(select(User).where(User.email == data["email"])):
+            continue
+        db.add(User(**data, password_hash=password_hash))
+        created += 1
+    db.commit()
     return created
 
 
-def seed_demo_data() -> str:
+def seed_demo_data(db: Session | None = None) -> str:
+    """Accounts, projects, boundaries and verification assignments. Uses `db` when given."""
     _ensure_demo_seeding_allowed()
+    if db is None:
+        with SessionLocal() as session:
+            return seed_demo_data(session)
     # Imported here: feature modules import app.auth, whose router imports DEMO_USERS from here.
     from app.features.boundary.seed import seed_demo_boundaries
     from app.features.registration.seed import seed_demo_projects
     from app.features.verification.seed import seed_demo_assignments
 
-    users = seed_demo_users()
-    with SessionLocal() as db:
-        projects = seed_demo_projects(db)
-        boundaries = seed_demo_boundaries(db)
-        assignments = seed_demo_assignments(db)
+    users = seed_demo_users(db)
+    projects = seed_demo_projects(db)
+    boundaries = seed_demo_boundaries(db)
+    assignments = seed_demo_assignments(db)
     return (
         f"{users} user(s), {projects} project(s), {boundaries} boundary(ies), "
         f"{assignments} assignment(s)"

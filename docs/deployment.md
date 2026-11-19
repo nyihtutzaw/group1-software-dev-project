@@ -58,7 +58,8 @@ first week.
 | Turn it off now | **Demo power** → `off` | `sh infra/gcp/power.sh off` |
 | Keep it on all night (late demo/grading) | **Demo power** → `hold`, later `auto` | `power.sh hold` / `power.sh auto` |
 | Keep it off for days (holidays) | `off`, then `hold` | `power.sh off && power.sh hold` |
-| Restore clean sample data | Actions → **Reset demo data**, type `reset` | — |
+| Start the live demo from scratch | In the app as admin: **System › Demo data** → *Reset to live demo start*, type `RESET` | — |
+| Restore clean sample data | **System › Demo data** → *Reset to full sample data* (or Actions → **Reset demo data**, type `reset`) | — |
 | Get the demo password | — | `gcloud secrets versions access latest --secret=crvr-demo-password` |
 
 - The 06:00 start also undoes a manual `off`; use `hold` to keep it off.

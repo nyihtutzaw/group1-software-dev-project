@@ -103,6 +103,15 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'system',
   },
   {
+    id: 'demo-data',
+    label: 'Demo data',
+    path: '/system/demo-data',
+    icon: 'layers',
+    roles: ['admin'],
+    feature: 'F5',
+    group: 'system',
+  },
+  {
     id: 'tutorials',
     label: 'Tutorials',
     path: '/system/tutorials',
