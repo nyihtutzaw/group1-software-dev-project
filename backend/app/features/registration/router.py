@@ -3,16 +3,28 @@
 There is deliberately no PUT/PATCH/DELETE for evidence: uploaded files are write-once.
 """
 
+from collections.abc import Iterator
+from contextlib import closing
+from typing import BinaryIO
+
 from fastapi import APIRouter, Depends, File, Form, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.auth.deps import require_roles
 from app.auth.models import Role, User
 from app.core.db import get_db
 from app.features.registration import service
-from app.features.registration.models import EvidenceFile, EvidenceKind
-from app.features.registration.schemas import EvidenceOut, ProjectDetail, ProjectIn, ProjectOut
+from app.features.registration.models import EvidenceErasure, EvidenceFile, EvidenceKind
+from app.features.registration.schemas import (
+    EvidenceErasureIn,
+    EvidenceErasureOut,
+    EvidenceOut,
+    ProjectDetail,
+    ProjectIn,
+    ProjectOut,
+)
+from app.features.registration.storage import CHUNK
 
 router = APIRouter(prefix="/projects", tags=["F1 registration"])
 
@@ -96,13 +108,56 @@ def upload_evidence(
     )
 
 
+@router.post(
+    "/{project_id}/evidence/{evidence_id}/erasure",
+    response_model=EvidenceErasureOut,
+    status_code=201,
+)
+def erase_evidence(
+    project_id: int,
+    evidence_id: int,
+    body: EvidenceErasureIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles(Role.ADMIN)),
+) -> EvidenceErasure:
+    """Destroy one evidence file's encryption key so its content can no longer be read (#45).
+
+    This is the only way personal data leaves sealed evidence. Nothing is deleted except the
+    key: the sealed object and its row stay, and the ledger keeps the original SHA-256. Admin
+    only, and it cannot be undone.
+    """
+    project = service.get_project(db, project_id, user)
+    return service.erase_evidence(
+        db,
+        project,
+        user,
+        evidence_id=evidence_id,
+        reason=body.reason,
+        replacement_id=body.replacement_id,
+    )
+
+
 @router.get("/{project_id}/evidence/{evidence_id}/file")
 def download_evidence(
     project_id: int,
     evidence_id: int,
     db: Session = Depends(get_db),
     user: User = Depends(require_roles(*READ_ROLES)),
-) -> FileResponse:
+) -> StreamingResponse:
+    """Stream the sealed bytes, from the local volume or the bucket — the route is the same."""
     project = service.get_project(db, project_id, user)
-    evidence, path = service.get_evidence(db, project, evidence_id)
-    return FileResponse(path, media_type=evidence.content_type, filename=evidence.filename)
+    evidence, stream = service.get_evidence(db, project, evidence_id)
+    return StreamingResponse(
+        _chunks(stream),
+        media_type=evidence.content_type,
+        headers={
+            "content-disposition": f'attachment; filename="{evidence.filename}"',
+            "content-length": str(evidence.size_bytes),
+        },
+    )
+
+
+def _chunks(stream: BinaryIO) -> Iterator[bytes]:
+    with closing(stream):
+        while chunk := stream.read(CHUNK):
+            yield chunk

@@ -36,6 +36,27 @@ class EvidenceOut(BaseModel):
     sealed_at: datetime
 
 
+class EvidenceErasureIn(BaseModel):
+    """Admin asks for one file's content to be destroyed (#45)."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    reason: str = Field(min_length=10, max_length=500)
+    # The redacted file uploaded in its place. Optional, but a verifier needs something to
+    # look at, so the API answers with a warning in the erasure record when it is missing.
+    replacement_id: int | None = None
+
+
+class EvidenceErasureOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    evidence_id: int
+    reason: str
+    replacement_id: int | None
+    erased_at: datetime
+
+
 class ProjectOut(BaseModel):
     """A row on the dashboard. F2's map picker uses id, code, name and status."""
 

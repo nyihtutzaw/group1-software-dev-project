@@ -175,28 +175,29 @@ def test_short_additionality_reasoning_does_not_count(client, draft):
 
 
 @pytest.mark.parametrize(
-    ("name", "kind"),
+    ("name", "kind", "data"),
     [
-        ("land-title-442-2561.pdf", "land_title"),
-        ("plot-north.JPG", "photo"),
-        ("IMG_0001.heic", "photo"),
-        ("baseline-survey-2026.xlsx", "spreadsheet"),
-        ("plots.csv", "spreadsheet"),
-        ("walk.gpx", "gps"),
-        ("boundary.kml", "gps"),
-        ("site-photos-geotagged.zip", "photo"),
+        ("land-title-442-2561.pdf", "land_title", PDF),
+        ("plot-north.JPG", "photo", b"\xff\xd8\xff\xe0 jpeg"),
+        ("IMG_0001.heic", "photo", b"\x00\x00\x00\x18ftypheic"),
+        ("baseline-survey-2026.xlsx", "spreadsheet", b"PK\x03\x04 xlsx"),
+        ("plots.csv", "spreadsheet", b"plot,area_ha\nA,12\n"),
+        ("walk.gpx", "gps", b'<?xml version="1.0"?><gpx version="1.1"/>'),
+        ("boundary.kml", "gps", b'<?xml version="1.0"?><kml/>'),
+        ("site-photos-geotagged.zip", "photo", b"PK\x03\x04 zip"),
     ],
 )
-def test_accepted_evidence_formats(client, draft, storage, name, kind):
+def test_accepted_evidence_formats(client, draft, storage, name, kind, data):
+    """Since #22 the bytes have to match the extension, so each case carries a real header."""
     _, project = draft
 
-    res = upload(client, project["id"], name, b"evidence bytes", kind)
+    res = upload(client, project["id"], name, data, kind)
 
     assert res.status_code == 201, res.text
     body = res.json()
     assert body["filename"] == name
-    assert body["size_bytes"] == len(b"evidence bytes")
-    assert body["sha256"] == hashlib.sha256(b"evidence bytes").hexdigest()
+    assert body["size_bytes"] == len(data)
+    assert body["sha256"] == hashlib.sha256(data).hexdigest()
 
 
 def test_other_formats_are_rejected_with_the_accepted_list(client, draft, storage):
@@ -235,7 +236,9 @@ def test_evidence_is_sealed_read_only_on_disk(client, db, draft, storage, ledger
 
     stored = db.get(EvidenceFile, body["id"])
     path = storage / stored.storage_key
-    assert path.read_bytes() == PDF
+    # Since #45 the sealed object is ciphertext; the plaintext comes back through the API.
+    assert path.read_bytes() != PDF
+    assert PDF not in path.read_bytes()
     assert not path.stat().st_mode & (stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH)
     assert body["sealed_at"]
     assert ledger[-1]["action"] == "evidence.sealed"

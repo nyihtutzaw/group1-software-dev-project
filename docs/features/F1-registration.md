@@ -50,7 +50,15 @@ From WBS 4.x and the design report:
   sealed on upload"). Simpler and strictly WORM: a wrong file cannot be removed, only followed by
   the right one. Write-once is enforced three times: no update/delete route or service code, the
   file is created with `open("xb")` and `chmod 444`, and a PostgreSQL trigger rejects UPDATE/DELETE
-  on `evidence_files`.
+  on `evidence_files`. *(Updated 2026-11-19: the storage layer now enforces the first of those —
+  see the storage-backend decision below.)*
+- 2026-11-19 — **Evidence storage is a backend behind an interface** (#20, ADR 0009):
+  `EVIDENCE_BACKEND=local` writes to the Docker volume in development and in the tests,
+  `EVIDENCE_BACKEND=gcs` writes to the production bucket through the Cloud Storage API. The
+  interface has `seal`/`open`/`exists` and no update or delete, the bucket write uses
+  `if_generation_match=0` (the API's `open("xb")`), and the bucket carries a seven-year retention
+  period. An upload is hashed and measured **before** any backend sees it, so a rejected file
+  leaves nothing behind — the only approach that works once the retention policy is locked.
 - 2026-11-02 — 4 steps: **1 Project details** (mock-up fields) · **2 Additionality** (reasoning
   ≥ 50 chars + proof upload) · **3 Boundary & evidence** (drop zone, sealed list, F2 banner linking
   to `/boundary?project=<id>`) · **4 Review & submit**. Every step change saves the draft.
@@ -92,6 +100,7 @@ From WBS 4.x and the design report:
 | POST | `/api/projects/{id}/submit` | developer (own draft) | Submit; 422 "Still needed: …" if incomplete |
 | POST | `/api/projects/{id}/evidence` | developer (own draft) | Multipart `file` + `kind` → sealed `EvidenceOut` (sha256, size); 415 bad format, 413 too large |
 | GET | `/api/projects/{id}/evidence/{eid}/file` | as GET project | Download the stored bytes |
+| POST | `/api/projects/{id}/evidence/{eid}/erasure` | admin | Destroy the file's encryption key so its content can no longer be read (#45). Body: `reason` (≥ 10 chars), optional `replacement_id`. The sealed object and its row stay; downloads then answer 410 |
 
 No PUT/PATCH/DELETE exists for evidence. Ledger actions via `record_action()`: `project.created`,
 `evidence.sealed` (payload: sha256, size, kind), `project.submitted` (payload: all evidence hashes).
@@ -124,29 +133,79 @@ Migration: `20261102_47c89f71feec_add_registration_fields_and_evidence.py` (also
 
 - Which fields are mandatory per methodology? (Today: the same set for all.)
 - Should evidence be allowed after submission (e.g. a verifier asks for more)? Today: drafts only.
-- Content sniffing (magic bytes) and virus scanning for uploads — extension check only for now.
+- ~~Content sniffing (magic bytes) and virus scanning for uploads~~ — done in #22.
+- Locking the bucket's retention policy (`LOCK_RETENTION=true`) is still a manual step; until
+  it is run, production write-once rests on the code alone.
+- Evidence keys sit in the database next to the ciphertext, so a backup is as sensitive as
+  the evidence. Moving them to Cloud KMS would separate the two (ADR 0010).
 
 ## Progress log
 
-### 2026-11-19 · fix/registration-phone-420px (#21)
-- Goal: run the 4-step registration and evidence upload at 420 px and fix what it finds.
-- Measured in a 420 × 880 viewport, signed in as a developer, through all four steps. No
-  horizontal scrolling anywhere, no clipped text, and every card, field and button fits.
-- **Fixed — step tabs were 14 px tall.** The four stepper buttons had no vertical padding, so
-  the one-line ones were 14 px and "Boundary & evidence" was 29 px because it wrapped. Under
-  the 24 px minimum in WCAG 2.5.8 and hard to hit with a thumb. They are now a uniform 45 px.
-- **Fixed — the file picker hid the camera on iOS.** `accept` was a list of bare extensions.
-  iOS matches it against UTIs, so extensions it does not know (`.gpx`, `.kml`, `.geojson`) can
-  grey out every file in the picker and remove "Take Photo". MIME types now lead the list, with
-  `image/*` putting the camera back; the extensions stay for the geospatial formats.
-- **Fixed — "Draw the boundary" was a 20 px link.** Now a 44 px inline-flex target.
-- Test: `src/features/registration/phone.test.tsx`. jsdom has no layout engine, so the tests
-  assert the sizing class on each target and the order of the `accept` list rather than pixel
-  heights; the measurements are above.
-- **Still open: this was an emulated 420 px viewport, not a real device.** What it cannot tell
-  us is whether the camera actually opens and returns a usable photo on iOS, whether a GPX file
-  can be picked from Files on Android, and how a 50 MB upload behaves on mobile data. Those
-  three need a real Android and iPhone — the remaining half of this issue.
+### 2026-11-19 · feature/F1-evidence-crypto-erasure (#45)
+- Change request: a landowner's sealed land-title scan shows their national ID and home
+  address, and they ask for the personal data to be removed. The system is built so that this
+  is impossible — write-once in the API, the service, the storage interface, a database trigger
+  and the bucket's retention lock.
+- Decision (ADR 0010): **encrypt every evidence file with its own key before sealing, and erase
+  by destroying the key.** The ciphertext stays in the bucket, the `evidence_files` row is never
+  touched, and the ledger keeps the original SHA-256 — so what the file was and what it hashed
+  to stay provable while the bytes become unrecoverable.
+- Done: `crypto.py` (AES-256-GCM, one key per file); `evidence_keys` (deletable, cascade) and
+  `evidence_erasures` (append-only, with its own trigger); admin-only
+  `POST /evidence/{eid}/erasure` taking a reason and an optional redacted replacement; downloads
+  of an erased file answer 410 with the reason and a pointer to the replacement.
+- A redaction is uploaded **first** and linked as the replacement: erasing on its own would take
+  the project's evidence with it, and a verifier would find a hole.
+- GCM authenticates too, so a ciphertext altered in the bucket now answers 409 instead of
+  returning wrong bytes.
+- A missing key with no erasure row answers 404, not 410: a key lost by accident is a fault to
+  investigate, not a lawful erasure to report.
+- Evidence sealed **before** this change is plaintext in storage. The migration gives each such
+  file an `evidence_keys` row with `key`/`nonce` NULL, so it still downloads (and "no row" still
+  means a lost key). Erasing one stops the app serving it, but its plaintext stays in storage
+  until removed there; the ledger entry records `plaintext_in_storage: true`.
+- Test: `tests/test_evidence_erasure.py` — 25 tests, including that the write-once rule and the
+  ledger survive an erasure, that erasing one file leaves the others readable, and that no new
+  route can delete sealed evidence.
+- Changed two existing assertions: the sealed object is ciphertext now, so tests that compared
+  it to the plaintext compare the download instead.
+
+### 2026-11-19 · feature/F1-evidence-content-scan (#22)
+- Goal: stop trusting the file name. Check what the file really is and scan it for malware
+  before it is sealed.
+- Done: `scanning.py` reads the format from the first bytes (signatures for PDF, JPEG, PNG,
+  HEIC, WebP, TIFF, ZIP-based and old Excel files; text formats are checked by decoding) and
+  refuses an upload whose content does not match its extension. A `VirusScanner` streams the
+  file to clamd over the INSTREAM protocol — spoken directly, so no client library joins the
+  dependency list. Both run between weighing and sealing, and both answer 415 with a message
+  for the uploader.
+- **Fail closed**: when scanning is on and clamd cannot be reached the upload is refused, not
+  sealed unchecked. Evidence is permanent, so "we could not check it" must not become "we kept
+  it".
+- ClamAV is a compose profile (`docker compose --profile scan up -d clamav`) and off by default,
+  so `sh scripts/start.sh` stays fast. The image is amd64 only — on Apple Silicon it runs
+  emulated (still starts in ~20 s).
+- Test: `tests/test_evidence_scanning.py` — 30 tests. The EICAR case runs against a fake clamd
+  in a thread that speaks the real protocol, so it needs no container; a second test runs
+  against a real clamd and skips when there is none.
+- Changed an existing test: `test_accepted_evidence_formats` uploaded `b"evidence bytes"` under
+  eight extensions. That is exactly what #22 forbids, so each case now carries a real header.
+
+### 2026-11-19 · feature/F1-evidence-cloud-storage (#20)
+- Goal: write production evidence to the Cloud Storage bucket instead of a local volume, without
+  weakening write-once.
+- Done: `storage.py` with `LocalEvidenceStorage` and `GcsEvidenceStorage` behind an interface that
+  has no update or delete; `EVIDENCE_BACKEND` / `EVIDENCE_BUCKET` settings, with a validator that
+  refuses `gcs` without a bucket; uploads hashed and measured before a backend is touched;
+  downloads streamed through the app for both backends; Cloud Run switched from the gcsfuse mount
+  to the API; seven-year retention period on the bucket in `bootstrap.sh`.
+- Why the mount went: gcsfuse cannot give an atomic "fail if it exists" write, `chmod 444` means
+  nothing on an object store, and deleting a part-written reject fails once retention is locked.
+  ADR 0009.
+- Test: `tests/test_evidence_storage.py` — 19 tests covering the backend switch, both backends
+  (bucket faked, no network), rejected uploads leaving nothing behind, overwrite refused on both,
+  and the full upload/download route running on the bucket backend.
+- Follow-up: `LOCK_RETENTION=true` has to be run once against the real bucket.
 
 ### 2026-11-19 · fix/F1-verifier-assigned-projects
 - Fix: any verifier could open any submitted project and download its evidence. `get_project()`
