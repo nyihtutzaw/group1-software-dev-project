@@ -2,8 +2,8 @@
 
 /*
  * Design tokens. Light theme: white page with the CRVR teal as the theme colour.
- * Dark theme: neutral dark surfaces. The theme follows the system unless the user picks one
- * (data-theme on <html>, set by lib/theme.ts).
+ * Dark theme: neutral dark surfaces. Light is the default for everyone, whatever the system
+ * setting; dark applies only when the user picks it (data-theme on <html>, set by lib/theme.ts).
  * Use them through Tailwind utilities: bg-surface, text-muted, border-line, text-accent, …
  * Never hard-code a hex colour in a component — add a token here instead.
  */
@@ -32,35 +32,6 @@
   --overlay: rgba(16, 24, 40, 0.45);
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
   --shadow-lg: 0 12px 24px -6px rgba(16, 24, 40, 0.1), 0 4px 8px -4px rgba(16, 24, 40, 0.05);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    color-scheme: dark;
-    --bg: #0c1110;
-    --surface: #121918;
-    --surface-2: #19211f;
-    --surface-3: #212b29;
-    --ink: #eef2f1;
-    --muted: #b3bfbc;
-    --faint: #86938f;
-    --line: #243030;
-    --line-strong: #344341;
-    --accent: #3cc4a8;
-    --accent-ink: #6fd8c1;
-    --accent-soft: #123630;
-    --on-accent: #04201a;
-    --warn: #f97066;
-    --warn-soft: #3a1a17;
-    --ok: #47cd89;
-    --ok-soft: #0f2e1f;
-    --wait: #fdb022;
-    --wait-soft: #33250a;
-    --purple: #a88bdd;
-    --overlay: rgba(0, 0, 0, 0.6);
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 12px 24px -6px rgba(0, 0, 0, 0.5), 0 4px 8px -4px rgba(0, 0, 0, 0.4);
-  }
 }
 
 :root[data-theme='dark'] {

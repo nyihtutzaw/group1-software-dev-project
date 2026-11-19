@@ -21,8 +21,9 @@ a registry tool, and dark mode followed the system with no way to switch.
 - **Forms:** a label above a bordered control with an accent focus ring.
 - **Shell:** sidebar with brand, menu and the signed-in user; a top bar with a breadcrumb, the theme
   toggle, notifications, the user and sign out.
-- **Theme switch:** follows the system until the user picks one with the toggle (sun/moon in the top
-  bar and on the sign-in page). The choice is stored in `localStorage` (`crvr-theme`) and applied
+- **Theme switch:** light by default for everyone (changed 2026-11-19: it used to follow the
+  system setting, which put first-time visitors with a dark system into dark mode). Users switch
+  with the toggle (sun/moon in the top bar and on the sign-in page). The choice is stored in `localStorage` (`crvr-theme`) and applied
   by a small script in `index.html` before the first paint, so there is no flash.
 
 ## Consequences
