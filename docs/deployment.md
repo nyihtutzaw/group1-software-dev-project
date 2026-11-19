@@ -84,11 +84,28 @@ Changing the password: add a new version of `crvr-demo-password` in Secret Manag
 No service-account keys exist: GitHub Actions signs in through Workload Identity Federation,
 which only trusts workflows running on `main` of `nyihtutzaw/group1-software-dev-project`.
 
-## Custom domain (Namecheap) — optional
+## Custom domain — https://crvr.zaw27.com
 
-1. `gcloud domains verify <domain>` and add the TXT record in Namecheap → Advanced DNS.
-2. `gcloud beta run domain-mappings create --service=crvr --domain=app.<domain> --region=asia-southeast1`
-3. Namecheap: CNAME `app` → `ghs.googlehosted.com.`; HTTPS certificate follows in 15 min–24 h.
+Set up 2026-11-19 (free Cloud Run domain mapping, Google-managed HTTPS certificate). The service
+also stays reachable at https://crvr-icik34im6a-as.a.run.app.
+
+| Where | Record |
+|---|---|
+| Namecheap → `zaw27.com` → Advanced DNS | TXT `@` = `google-site-verification=…` (keeps the domain verified — do not delete) |
+| | CNAME `crvr` → `ghs.googlehosted.com.` |
+| Google Search Console | `zaw27.com` verified by the project owner's Google account |
+
+To recreate the mapping (the `gcloud beta run domain-mappings` command does the same, but needs the
+beta component):
+
+```bash
+curl -X POST -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "Content-Type: application/json" \
+  https://asia-southeast1-run.googleapis.com/apis/domains.cloudrun.com/v1/namespaces/zaw-personal-project/domainmappings \
+  -d '{"apiVersion":"domains.cloudrun.com/v1","kind":"DomainMapping",
+       "metadata":{"name":"crvr.zaw27.com","namespace":"zaw-personal-project"},
+       "spec":{"routeName":"crvr","certificateMode":"AUTOMATIC"}}'
+```
 
 ## Troubleshooting
 
@@ -116,5 +133,6 @@ which only trusts workflows running on `main` of `nyihtutzaw/group1-software-dev
   private password and `crvr-demo` is rejected; evidence upload lands in the bucket and downloads
   intact; the security log records the real client IP and ignores a forged one; the reset job
   works on Cloud SQL; the 06:00 start job returns 200.
-- Next: map `crvr.zaw27.com` once the domain is verified in Search Console; merge this PR so
-  later deploys run from GitHub Actions.
+- Domain: verified `zaw27.com`, added the TXT + CNAME records in Namecheap, mapped
+  `crvr.zaw27.com` to the service.
+- Next: merge this PR so later deploys run from GitHub Actions.
