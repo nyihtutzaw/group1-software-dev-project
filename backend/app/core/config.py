@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEVELOPMENT_JWT_SECRET = "dev-only-change-me-in-production"
@@ -85,6 +85,12 @@ class Settings(BaseSettings):
     @property
     def demo_password_is_public(self) -> bool:
         return self.demo_password == DEVELOPMENT_DEMO_PASSWORD
+
+    @field_validator("demo_password")
+    @classmethod
+    def strip_demo_password(cls, value: str) -> str:
+        # Secrets copied from a file or console often end in a newline nobody can type.
+        return value.strip()
 
     @model_validator(mode="after")
     def validate_production_demo_password(self) -> Self:

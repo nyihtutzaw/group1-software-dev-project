@@ -89,7 +89,7 @@ exists gcloud secrets describe crvr-jwt-secret ||
 # The demo accounts' password, for the professor. Read it yourself with
 #   gcloud secrets versions access latest --secret=crvr-demo-password
 exists gcloud secrets describe crvr-demo-password ||
-  openssl rand -base64 30 | tr -dc 'A-Za-z0-9' | cut -c1-16 |
+  openssl rand -base64 30 | tr -dc 'A-Za-z0-9' | cut -c1-16 | tr -d '\n' |
   gcloud secrets create crvr-demo-password --data-file=- --replication-policy=automatic
 
 step "Evidence bucket: gs://${BUCKET} (private)"

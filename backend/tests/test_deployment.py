@@ -38,6 +38,12 @@ def test_demo_password_error_does_not_expose_the_password():
     assert "secret-ish" not in str(error.value)
 
 
+def test_demo_password_ignores_surrounding_whitespace():
+    settings = Settings(**PRODUCTION, demo_mode=True, demo_password="a-private-demo-pw\n")
+
+    assert settings.demo_password == "a-private-demo-pw"
+
+
 @pytest.mark.parametrize(
     ("overrides", "enabled"),
     [
