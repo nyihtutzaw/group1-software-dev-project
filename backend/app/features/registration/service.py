@@ -29,6 +29,7 @@ from app.features.registration.schemas import (
     ProjectIn,
     ProjectOut,
 )
+from app.features.verification.models import VerificationAssignment
 
 # FR-02 / WBS 4.2.1: documents, photographs, spreadsheets, GPS and land records
 EVIDENCE_EXTENSIONS = {
@@ -68,16 +69,31 @@ CHUNK = 1024 * 1024
 # --- access ---------------------------------------------------------------------------
 
 
+def _assigned_to(db: Session, project_id: int, verifier: User) -> bool:
+    """Whether this verifier is the project's current verifier (F3 assignment)."""
+    return db.scalar(
+        select(
+            exists().where(
+                VerificationAssignment.project_id == project_id,
+                VerificationAssignment.verifier_id == verifier.id,
+            )
+        )
+    )
+
+
 def get_project(db: Session, project_id: int, user: User, *, write: bool = False) -> Project:
     """Load a project the user may see, or with `write=True` one they may still change.
 
-    Developers only reach their own projects and verifiers only submitted ones; anything else
-    answers 404 so project IDs are not leaked.
+    Developers only reach their own projects, and verifiers only submitted projects currently
+    assigned to them (WBS 7.1.1); anything else answers 404 so project IDs are not leaked.
     """
     project = db.get(Project, project_id)
     hidden = project is None or (
         (user.role == Role.DEVELOPER and project.owner_id != user.id)
-        or (user.role == Role.VERIFIER and project.status == ProjectStatus.DRAFT)
+        or (
+            user.role == Role.VERIFIER
+            and (project.status == ProjectStatus.DRAFT or not _assigned_to(db, project.id, user))
+        )
         or user.role == Role.BUYER
     )
     if hidden:
