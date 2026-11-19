@@ -85,8 +85,10 @@ src/index.css           design tokens (light + dark) → Tailwind utilities; lib
 
 - **CI** (`.github/workflows/ci.yml`, every PR and push to main): backend ruff + migrations check +
   pytest against the same `infra/db` PostGIS image used locally; frontend lint, typecheck, tests, build; agent-skill stubs in sync.
-- **Production (planned)**: backend and frontend as Docker images on Google Cloud Run, Cloud SQL
-  for PostgreSQL + PostGIS, Cloud Storage with a retention lock for evidence. Cloud Run sets
-  `APP_ENV=production` and injects `JWT_SECRET` from Secret Manager; production startup rejects the
-  development default, and demo seeding is disabled. Deploy workflow to be added once a GCP project
-  exists.
+- **Deployment** (`.github/workflows/deploy.yml`, after CI passes on main): one hosted class demo
+  on Google Cloud — a single Cloud Run service (FastAPI serving `/api` and the built frontend from
+  `infra/cloudrun/Dockerfile`), Cloud SQL PostgreSQL 17 + PostGIS stopped overnight, a private
+  Cloud Storage bucket mounted for evidence, secrets from Secret Manager. It runs as
+  `APP_ENV=production` with `DEMO_MODE=true` (demo data with a private password). Migrations and
+  seeding run as a Cloud Run job before each rollout. Runbook: [deployment.md](deployment.md),
+  decision: [ADR 0008](decisions/0008-cloud-run-class-demo.md).
