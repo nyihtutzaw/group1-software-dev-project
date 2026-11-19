@@ -51,8 +51,11 @@ tests/                 pytest against crvr_test; each test runs in a rolled-back
   `require_roles(Role.X, …)` → 403 for other roles.
 - Five roles (Charter FR-10): `developer`, `verifier`, `registry_staff`, `buyer`, `admin`.
 - Frontend: `useAuth()` (TanStack Query on `/api/auth/me`); `layout/nav.ts` lists every page with
-  its allowed roles and drives both the menus and the `<Guarded>` route wrapper. **The frontend
-  only hides things; the API enforces.**
+  its allowed roles and drives both the menus and the `<Guarded>` route wrapper. Items with a
+  `group` (e.g. `system`) sit under a collapsible parent menu. **The frontend only hides things;
+  the API enforces.**
+- Admins see the whole matrix, read-only, at *System › Role & Access*: page access from `nav.ts`,
+  API access from `GET /api/admin/access-matrix`, which reads each route's `require_roles`.
 - Keycloak/Auth0 (named in the design report) can replace the login later without changing
   `require_roles` — see [ADR 0002](decisions/0002-database-backed-authentication.md).
 

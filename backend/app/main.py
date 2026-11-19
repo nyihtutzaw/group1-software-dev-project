@@ -8,6 +8,7 @@ from app.auth.admin_router import router as admin_users_router
 from app.auth.models import User
 from app.auth.router import router as auth_router
 from app.core.db import get_db
+from app.features.audit.access_matrix import router as access_matrix_router
 from app.features.audit.router import router as audit_router
 from app.features.audit.security_log import ACCESS_DENIED, client_ip, record_security_event
 from app.features.boundary.router import router as boundary_router
@@ -62,5 +63,6 @@ api.include_router(boundary_router)  # F2
 api.include_router(verification_router)  # F3
 api.include_router(registry_router)  # F4
 api.include_router(audit_router)  # F5
+api.include_router(access_matrix_router)  # F5
 
 app.include_router(api)

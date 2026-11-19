@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router'
 
 import { Guarded } from '@/auth/Guarded'
 import { LedgerPage } from '@/features/audit/LedgerPage'
+import { RolesAccessPage } from '@/features/audit/RolesAccessPage'
 import { UsersPage } from '@/features/audit/UsersPage'
 import { HomePage } from '@/features/registration/HomePage'
 import { ProjectPage } from '@/features/registration/ProjectPage'
@@ -123,6 +124,14 @@ export function App() {
           element={
             <Guarded page="users">
               <UsersPage />
+            </Guarded>
+          }
+        />
+        <Route
+          path="/system/roles-access"
+          element={
+            <Guarded page="roles-access">
+              <RolesAccessPage />
             </Guarded>
           }
         />

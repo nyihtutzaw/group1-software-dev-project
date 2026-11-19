@@ -54,6 +54,8 @@ src/auth/                 useAuth(), Guarded, Role types
 New page: create it in `src/features/<feature>/`, add a route in `App.tsx` wrapped in
 `<Guarded page="<nav id>">`, and a `NAV_ITEMS` entry in `layout/nav.ts` if it belongs in the menu.
 Sub-pages (e.g. `/projects/:id`) reuse the parent's nav id in `Guarded`.
+Child menus: give the item `group: 'system'` (groups are listed in `NAV_GROUPS`) and it appears
+under that collapsible parent in the sidebar, behind one tab on phones (path `/system/<slug>`).
 
 ## Data fetching
 
