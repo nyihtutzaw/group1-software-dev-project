@@ -22,6 +22,14 @@ const BoundaryPage = lazy(() =>
   import('@/features/boundary/BoundaryPage').then((m) => ({ default: m.BoundaryPage })),
 )
 
+// Tutorials carry long text and screenshot lists; load them only when an admin opens one.
+const TutorialsPage = lazy(() =>
+  import('@/features/tutorials/TutorialsPage').then((m) => ({ default: m.TutorialsPage })),
+)
+const TutorialPage = lazy(() =>
+  import('@/features/tutorials/TutorialPage').then((m) => ({ default: m.TutorialPage })),
+)
+
 // Every page route is guarded by its entry in layout/nav.ts (roles + public flag).
 // Feature sub-pages (e.g. /projects/:id) go here too, guarded by their parent's id.
 export function App() {
@@ -132,6 +140,26 @@ export function App() {
           element={
             <Guarded page="roles-access">
               <RolesAccessPage />
+            </Guarded>
+          }
+        />
+        <Route
+          path="/system/tutorials"
+          element={
+            <Guarded page="tutorials">
+              <Suspense fallback={<p className="text-sm text-faint">Loading tutorial…</p>}>
+                <TutorialsPage />
+              </Suspense>
+            </Guarded>
+          }
+        />
+        <Route
+          path="/system/tutorials/:id"
+          element={
+            <Guarded page="tutorials">
+              <Suspense fallback={<p className="text-sm text-faint">Loading tutorial…</p>}>
+                <TutorialPage />
+              </Suspense>
             </Guarded>
           }
         />

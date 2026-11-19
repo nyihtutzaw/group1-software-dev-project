@@ -40,7 +40,10 @@ describe('menuEntries', () => {
     const entries = menuEntries(navFor('admin'))
     const system = entries.find((e) => e.kind === 'group')
     expect(system).toMatchObject({ kind: 'group', id: 'system', label: 'System' })
-    expect(system?.kind === 'group' && system.items.map((i) => i.id)).toEqual(['roles-access'])
+    expect(system?.kind === 'group' && system.items.map((i) => i.id)).toEqual([
+      'roles-access',
+      'tutorials',
+    ])
     expect(
       entries.filter((e) => e.kind === 'item').map((e) => e.kind === 'item' && e.item.id),
     ).not.toContain('roles-access')

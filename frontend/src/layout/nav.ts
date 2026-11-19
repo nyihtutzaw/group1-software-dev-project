@@ -102,6 +102,15 @@ export const NAV_ITEMS: NavItem[] = [
     feature: 'F5',
     group: 'system',
   },
+  {
+    id: 'tutorials',
+    label: 'Tutorials',
+    path: '/system/tutorials',
+    icon: 'book',
+    roles: ['admin'],
+    feature: 'F5',
+    group: 'system',
+  },
 ]
 
 /** Menu items for a role, or the public items when nobody is signed in. */
