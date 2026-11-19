@@ -97,7 +97,7 @@ More (dependencies, troubleshooting, Windows): [.agents/skills/dev-environment/S
 ## Stack
 
 React 19 + TypeScript + Tailwind CSS 4 (Vite) · FastAPI (Python 3.13) · PostgreSQL 17 + PostGIS ·
-Docker Compose · GitHub Actions · Google Cloud Run (planned). Architecture: [docs/architecture.md](docs/architecture.md).
+Docker Compose · GitHub Actions · Google Cloud Run + Cloud SQL (hosted demo: [docs/deployment.md](docs/deployment.md)). Architecture: [docs/architecture.md](docs/architecture.md).
 
 ## AI usage declaration
 

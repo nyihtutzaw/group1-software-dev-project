@@ -17,4 +17,5 @@ export type User = {
   role: Role
 }
 
-export type DemoAccount = Pick<User, 'email' | 'full_name' | 'role'>
+/** `password` is present only when it is the public development one (one-click sign-in). */
+export type DemoAccount = Pick<User, 'email' | 'full_name' | 'role'> & { password: string | null }

@@ -1,6 +1,8 @@
-"""Load demo data for local development: accounts (one per role), projects and boundaries.
+"""Load demo data: accounts (one per role), projects and boundaries.
 
-Run with `python -m app.seed`. Safe to run repeatedly: existing records are left alone.
+Runs in development, and in the hosted class demo (APP_ENV=production with DEMO_MODE=true, where
+the accounts get the private DEMO_PASSWORD). Run with `python -m app.seed`. Safe to run
+repeatedly: existing records are left alone.
 """
 
 from sqlalchemy import select
@@ -9,8 +11,6 @@ from app.auth.models import Role, User
 from app.core.config import get_settings
 from app.core.db import SessionLocal
 from app.core.security import hash_password
-
-DEMO_PASSWORD = "crvr-demo"
 
 # Names follow the UI mock-up (docs/project/CRVR-Mock-UI-v0.1.html).
 DEMO_USERS = [
@@ -55,18 +55,22 @@ DEMO_USERS = [
 
 
 def _ensure_demo_seeding_allowed() -> None:
-    if get_settings().is_production:
-        raise RuntimeError("Demo data seeding is disabled when APP_ENV=production")
+    settings = get_settings()
+    if settings.is_production and not settings.demo_mode:
+        raise RuntimeError(
+            "Demo data seeding is disabled when APP_ENV=production (unless DEMO_MODE=true)"
+        )
 
 
 def seed_demo_users() -> int:
     _ensure_demo_seeding_allowed()
     created = 0
+    password_hash = hash_password(get_settings().demo_password)
     with SessionLocal() as db:
         for data in DEMO_USERS:
             if db.scalar(select(User).where(User.email == data["email"])):
                 continue
-            db.add(User(**data, password_hash=hash_password(DEMO_PASSWORD)))
+            db.add(User(**data, password_hash=password_hash))
             created += 1
         db.commit()
     return created
@@ -92,5 +96,8 @@ def seed_demo_data() -> str:
 
 if __name__ == "__main__":
     settings = get_settings()
-    if settings.seed_demo_users and not settings.is_production:
-        print(f"seed: created {seed_demo_data()} — demo password: {DEMO_PASSWORD}")
+    if settings.demo_enabled:
+        created = seed_demo_data()
+        # Never print a private (production demo) password into the logs.
+        password = settings.demo_password if settings.demo_password_is_public else "(private)"
+        print(f"seed: created {created} — demo password: {password}")

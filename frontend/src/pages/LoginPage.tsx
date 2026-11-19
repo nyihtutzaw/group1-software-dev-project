@@ -19,8 +19,6 @@ import { START_PAGE } from '@/layout/nav'
 import { ThemeToggle } from '@/layout/ThemeToggle'
 import { api } from '@/lib/api'
 
-const DEMO_PASSWORD = 'crvr-demo'
-
 const HIGHLIGHTS: [IconName, string][] = [
   ['map', 'Boundaries checked for overlaps with every registered project'],
   ['verify', 'Independent verification, approved by separate registry staff'],
@@ -51,6 +49,16 @@ export function LoginPage() {
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
     signIn({ email, password })
+  }
+
+  // Development sends the public demo password: one click signs in. The hosted demo keeps its
+  // password private, so the click fills in the email and the password is typed by hand.
+  const demoPassword = demo.data?.[0]?.password ?? null
+  const pickDemoAccount = (account: DemoAccount) => {
+    if (account.password) return signIn({ email: account.email, password: account.password })
+    setEmail(account.email)
+    setPassword('')
+    document.getElementById('password')?.focus()
   }
 
   return (
@@ -130,7 +138,11 @@ export function LoginPage() {
             <section className="mt-8">
               <SectionHeader
                 title="Demo accounts"
-                action={<span className="font-normal text-faint">password {DEMO_PASSWORD}</span>}
+                action={
+                  <span className="font-normal text-faint">
+                    {demoPassword ? `password ${demoPassword}` : 'password from your instructor'}
+                  </span>
+                }
               />
               <Card className="overflow-hidden">
                 {demo.data.map((account) => (
@@ -138,7 +150,7 @@ export function LoginPage() {
                     key={account.email}
                     type="button"
                     className="flex w-full items-center justify-between gap-3 border-b border-line px-4 py-2.5 text-left transition-colors last:border-b-0 hover:bg-surface-2"
-                    onClick={() => signIn({ email: account.email, password: DEMO_PASSWORD })}
+                    onClick={() => pickDemoAccount(account)}
                   >
                     <span className="min-w-0">
                       <b className="block truncate text-sm font-semibold">{account.full_name}</b>

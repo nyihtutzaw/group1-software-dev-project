@@ -129,8 +129,13 @@ def me(user: User = Depends(get_current_user)) -> User:
 
 @router.get("/demo-accounts", response_model=list[DemoAccount])
 def demo_accounts() -> list[dict]:
-    """Quick-login list for the sign-in page. Empty unless demo users are seeded."""
+    """Quick-login list for the sign-in page. Empty unless demo accounts are enabled.
+
+    The password is included only when it is the public development one; the hosted demo's
+    private password is handed out separately and typed in.
+    """
     settings = get_settings()
-    if settings.is_production or not settings.seed_demo_users:
+    if not settings.demo_enabled:
         return []
-    return DEMO_USERS
+    password = settings.demo_password if settings.demo_password_is_public else None
+    return [{**account, "password": password} for account in DEMO_USERS]

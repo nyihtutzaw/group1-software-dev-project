@@ -12,7 +12,7 @@ to end (data model, API, UI, tests) and keeps its context doc current.
 | F5 Security & auditability | Put Thitisawat | Nyi Htut Zaw (CI/CD) | [#7](https://github.com/nyihtutzaw/group1-software-dev-project/issues/7) | [F5-security-audit.md](F5-security-audit.md) |
 
 Cross-cutting work: shared UI kit and responsive layout (Zay Yar Phyo), PostGIS schema and spatial
-queries (Nyi Htut Zaw), Docker / GitHub Actions / Cloud Run (Put Thitisawat, Nyi Htut Zaw).
+queries (Nyi Htut Zaw), Docker / GitHub Actions CI/CD / Google Cloud deployment (led by Nyi Htut Zaw; Put Thitisawat helps).
 
 ## Suggested build order
 

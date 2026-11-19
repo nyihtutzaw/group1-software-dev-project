@@ -9,6 +9,7 @@ from fastapi import Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.features.audit.models import SecurityEvent
 from app.features.audit.retention import purge_expired_security_events
 
@@ -24,7 +25,22 @@ LOGIN_LOCKOUT_DURATION = timedelta(minutes=15)
 
 
 def client_ip(request: Request) -> str:
-    """Return the direct peer address; do not trust unconfigured forwarded headers."""
+    """Return the client address.
+
+    Without a configured proxy (FORWARDED_IP_HOPS=0) this is the direct peer and X-Forwarded-For
+    is ignored. Behind N trusted proxies (Cloud Run: 1) it is the Nth entry from the right of
+    X-Forwarded-For: entries further left are supplied by the client and can be forged.
+    """
+    hops = get_settings().forwarded_ip_hops
+    if hops:
+        forwarded = [
+            part.strip()
+            for header in request.headers.getlist("x-forwarded-for")
+            for part in header.split(",")
+            if part.strip()
+        ]
+        if len(forwarded) >= hops:
+            return forwarded[-hops]
     return request.client.host if request.client else "unknown"
 
 

@@ -1,0 +1,30 @@
+# Turn the hosted demo's database on/off or hold its overnight schedule, from the browser or phone.
+# Actions → "Demo power" → Run workflow. Same as `sh infra/gcp/power.sh <action>`.
+name: Demo power
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "status · on (start now) · off (stop now) · hold (pause 23:00/06:00 schedule) · auto (resume it)"
+        type: choice
+        options: [status, "on", "off", hold, auto]
+        default: status
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  power:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: sh infra/gcp/power.sh "${{ inputs.action }}"
+      - run: sh infra/gcp/power.sh status
+        if: inputs.action != 'status'

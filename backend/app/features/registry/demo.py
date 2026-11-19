@@ -20,9 +20,9 @@ from app.features.registry.service import change_status, publish_credit
 
 def seed_registry_demo(db: Session) -> None:
     settings = get_settings()
-    if settings.app_env != "development" or not settings.seed_demo_users:
+    if not settings.demo_enabled:
         raise RuntimeError(
-            "Registry demo data is allowed only in development with demo users enabled"
+            "Registry demo data is allowed only in development or with DEMO_MODE=true"
         )
     users = {
         role: db.scalar(select(User).where(User.email == f"{email}@crvr.local"))
