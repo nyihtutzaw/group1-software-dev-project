@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     static_dir: str = ""
     # Shown when the database is unreachable (e.g. stopped overnight to save cost).
     unavailable_message: str = "CRVR is temporarily unavailable. Please try again in a few minutes."
+    # F1 evidence storage (#20). "local" writes to `storage_dir` on a Docker volume, which is
+    # what development and the tests use. "gcs" writes to EVIDENCE_BUCKET, whose locked
+    # retention policy is what enforces the agreed seven-year period in production.
+    evidence_backend: Literal["local", "gcs"] = "local"
+    evidence_bucket: str = ""
     storage_dir: str = "/data/evidence"
     # F1: largest evidence file accepted (zipped geo-tagged photo sets are the big ones)
     evidence_max_bytes: int = 50 * 1024 * 1024
@@ -105,6 +110,16 @@ class Settings(BaseSettings):
             raise ValueError(
                 "DEMO_MODE in production requires a private DEMO_PASSWORD with at least "
                 f"{MIN_PRODUCTION_DEMO_PASSWORD_LENGTH} characters; load it from Secret Manager."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_evidence_bucket(self) -> Self:
+        """The bucket backend is useless without a bucket, and the mistake is silent otherwise."""
+        if self.evidence_backend == "gcs" and not self.evidence_bucket.strip():
+            raise ValueError(
+                "EVIDENCE_BACKEND=gcs requires EVIDENCE_BUCKET (the private evidence bucket "
+                "created by infra/gcp/bootstrap.sh)."
             )
         return self
 

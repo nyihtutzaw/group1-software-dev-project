@@ -50,7 +50,15 @@ From WBS 4.x and the design report:
   sealed on upload"). Simpler and strictly WORM: a wrong file cannot be removed, only followed by
   the right one. Write-once is enforced three times: no update/delete route or service code, the
   file is created with `open("xb")` and `chmod 444`, and a PostgreSQL trigger rejects UPDATE/DELETE
-  on `evidence_files`.
+  on `evidence_files`. *(Updated 2026-11-19: the storage layer now enforces the first of those —
+  see the storage-backend decision below.)*
+- 2026-11-19 — **Evidence storage is a backend behind an interface** (#20, ADR 0009):
+  `EVIDENCE_BACKEND=local` writes to the Docker volume in development and in the tests,
+  `EVIDENCE_BACKEND=gcs` writes to the production bucket through the Cloud Storage API. The
+  interface has `seal`/`open`/`exists` and no update or delete, the bucket write uses
+  `if_generation_match=0` (the API's `open("xb")`), and the bucket carries a seven-year retention
+  period. An upload is hashed and measured **before** any backend sees it, so a rejected file
+  leaves nothing behind — the only approach that works once the retention policy is locked.
 - 2026-11-02 — 4 steps: **1 Project details** (mock-up fields) · **2 Additionality** (reasoning
   ≥ 50 chars + proof upload) · **3 Boundary & evidence** (drop zone, sealed list, F2 banner linking
   to `/boundary?project=<id>`) · **4 Review & submit**. Every step change saves the draft.
@@ -125,8 +133,26 @@ Migration: `20261102_47c89f71feec_add_registration_fields_and_evidence.py` (also
 - Which fields are mandatory per methodology? (Today: the same set for all.)
 - Should evidence be allowed after submission (e.g. a verifier asks for more)? Today: drafts only.
 - Content sniffing (magic bytes) and virus scanning for uploads — extension check only for now.
+- Locking the bucket's retention policy (`LOCK_RETENTION=true`) is still a manual step; until
+  it is run, production write-once rests on the code alone.
 
 ## Progress log
+
+### 2026-11-19 · feature/F1-evidence-cloud-storage (#20)
+- Goal: write production evidence to the Cloud Storage bucket instead of a local volume, without
+  weakening write-once.
+- Done: `storage.py` with `LocalEvidenceStorage` and `GcsEvidenceStorage` behind an interface that
+  has no update or delete; `EVIDENCE_BACKEND` / `EVIDENCE_BUCKET` settings, with a validator that
+  refuses `gcs` without a bucket; uploads hashed and measured before a backend is touched;
+  downloads streamed through the app for both backends; Cloud Run switched from the gcsfuse mount
+  to the API; seven-year retention period on the bucket in `bootstrap.sh`.
+- Why the mount went: gcsfuse cannot give an atomic "fail if it exists" write, `chmod 444` means
+  nothing on an object store, and deleting a part-written reject fails once retention is locked.
+  ADR 0009.
+- Test: `tests/test_evidence_storage.py` — 19 tests covering the backend switch, both backends
+  (bucket faked, no network), rejected uploads leaving nothing behind, overwrite refused on both,
+  and the full upload/download route running on the bucket backend.
+- Follow-up: `LOCK_RETENTION=true` has to be run once against the real bucket.
 
 ### 2026-11-19 · fix/F1-verifier-assigned-projects
 - Fix: any verifier could open any submitted project and download its evidence. `get_project()`

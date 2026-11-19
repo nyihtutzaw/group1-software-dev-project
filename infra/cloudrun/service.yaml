@@ -48,13 +48,10 @@ spec:
             - name: DEMO_PASSWORD
               valueFrom:
                 secretKeyRef: { name: crvr-demo-password, key: latest }
-          volumeMounts:
-            - name: evidence
-              mountPath: /data/evidence
-      volumes:
-        - name: evidence
-          csi:
-            driver: gcsfuse.run.googleapis.com
-            readOnly: false
-            volumeAttributes:
-              bucketName: __BUCKET__
+            # F1 evidence goes to the bucket through the Cloud Storage API (#20), not a
+            # gcsfuse mount: the API gives us the "fail if it already exists" write that
+            # makes evidence write-once, which a filesystem mount cannot promise.
+            - name: EVIDENCE_BACKEND
+              value: gcs
+            - name: EVIDENCE_BUCKET
+              value: __BUCKET__
