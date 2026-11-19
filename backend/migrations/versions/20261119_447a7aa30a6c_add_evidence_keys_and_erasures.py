@@ -59,12 +59,18 @@ def upgrade() -> None:
     op.create_table(
         "evidence_keys",
         sa.Column("evidence_id", sa.Integer(), nullable=False),
-        sa.Column("key", sa.LargeBinary(length=32), nullable=False),
-        sa.Column("nonce", sa.LargeBinary(length=12), nullable=False),
+        sa.Column("key", sa.LargeBinary(length=32), nullable=True),
+        sa.Column("nonce", sa.LargeBinary(length=12), nullable=True),
         sa.ForeignKeyConstraint(["evidence_id"], ["evidence_files.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("evidence_id"),
     )
     # ### end Alembic commands ###
+    # Evidence sealed before this migration is stored as plaintext. Give each file a key row
+    # with no key, so downloads keep working and a genuinely missing row still reads as a fault.
+    op.execute(
+        "INSERT INTO evidence_keys (evidence_id, key, nonce) "
+        "SELECT id, NULL, NULL FROM evidence_files"
+    )
     op.execute(APPEND_ONLY)
     op.execute(
         "CREATE TRIGGER evidence_erasures_append_only BEFORE UPDATE OR DELETE "

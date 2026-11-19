@@ -160,6 +160,10 @@ Migration: `20261102_47c89f71feec_add_registration_fields_and_evidence.py` (also
   returning wrong bytes.
 - A missing key with no erasure row answers 404, not 410: a key lost by accident is a fault to
   investigate, not a lawful erasure to report.
+- Evidence sealed **before** this change is plaintext in storage. The migration gives each such
+  file an `evidence_keys` row with `key`/`nonce` NULL, so it still downloads (and "no row" still
+  means a lost key). Erasing one stops the app serving it, but its plaintext stays in storage
+  until removed there; the ledger entry records `plaintext_in_storage: true`.
 - Test: `tests/test_evidence_erasure.py` — 25 tests, including that the write-once rule and the
   ledger survive an erasure, that erasing one file leaves the others readable, and that no new
   route can delete sealed evidence.

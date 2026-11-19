@@ -7,6 +7,7 @@ files on a Docker volume; production stores them in a Cloud Storage bucket whose
 retention policy enforces the seven-year period (#20).
 """
 
+from contextlib import closing
 from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
@@ -328,9 +329,14 @@ def get_evidence(db: Session, project: Project, evidence_id: int) -> tuple[Evide
         )
 
     try:
-        ciphertext = get_storage().open(evidence.storage_key).read()
+        stream = get_storage().open(evidence.storage_key)
     except EvidenceMissingError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "The stored file is missing") from None
+    if file_key.key is None or file_key.nonce is None:
+        # Sealed before encryption (#45): the stored object is the plaintext itself.
+        return evidence, stream
+    with closing(stream):
+        ciphertext = stream.read()
     try:
         plaintext = decrypt(ciphertext, file_key.key, file_key.nonce)
     except EvidenceUndecryptableError:
@@ -388,6 +394,11 @@ def erase_evidence(
                 "A file cannot replace itself",
             )
 
+    # A file sealed before encryption has no key to destroy: the app stops serving it, but its
+    # plaintext stays in storage until removed there. The ledger says so rather than hiding it.
+    file_key = db.get(EvidenceKey, evidence.id)
+    plaintext_in_storage = file_key is not None and file_key.key is None
+
     erasure = EvidenceErasure(
         evidence_id=evidence.id,
         reason=reason.strip(),
@@ -410,6 +421,7 @@ def erase_evidence(
             "sha256": evidence.sha256,
             "reason": erasure.reason,
             "replacement_id": erasure.replacement_id,
+            "plaintext_in_storage": plaintext_in_storage,
         },
     )
     db.commit()

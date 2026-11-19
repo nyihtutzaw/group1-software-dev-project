@@ -312,3 +312,62 @@ def test_an_erasure_cannot_reach_another_projects_file(client, login, sealed, ma
     res = _erase(client, {"id": other.id}, evidence["id"])
 
     assert res.status_code == 404
+
+
+# --- files sealed before encryption -------------------------------------------------------
+
+
+@pytest.fixture
+def legacy(db, sealed, storage):
+    """Turn the sealed file into one stored the pre-#45 way: plaintext, key row with no key.
+
+    That is what the migration leaves behind for every evidence file that already existed.
+    """
+    project, evidence = sealed
+    path = storage / db.get(EvidenceFile, evidence["id"]).storage_key
+    path.chmod(0o644)
+    path.write_bytes(PDF)
+    path.chmod(0o444)
+    db.execute(
+        update(EvidenceKey)
+        .where(EvidenceKey.evidence_id == evidence["id"])
+        .values(key=None, nonce=None)
+    )
+    db.commit()
+    return project, evidence
+
+
+def test_a_file_sealed_before_encryption_still_downloads(client, legacy):
+    project, evidence = legacy
+
+    res = _download(client, project, evidence["id"])
+
+    assert res.status_code == 200
+    assert res.content == PDF
+
+
+def test_erasing_a_file_sealed_before_encryption_says_its_plaintext_remains(
+    client, db, login, legacy
+):
+    from app.features.audit.models import LedgerEntry
+
+    project, evidence = legacy
+    login(Role.ADMIN)
+
+    assert _erase(client, project, evidence["id"]).status_code == 201
+
+    assert _download(client, project, evidence["id"]).status_code == 410
+    entry = db.scalars(select(LedgerEntry).where(LedgerEntry.action == "evidence.erased")).all()[-1]
+    assert entry.payload["plaintext_in_storage"] is True
+
+
+def test_erasing_an_encrypted_file_leaves_no_plaintext(client, db, login, sealed):
+    from app.features.audit.models import LedgerEntry
+
+    project, evidence = sealed
+    login(Role.ADMIN)
+
+    _erase(client, project, evidence["id"])
+
+    entry = db.scalars(select(LedgerEntry).where(LedgerEntry.action == "evidence.erased")).all()[-1]
+    assert entry.payload["plaintext_in_storage"] is False

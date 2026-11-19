@@ -107,8 +107,11 @@ class EvidenceKey(Base):
     evidence_id: Mapped[int] = mapped_column(
         ForeignKey("evidence_files.id", ondelete="CASCADE"), primary_key=True
     )
-    key: Mapped[bytes] = mapped_column(LargeBinary(32))
-    nonce: Mapped[bytes] = mapped_column(LargeBinary(12))
+    # Both NULL for a file sealed before encryption was introduced: its object in storage is
+    # the plaintext, and there is no key to destroy. The row still exists so that "no row"
+    # keeps meaning "the key was lost", which is a fault rather than a legacy file.
+    key: Mapped[bytes | None] = mapped_column(LargeBinary(32))
+    nonce: Mapped[bytes | None] = mapped_column(LargeBinary(12))
 
 
 class EvidenceErasure(Base):
