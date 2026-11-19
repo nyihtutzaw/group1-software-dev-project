@@ -11,6 +11,7 @@ from sqlalchemy.exc import OperationalError
 from app.core.config import DEVELOPMENT_DEMO_PASSWORD, Settings, get_settings
 from app.core.db import get_db
 from app.core.frontend import mount_frontend
+from app.demo_reset import reset_demo_database
 from app.features.audit.security_log import client_ip
 from app.main import app
 from app.seed import _ensure_demo_seeding_allowed
@@ -63,6 +64,13 @@ def test_seeding_is_allowed_in_production_only_with_demo_mode(monkeypatch):
 
     monkeypatch.setattr(settings, "demo_mode", True)
     _ensure_demo_seeding_allowed()
+
+
+def test_demo_reset_refuses_outside_demo_mode(monkeypatch):
+    monkeypatch.setattr(get_settings(), "app_env", "production")
+
+    with pytest.raises(RuntimeError, match="only for demo data"):
+        reset_demo_database()
 
 
 def test_demo_accounts_include_the_public_password_in_development(client):
