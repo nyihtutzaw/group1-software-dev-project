@@ -18,8 +18,7 @@ blocked. The hash-chained ledger behind `record_action()` (#31), the paginated l
 integrity timeline page are complete. Failed sign-ins and forbidden requests are recorded in a
 separate security log, and repeated sign-in failures are temporarily blocked. Admins can list and
 create accounts, change roles, and deactivate or reactivate users from `/admin/users`, and each
-change is written to the ledger. Retention periods are documented; automated log cleanup is not
-implemented.
+change is written to the ledger. Security events older than 90 days are deleted automatically.
 
 ## Scope
 
@@ -41,7 +40,7 @@ From WBS 9.x and the design report:
 3. The same user cannot both submit and approve a critical action (9.1.3).
 4. Ledger records are hash-chained; tampering is detectable (9.2.1).
 5. 100% of critical verification and issuance actions are recorded (9.2.2).
-6. Admin actions are logged; a retention policy is enforced (9.3.1). Partly: #33 admin actions are on a separate branch; retention periods are documented, but automated cleanup is pending.
+6. Admin actions are logged; a retention policy is enforced (9.3.1). ✅ Admin actions are in the ledger; security events are deleted after 90 days; evidence retention in production is #20.
 7. Admins can create users, assign roles and deactivate accounts.
 
 ## Decisions
@@ -68,7 +67,12 @@ From WBS 9.x and the design report:
   ledger entries indefinitely, evidence for 7 years, and security events for 90 days. Apply a
   temporary 15-minute block after 5 failed sign-ins for the same normalized account and source IP
   within 15 minutes. Hash normalized account identifiers with the application secret in the log.
-  Retention periods are policy decisions; scheduled deletion is not implemented in this branch.
+  Retention periods are policy decisions. *(Deletion added 2026-11-19, below.)*
+- 2026-11-19 — **Security events are deleted after 90 days** (WBS 9.3.1). Each
+  `record_security_event()` first deletes events older than 90 days, so the policy holds without a
+  scheduler (the hosted demo scales to zero). `python -m app.features.audit.retention` runs the same
+  deletion by hand or from a scheduled job. The ledger is never deleted; evidence retention is the
+  production bucket's retention lock (#20).
 
 - 2026-10-28 — **F2 added a `record_action()` stub** in `backend/app/features/audit/ledger.py`
   (`record_action(db, *, actor, action, entity, entity_id, payload)`, logs only). Replace the body
@@ -138,11 +142,16 @@ From WBS 9.x and the design report:
 
 - Automatic evidence expiry requires production object-storage lifecycle support; the current local
   filesystem does not enforce the agreed 7-year retention period.
-- Automated deletion of security events after 90 days is not implemented.
 - User invitation, password-change and password-reset flows are not included; users receive their
   initial password out of band.
 
 ## Progress log
+
+### 2026-11-19 · fix/F5-security-event-retention
+- Done: `backend/app/features/audit/retention.py` deletes security events older than 90 days;
+  called on every new security event and runnable as a command. Tests in
+  `tests/test_security_retention.py` (boundary at exactly 90 days, deletion on record, ledger
+  untouched).
 
 ### 2026-11-19 · fix/F5-ledger-scope
 - Fix: buyers could read the whole ledger (all user emails, evidence file names, other projects'
