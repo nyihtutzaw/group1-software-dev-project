@@ -184,6 +184,10 @@ def allocate(db: Session, credit_id: int, actor: User, data: AllocationIn) -> Ho
     if not actor.is_active or actor.role not in STAFF:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Registry staff access required")
     credit = _lock_credit(db, credit_id)  # serialises allocations of this batch
+    if credit.status == "buffer":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Buffer credits cannot be sold or transferred"
+        )
     if credit.status != "active":
         raise HTTPException(
             status.HTTP_409_CONFLICT, f"A {credit.status} batch cannot be allocated"
@@ -254,6 +258,8 @@ def retire(db: Session, holding_id: int, actor: User, data: RetirementIn) -> Ret
     )
     if holding.status != "held":
         raise HTTPException(status.HTTP_409_CONFLICT, "These credits are already retired")
+    if credit.status == "buffer":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Buffer credits cannot be retired")
     if credit.status != "active":
         raise HTTPException(
             status.HTTP_409_CONFLICT, f"Credits in a {credit.status} batch cannot be retired"

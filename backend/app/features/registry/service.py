@@ -50,7 +50,12 @@ def snapshot_digest(credit: RegistryCredit) -> str:
 
 
 def publish_credit(
-    db: Session, *, data: PublicationIn, developer: User, actor: User
+    db: Session,
+    *,
+    data: PublicationIn,
+    developer: User,
+    actor: User,
+    status: Literal["active", "buffer"] = "active",
 ) -> RegistryCredit:
     """Persist an already-approved public snapshot in the caller's transaction.
 
@@ -67,7 +72,10 @@ def publish_credit(
     if data.signed_off_at > data.issued_at or data.issued_at > datetime.now(UTC):
         raise HTTPException(422, "Sign-off must precede issuance; issuance cannot be in the future")
     credit = RegistryCredit(
-        **data.model_dump(), developer_id=developer.id, published_by_id=actor.id, status="active"
+        **data.model_dump(),
+        developer_id=developer.id,
+        published_by_id=actor.id,
+        status=status,
     )
     credit.snapshot_sha256 = snapshot_digest(credit)
     try:
@@ -102,6 +110,8 @@ def change_status(
     )
     if credit is None:
         raise HTTPException(404, "Credit not found")
+    if credit.status == "buffer":
+        raise HTTPException(409, "Buffer credits cannot be sold, transferred or retired")
     if credit.status != "active":
         raise HTTPException(409, "Credit already retired or revoked")
     credit.status = status

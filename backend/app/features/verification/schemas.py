@@ -10,6 +10,7 @@ from app.features.verification.models import (
     ApprovalDecision,
     AssignmentStatus,
     ReportDecision,
+    RiskRating,
 )
 
 ChipTone = Literal["ok", "wait", "warn", "draft", "accent"]
@@ -25,13 +26,21 @@ class ReportIn(BaseModel):
     checklist: dict[str, bool]
     note: str = Field(min_length=1, max_length=4000)
     decision: ReportDecision
+    risk_rating: RiskRating | None = None
 
     @model_validator(mode="after")
     def complete_checklist(self) -> "ReportIn":
         expected = {key for key, _label in CHECKLIST}
         if set(self.checklist) != expected:
             raise ValueError("Checklist must contain exactly the five review items")
+        if self.decision == ReportDecision.SIGN_OFF and self.risk_rating is None:
+            raise ValueError("A sign-off must include a reversal risk rating")
         return self
+
+
+class ReassignIn(BaseModel):
+    verifier_id: int
+    due_date: date
 
 
 class ApprovalIn(BaseModel):
@@ -90,7 +99,7 @@ class ApprovalOut(BaseModel):
 
 class ChainEvent(BaseModel):
     id: str
-    kind: Literal["assigned", "report", "approval"]
+    kind: Literal["assigned", "report", "approval", "reassigned"]
     at: datetime
     actor_name: str
     summary: str
@@ -103,7 +112,9 @@ class ReviewOut(BaseModel):
     automatic_checks: list[AutoCheck]
     checklist: list[CheckLine]
     note: str
+    risk_rating: RiskRating | None
     can_submit: bool
+    can_reassign: bool
     can_decide: bool
     decision_block: str | None
     report_id: int | None

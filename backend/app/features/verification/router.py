@@ -18,6 +18,7 @@ from app.features.verification.schemas import (
     NoteOut,
     QueueItem,
     QueueOut,
+    ReassignIn,
     ReportIn,
     ReviewOut,
     VerifierOut,
@@ -26,6 +27,7 @@ from app.features.verification.schemas import (
 router = APIRouter(prefix="/verifications", tags=["F3 verification"])
 
 QUEUE_ROLES = (Role.VERIFIER, Role.REGISTRY_STAFF, Role.ADMIN)
+# Both registry staff and admin assign and reassign verifiers. See docs/decisions/0007.
 STAFF_ROLES = (Role.REGISTRY_STAFF, Role.ADMIN)
 
 
@@ -63,6 +65,17 @@ def create_assignment(
     user: User = Depends(require_roles(*STAFF_ROLES)),
 ) -> QueueItem:
     return service.assign(db, user, body)
+
+
+@router.patch("/assignments/{assignment_id}", response_model=ReviewOut)
+def reassign_assignment(
+    assignment_id: int,
+    body: ReassignIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles(*STAFF_ROLES)),
+) -> ReviewOut:
+    """Change the verifier or due date after a rejection or a request for changes."""
+    return service.reassign(db, user, assignment_id, body)
 
 
 @router.get("/assignments/{assignment_id}", response_model=ReviewOut)

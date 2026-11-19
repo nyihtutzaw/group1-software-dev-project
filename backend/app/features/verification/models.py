@@ -4,7 +4,7 @@ import enum
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import JSON, Date, DateTime, Enum, ForeignKey, Text
+from sqlalchemy import JSON, CheckConstraint, Date, DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, TimestampMixin
@@ -44,6 +44,17 @@ class ReportDecision(enum.StrEnum):
     REQUEST_CHANGES = "request_changes"
 
 
+class RiskRating(enum.StrEnum):
+    """Reversal risk set by the verifier. The percentage is the non-tradable buffer pool."""
+
+    LOW = "low"  # 10%
+    MEDIUM = "medium"  # 15%
+    HIGH = "high"  # 20%
+
+
+BUFFER_PERCENT = {RiskRating.LOW: 10, RiskRating.MEDIUM: 15, RiskRating.HIGH: 20}
+
+
 class ApprovalDecision(enum.StrEnum):
     APPROVED = "approved"
     REJECTED = "rejected"
@@ -75,6 +86,12 @@ class VerificationReport(TimestampMixin, Base):
     """A verifier's checklist and note. Sign-off is irreversible; request-changes is not."""
 
     __tablename__ = "verification_reports"
+    __table_args__ = (
+        CheckConstraint(
+            "risk_rating IS NULL OR risk_rating IN ('low', 'medium', 'high')",
+            name="ck_verification_report_risk",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     assignment_id: Mapped[int] = mapped_column(
@@ -84,7 +101,25 @@ class VerificationReport(TimestampMixin, Base):
     checklist: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     note: Mapped[str] = mapped_column(Text)
     decision: Mapped[ReportDecision] = mapped_column(_enum(ReportDecision))
+    # Required on sign-off. Drives the buffer split when credits are issued.
+    risk_rating: Mapped[str | None] = mapped_column(String(8))
     signed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class VerificationReassignment(TimestampMixin, Base):
+    """A staff change of verifier or due date after a rejection or a request for changes."""
+
+    __tablename__ = "verification_reassignments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    assignment_id: Mapped[int] = mapped_column(
+        ForeignKey("verification_assignments.id"), index=True
+    )
+    actor_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    previous_verifier_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    verifier_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    previous_due_date: Mapped[date] = mapped_column(Date)
+    due_date: Mapped[date] = mapped_column(Date)
 
 
 class Approval(TimestampMixin, Base):

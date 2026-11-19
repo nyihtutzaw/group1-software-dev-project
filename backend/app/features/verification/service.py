@@ -1,5 +1,6 @@
 """F3 business logic: assign, review, sign off, and maker-checker approval."""
 
+from collections import Counter
 from datetime import UTC, date, datetime
 
 from fastapi import HTTPException, status
@@ -10,7 +11,7 @@ from app.auth.models import Role, User
 from app.features.audit.ledger import record_action
 from app.features.boundary.geometry import count_other_boundaries
 from app.features.boundary.service import issuance_blocked
-from app.features.registration.models import EvidenceFile, Project, ProjectStatus
+from app.features.registration.models import EvidenceFile, EvidenceKind, Project, ProjectStatus
 from app.features.verification.models import (
     CHECKLIST,
     CLOSED,
@@ -19,6 +20,7 @@ from app.features.verification.models import (
     AssignmentStatus,
     ReportDecision,
     VerificationAssignment,
+    VerificationReassignment,
     VerificationReport,
 )
 from app.features.verification.schemas import (
@@ -34,6 +36,7 @@ from app.features.verification.schemas import (
     NoteOut,
     QueueItem,
     QueueOut,
+    ReassignIn,
     ReportIn,
     ReviewOut,
     VerifierOut,
@@ -46,6 +49,17 @@ OPEN_FOR_REPORT = (
     AssignmentStatus.CHANGES_REQUESTED,
     AssignmentStatus.REJECTED,  # reviewed again once the developer resubmits
 )
+REASSIGNABLE = (AssignmentStatus.CHANGES_REQUESTED, AssignmentStatus.REJECTED)
+
+_KIND_LABEL = {
+    EvidenceKind.LAND_TITLE: "land title",
+    EvidenceKind.SURVEY: "survey",
+    EvidenceKind.PHOTO: "photo",
+    EvidenceKind.GPS: "GPS file",
+    EvidenceKind.SPREADSHEET: "spreadsheet",
+    EvidenceKind.ADDITIONALITY_PROOF: "additionality proof",
+    EvidenceKind.OTHER: "other file",
+}
 
 
 def _today() -> date:
@@ -111,12 +125,36 @@ def _overlap_detail(db: Session, project_id: int) -> tuple[bool, str]:
     return False, f"Auto-checked · {reason}"
 
 
+def _kind_phrase(kind: str, count: int) -> str:
+    label = _KIND_LABEL[EvidenceKind(kind)]
+    return f"{count} {label}" if count == 1 else f"{count} {label}s"
+
+
+def _baseline_source(db: Session, project_id: int) -> str:
+    kinds = [
+        kind.value if isinstance(kind, EvidenceKind) else kind
+        for kind in db.scalars(
+            select(EvidenceFile.kind).where(EvidenceFile.project_id == project_id)
+        ).all()
+    ]
+    if not kinds:
+        return "No evidence files uploaded yet"
+    counts = Counter(kinds)
+    phrases = [
+        _kind_phrase(kind.value, counts[kind.value])
+        for kind in EvidenceKind
+        if kind.value in counts
+    ]
+    noun = "file" if len(kinds) == 1 else "files"
+    return f"{len(kinds)} {noun} · " + ", ".join(phrases)
+
+
 def _sources(db: Session, project_id: int) -> dict[str, str]:
     _passed, overlap = _overlap_detail(db, project_id)
     return {
         "land_title": "Deed on the project file · checked against the land-title extract",
         "boundary_overlap": overlap,
-        "baseline": "Field survey and geo-tagged photos — evidence files are not stored yet",
+        "baseline": _baseline_source(db, project_id),
         "methodology": "Methodology, growth curve and buffer pool on the registration",
         "site_visit": "Scheduled by the verifier · the visit itself stays a human activity",
     }
@@ -164,6 +202,16 @@ def _item(
     )
 
 
+def _reassignments(db: Session, assignment_id: int) -> list[VerificationReassignment]:
+    return list(
+        db.scalars(
+            select(VerificationReassignment)
+            .where(VerificationReassignment.assignment_id == assignment_id)
+            .order_by(VerificationReassignment.id)
+        )
+    )
+
+
 def _chain(db: Session, assignment: VerificationAssignment, project: Project) -> list[ChainEvent]:
     assigner = _user(db, assignment.assigned_by_id)
     verifier = _user(db, assignment.verifier_id)
@@ -176,6 +224,19 @@ def _chain(db: Session, assignment: VerificationAssignment, project: Project) ->
             summary=f"Assigned to {verifier.full_name} · due {assignment.due_date.isoformat()}",
         )
     ]
+    for change in _reassignments(db, assignment.id):
+        previous = _user(db, change.previous_verifier_id)
+        current = _user(db, change.verifier_id)
+        events.append(
+            ChainEvent(
+                id=f"reassigned-{change.id}",
+                kind="reassigned",
+                at=change.created_at,
+                actor_name=_user(db, change.actor_id).full_name,
+                summary=(f"Reassigned to {current.full_name} · due {change.due_date.isoformat()}"),
+                note=f"Was {previous.full_name} · due {change.previous_due_date.isoformat()}",
+            )
+        )
     for report in _reports(db, assignment.id):
         maker = _user(db, report.verifier_id)
         signed = report.decision == ReportDecision.SIGN_OFF
@@ -266,6 +327,7 @@ def _review(
     can_submit = user.role == Role.VERIFIER and assignment.status in OPEN_FOR_REPORT
     can_submit = can_submit and assignment.verifier_id == user.id
     can_submit = can_submit and project.status == ProjectStatus.SUBMITTED
+    can_reassign = user.role in STAFF and assignment.status in REASSIGNABLE
     block = _decision_block(user, assignment, project, report, approval)
     can_decide = (
         user.role in STAFF
@@ -289,7 +351,9 @@ def _review(
             for key, label in CHECKLIST
         ],
         note=report.note if report else "",
+        risk_rating=report.risk_rating if report else None,
         can_submit=can_submit,
+        can_reassign=can_reassign,
         can_decide=can_decide,
         decision_block=block,
         report_id=report.id if report else None,
@@ -345,6 +409,53 @@ def assign(db: Session, actor: User, data: AssignIn) -> QueueItem:
     db.commit()
     db.refresh(row)
     return _item(db, row, project, _today())
+
+
+def reassign(db: Session, actor: User, assignment_id: int, data: ReassignIn) -> ReviewOut:
+    """Change the verifier or due date after a rejection or a request for changes."""
+    assignment = _assignment(db, assignment_id)
+    if assignment.status not in REASSIGNABLE:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Reassign only after a rejection or a request for changes",
+        )
+    verifier = _user(db, data.verifier_id)
+    if verifier.role != Role.VERIFIER or not verifier.is_active:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Choose an active verifier")
+    if verifier.id == assignment.verifier_id and data.due_date == assignment.due_date:
+        raise HTTPException(status.HTTP_409_CONFLICT, "The verifier and due date are unchanged")
+    project = _project(db, assignment.project_id)
+    previous_verifier_id = assignment.verifier_id
+    previous_due = assignment.due_date
+    assignment.verifier_id = verifier.id
+    assignment.due_date = data.due_date
+    db.add(
+        VerificationReassignment(
+            assignment_id=assignment.id,
+            actor_id=actor.id,
+            previous_verifier_id=previous_verifier_id,
+            verifier_id=verifier.id,
+            previous_due_date=previous_due,
+            due_date=data.due_date,
+        )
+    )
+    db.flush()
+    record_action(
+        db,
+        actor=actor,
+        action="verification.reassigned",
+        entity="project",
+        entity_id=project.id,
+        payload={
+            "assignment_id": assignment.id,
+            "previous_verifier_id": previous_verifier_id,
+            "verifier_id": verifier.id,
+            "previous_due_date": previous_due.isoformat(),
+            "due_date": data.due_date.isoformat(),
+        },
+    )
+    db.commit()
+    return _review(db, actor, assignment, project)
 
 
 def queue(db: Session, user: User) -> QueueOut:
@@ -406,6 +517,7 @@ def submit_report(db: Session, user: User, assignment_id: int, data: ReportIn) -
         checklist=[{"key": key, "checked": data.checklist[key]} for key, _label in CHECKLIST],
         note=note,
         decision=data.decision,
+        risk_rating=data.risk_rating.value if data.risk_rating else None,
         signed_at=datetime.now(UTC),
     )
     if data.decision == ReportDecision.SIGN_OFF:

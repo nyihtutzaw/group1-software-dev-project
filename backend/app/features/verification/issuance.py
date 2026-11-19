@@ -5,6 +5,7 @@ country; a developer's estimated removal is never silently treated as issued ton
 """
 
 from datetime import UTC, datetime
+from typing import Literal
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -18,15 +19,31 @@ from app.features.registry.models import RegistryCredit
 from app.features.registry.schemas import PublicationIn
 from app.features.registry.service import publish_credit
 from app.features.verification.models import (
+    BUFFER_PERCENT,
     CHECKLIST,
     Approval,
     ApprovalDecision,
     AssignmentStatus,
     ReportDecision,
+    RiskRating,
     VerificationAssignment,
     VerificationReport,
 )
 from app.features.verification.schemas import IssueIn
+
+
+def _serial(code: str, vintage: int, approval_id: int, start: int, end: int) -> str:
+    return f"{code}-{vintage}-A{approval_id:08d}-{start:09d}-{end:09d}"
+
+
+def _split_buffer(quantity: int, rating: str) -> tuple[int, int, int]:
+    percent = BUFFER_PERCENT[RiskRating(rating)]
+    buffer = (quantity * percent + 50) // 100
+    if buffer >= quantity:
+        raise HTTPException(
+            422, "Issued quantity is too small to leave a tradable credit after the buffer pool"
+        )
+    return quantity - buffer, buffer, percent
 
 
 def issue_credits(db: Session, actor: User, project_id: int, data: IssueIn) -> RegistryCredit:
@@ -92,30 +109,46 @@ def issue_credits(db: Session, actor: User, project_id: int, data: IssueIn) -> R
     verifier = db.get(User, report.verifier_id)
     if developer is None or verifier is None:
         raise HTTPException(409, "Project developer or verifier is unavailable")
-    # The approval PK makes the serial namespace unique; quantity is the inclusive range length.
-    serial = f"{project.code}-{data.vintage}-A{approval.id:08d}-000000001-{data.quantity:09d}"
+    if report.risk_rating is None:
+        raise HTTPException(409, "The verifier must set a reversal risk rating before issuance")
+    tradable_qty, buffer_qty, percent = _split_buffer(data.quantity, report.risk_rating)
+    issued_at = datetime.now(UTC)
+    verifier_name = verifier.organization or verifier.full_name
+    # The approval PK makes the serial namespace unique. Units 1..tradable are sellable;
+    # the rest of the issued range is the non-tradable buffer pool.
     with db.begin_nested():
-        credit = publish_credit(
+        credit = _publish_batch(
             db,
             actor=actor,
             developer=developer,
-            data=PublicationIn(
-                serial=serial,
-                project_reference=project.code,
-                project_name=project.name,
-                country=data.country,
-                methodology=project.methodology,
-                vintage=data.vintage,
-                quantity=data.quantity,
-                verifier_name=verifier.organization or verifier.full_name,
-                verification_reference=f"VER-{report.id}",
-                approval_reference=f"APP-{approval.id}",
-                signed_off_at=report.signed_at,
-                issued_at=datetime.now(UTC),
-            ),
+            project=project,
+            report=report,
+            approval=approval,
+            data=data,
+            issued_at=issued_at,
+            verifier_name=verifier_name,
+            quantity=tradable_qty,
+            start=1,
+            end=tradable_qty,
+            batch_status="active",
         )
-        credit.source_project_id = project.id
-        credit.source_approval_id = approval.id
+        buffer = None
+        if buffer_qty:
+            buffer = _publish_batch(
+                db,
+                actor=actor,
+                developer=developer,
+                project=project,
+                report=report,
+                approval=approval,
+                data=data,
+                issued_at=issued_at,
+                verifier_name=verifier_name,
+                quantity=buffer_qty,
+                start=tradable_qty + 1,
+                end=data.quantity,
+                batch_status="buffer",
+            )
         project.status = ProjectStatus.ISSUED
         db.flush()
         record_action(
@@ -130,7 +163,69 @@ def issue_credits(db: Session, actor: User, project_id: int, data: IssueIn) -> R
                 "serial": credit.serial,
                 "vintage": credit.vintage,
                 "quantity": credit.quantity,
+                "risk_rating": report.risk_rating,
+                "buffer_percent": percent,
+                "buffer_quantity": buffer_qty,
             },
         )
+        if buffer is not None:
+            record_action(
+                db,
+                actor=actor,
+                action="credit.issued",
+                entity="project",
+                entity_id=project.id,
+                payload={
+                    "credit_id": buffer.id,
+                    "approval_id": approval.id,
+                    "serial": buffer.serial,
+                    "vintage": buffer.vintage,
+                    "quantity": buffer.quantity,
+                    "status": "buffer",
+                    "risk_rating": report.risk_rating,
+                    "buffer_percent": percent,
+                },
+            )
     db.commit()
+    return credit
+
+
+def _publish_batch(
+    db: Session,
+    *,
+    actor: User,
+    developer: User,
+    project: Project,
+    report: VerificationReport,
+    approval: Approval,
+    data: IssueIn,
+    issued_at: datetime,
+    verifier_name: str,
+    quantity: int,
+    start: int,
+    end: int,
+    batch_status: Literal["active", "buffer"],
+) -> RegistryCredit:
+    credit = publish_credit(
+        db,
+        actor=actor,
+        developer=developer,
+        status=batch_status,
+        data=PublicationIn(
+            serial=_serial(project.code, data.vintage, approval.id, start, end),
+            project_reference=project.code,
+            project_name=project.name,
+            country=data.country,
+            methodology=project.methodology or "",
+            vintage=data.vintage,
+            quantity=quantity,
+            verifier_name=verifier_name,
+            verification_reference=f"VER-{report.id}",
+            approval_reference=f"APP-{approval.id}",
+            signed_off_at=report.signed_at,
+            issued_at=issued_at,
+        ),
+    )
+    credit.source_project_id = project.id
+    credit.source_approval_id = approval.id
     return credit

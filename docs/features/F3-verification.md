@@ -13,10 +13,10 @@
 
 ## Status
 
-In progress — queue, structured checklist, sign-off and maker-checker approval are on `main`
-(PR #13). The review lists F1's sealed evidence files (kind, name, SHA-256) and the F2 overlap
-check. F3 now drives `projects.status` after submission: request changes or a staff rejection →
-`draft`, approval → `verified`.
+In progress — queue, checklist, maker-checker and issuance are on `main`. This branch
+(`fix/F3-review-followups`) records who assigns verifiers, lists real evidence on the baseline
+checklist line, lets staff reassign after a rejection or a request for changes, and splits issued
+credits into a tradable batch and a non-tradable buffer pool.
 
 ## Scope
 
@@ -44,8 +44,16 @@ From WBS 7.x and the design report:
 
 - 2026-10-27 — Queue is sorted oldest-due first; overdue = past due date (mock-up).
 - 2026-11-01 — **Working assumption for this branch:** `registry_staff` and `admin` create
-  assignments. The issue still asks who assigns; both roles already reach the queue route, and
-  staff own the later maker-checker step. Change this if the team decides otherwise.
+  assignments. Superseded by the decision below.
+- 2026-11-19 — **Registry staff and admin assign verifiers** ([ADR 0007](../decisions/0007-who-assigns-verifiers.md),
+  issue #28). A verifier cannot. The same two roles may reassign the verifier and due date after
+  a rejection or a request for changes (issue #26). The change is a history event and a
+  `verification.reassigned` ledger entry.
+- 2026-11-19 — **Reversal risk is set on sign-off** (issue #42): low 10%, medium 15%, high 20%.
+  Issuance splits the staff-confirmed quantity. The first unit range stays `active` and tradable;
+  the remainder is a second batch with status `buffer`, its own serial range, and the same
+  approval. Buffer credits cannot be allocated or retired. A rounded buffer of zero (a very small
+  batch) issues one tradable batch only. Half-up rounding: `(quantity * percent + 50) // 100`.
 - 2026-11-01 — A `verifier` receives only rows where they are `verifier_id`. `registry_staff` and
   `admin` receive every assignment. The API enforces this.
 - 2026-11-01 — Overdue means `due_date` is before today (UTC) and the assignment is not approved
@@ -76,6 +84,7 @@ From WBS 7.x and the design report:
 | GET | `/api/verifications/queue` | verifier (own), registry_staff, admin (all) | Queue, oldest due date first, with overdue flag and counts |
 | GET | `/api/verifications/verifiers` | registry_staff, admin | Active verifiers for the assign form |
 | POST | `/api/verifications/assignments` | registry_staff, admin | Assign a verifier and a due date |
+| PATCH | `/api/verifications/assignments/{id}` | registry_staff, admin | Reassign verifier or due date after rejection or request-changes |
 | GET | `/api/verifications/assignments/{id}` | assigned verifier, registry_staff, admin | Evidence summary, F2 overlap check, checklist, chain |
 | POST | `/api/verifications/assignments/{id}/report` | assigned verifier | Checklist + note: `sign_off` or `request_changes` |
 | POST | `/api/verifications/reports/{id}/decision` | registry_staff, admin, not the maker or owner | Approve or reject a sign-off with a rationale |
@@ -96,8 +105,10 @@ From WBS 7.x and the design report:
 | Table | Key columns | Notes |
 |---|---|---|
 | `verification_assignments` | project_id (unique), verifier_id, assigned_by_id, due_date, status | One verifier per project |
-| `verification_reports` | assignment_id, verifier_id, checklist JSON, note, decision, signed_at | Sign-off is the last report |
+| `verification_reports` | assignment_id, verifier_id, checklist JSON, note, decision, risk_rating, signed_at | `risk_rating` is required on sign-off |
+| `verification_reassignments` | assignment_id, actor_id, previous verifier and due date, new verifier and due date | One row per staff change |
 | `approvals` | report_id (unique), approver_id, decision, rationale, decided_at | One decision per sign-off |
+| `registry_credits` | status includes `buffer`; unique `(source_approval_id, status)` | Shared with F4. One tradable batch and one buffer batch per approval |
 
 ## Depends on / used by
 
@@ -106,9 +117,8 @@ From WBS 7.x and the design report:
 
 ## Open questions
 
-- Who assigns verifiers — registry staff, admin, or both? This branch allows both (see Decisions).
-- After a rejection the **same verifier** reviews the resubmission, and the due date is not reset.
-  Should staff be able to reassign to a different verifier or set a new due date?
+None for assignment or the buffer split. A later vintage or a second tradable batch from the same
+approval is still out of scope (see the 2026-11-16 issuance note).
 
 ## Progress log
 
@@ -184,3 +194,12 @@ From WBS 7.x and the design report:
 - Real tests cover registration/upload/boundary/submission → sign-off → approve → issue → public
   registry, repeated issuance, unauthorized roles, invalid states/values, live F2 blocking and
   rollback when audit writing fails. This supplies the minimal #25 prerequisite locally for #39.
+
+### 2026-11-19 · fix/F3-review-followups
+- Done: issues #26, #27, #28 and #42. Baseline checklist text counts sealed evidence by kind.
+  Staff and admin are the assigners (ADR 0007) and can reassign after a rejection or a request
+  for changes; the History tab and `verification.reassigned` record it. Sign-off stores a reversal
+  risk rating, and issuance puts that percentage into a `buffer` credit that cannot be allocated
+  or retired.
+- Next: none on these four issues. F4's public registry already lists the buffer row because
+  `CreditOut.status` now includes `buffer`.

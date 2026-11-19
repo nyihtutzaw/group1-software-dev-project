@@ -36,7 +36,9 @@ export type Review = {
   automatic_checks: { name: string; passed: boolean; detail: string }[]
   checklist: CheckLine[]
   note: string
+  risk_rating: 'low' | 'medium' | 'high' | null
   can_submit: boolean
+  can_reassign: boolean
   can_decide: boolean
   decision_block: string | null
   report_id: number | null
@@ -49,7 +51,7 @@ export type Review = {
   } | null
   chain: {
     id: string
-    kind: 'assigned' | 'report' | 'approval'
+    kind: 'assigned' | 'report' | 'approval' | 'reassigned'
     at: string
     actor_name: string
     summary: string
@@ -73,6 +75,7 @@ export type ReportBody = {
   checklist: Record<string, boolean>
   note: string
   decision: 'sign_off' | 'request_changes'
+  risk_rating?: 'low' | 'medium' | 'high' | null
 }
 
 const queueKey = ['verifications', 'queue'] as const
@@ -132,6 +135,18 @@ export function useSubmitReport(id: number) {
   return useMutation({
     mutationFn: (body: ReportBody) =>
       api.post<Review>(`/verifications/assignments/${id}/report`, body),
+    onSuccess: (review) => {
+      qc.setQueryData(['verifications', 'review', id], review)
+      void qc.invalidateQueries({ queryKey: queueKey })
+    },
+  })
+}
+
+export function useReassign(id: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { verifier_id: number; due_date: string }) =>
+      api.patch<Review>(`/verifications/assignments/${id}`, body),
     onSuccess: (review) => {
       qc.setQueryData(['verifications', 'review', id], review)
       void qc.invalidateQueries({ queryKey: queueKey })
