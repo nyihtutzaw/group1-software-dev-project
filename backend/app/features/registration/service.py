@@ -1,12 +1,12 @@
 """F1 Project registration & evidence — business rules.
 
 Evidence is write-once (FR-02, WBS 4.2.2): there is no code path that updates or deletes a stored
-file or its row, the file is created with exclusive mode and made read-only, and a database
-trigger rejects UPDATE/DELETE on `evidence_files`. Production swaps the volume for a Cloud
-Storage bucket with a retention lock.
+file or its row, the storage backends in `storage.py` expose no way to overwrite a sealed
+object, and a database trigger rejects UPDATE/DELETE on `evidence_files`. Development stores
+files on a Docker volume; production stores them in a Cloud Storage bucket whose locked
+retention policy enforces the seven-year period (#20).
 """
 
-import hashlib
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import BinaryIO
@@ -28,6 +28,14 @@ from app.features.registration.schemas import (
     ProjectDetail,
     ProjectIn,
     ProjectOut,
+)
+from app.features.registration.storage import (
+    EvidenceEmptyError,
+    EvidenceMissingError,
+    EvidenceStorage,
+    EvidenceTooLargeError,
+    build_storage,
+    weigh,
 )
 from app.features.verification.models import VerificationAssignment
 
@@ -165,6 +173,16 @@ def update_project(db: Session, project: Project, data: ProjectIn) -> Project:
 # --- evidence -------------------------------------------------------------------------
 
 
+def get_storage() -> EvidenceStorage:
+    """The backend named in the settings. Built per call so tests can repoint the settings."""
+    settings = get_settings()
+    return build_storage(
+        settings.evidence_backend,
+        storage_dir=settings.storage_dir,
+        bucket=settings.evidence_bucket,
+    )
+
+
 def _evidence(db: Session, project_id: int) -> list[EvidenceFile]:
     stmt = select(EvidenceFile).where(EvidenceFile.project_id == project_id)
     return list(db.scalars(stmt.order_by(EvidenceFile.id)).all())
@@ -193,29 +211,22 @@ def store_evidence(
 
     settings = get_settings()
     key = f"{project.id}/{uuid4().hex}{ext}"
-    path = Path(settings.storage_dir) / key
-    path.parent.mkdir(parents=True, exist_ok=True)
 
-    digest, size, too_large = hashlib.sha256(), 0, False
-    # "xb": fail rather than overwrite if the key somehow exists
-    with path.open("xb") as out:
-        while chunk := stream.read(CHUNK):
-            size += len(chunk)
-            if size > settings.evidence_max_bytes:
-                too_large = True
-                break
-            digest.update(chunk)
-            out.write(chunk)
-    if too_large or size == 0:
-        # Not sealed yet — nothing references this partial file
-        path.unlink()
-        if too_large:
-            raise HTTPException(
-                status.HTTP_413_CONTENT_TOO_LARGE,
-                f"“{name}” is larger than {settings.evidence_max_bytes / (1024 * 1024):g} MB",
-            )
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"“{name}” is empty")
-    path.chmod(0o444)
+    # Weigh the upload before the backend sees it: a rejected file must leave nothing behind,
+    # and on a bucket with a retention lock a partial object could not be deleted afterwards.
+    try:
+        buffer, sha256, size = weigh(stream, max_bytes=settings.evidence_max_bytes)
+    except EvidenceTooLargeError:
+        raise HTTPException(
+            status.HTTP_413_CONTENT_TOO_LARGE,
+            f"“{name}” is larger than {settings.evidence_max_bytes / (1024 * 1024):g} MB",
+        ) from None
+    except EvidenceEmptyError:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"“{name}” is empty") from None
+    try:
+        get_storage().seal(key, buffer)
+    finally:
+        buffer.close()
 
     evidence = EvidenceFile(
         project_id=project.id,
@@ -223,7 +234,7 @@ def store_evidence(
         filename=name[:255],
         content_type=(content_type or "application/octet-stream")[:120],
         size_bytes=size,
-        sha256=digest.hexdigest(),
+        sha256=sha256,
         storage_key=key,
         uploaded_by_id=user.id,
     )
@@ -248,14 +259,15 @@ def store_evidence(
     return evidence
 
 
-def get_evidence(db: Session, project: Project, evidence_id: int) -> tuple[EvidenceFile, Path]:
+def get_evidence(db: Session, project: Project, evidence_id: int) -> tuple[EvidenceFile, BinaryIO]:
+    """The row plus an open stream of the sealed bytes. The caller closes the stream."""
     evidence = db.get(EvidenceFile, evidence_id)
     if evidence is None or evidence.project_id != project.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Evidence file not found")
-    path = Path(get_settings().storage_dir) / evidence.storage_key
-    if not path.is_file():
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "The stored file is missing")
-    return evidence, path
+    try:
+        return evidence, get_storage().open(evidence.storage_key)
+    except EvidenceMissingError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "The stored file is missing") from None
 
 
 # --- submission -----------------------------------------------------------------------

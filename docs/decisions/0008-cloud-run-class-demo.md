@@ -20,8 +20,9 @@ accounts the professor needs, and the public demo password `crvr-demo` is in the
 - **Cloud SQL `db-f1-micro`** (PostgreSQL 17 + PostGIS), **stopped 23:00–06:00 Bangkok time** by
   Cloud Scheduler, with on/off/hold controls as a script and a GitHub workflow. While it is
   stopped the API answers 503 with a "closed" message.
-- **Evidence files** in a private Cloud Storage bucket mounted at `/data/evidence` (no code
-  change to F1).
+- **Evidence files** in a private Cloud Storage bucket. *(Amended by
+  [0009](0009-evidence-storage-backend.md): F1 now writes to the bucket through the Cloud Storage
+  API instead of a gcsfuse mount, because a mount cannot give us an atomic write-once.)*
 - **Migrations and seeding** run as a Cloud Run job before each rollout, not at container start.
 - **GitHub Actions deploys every merge to `main`** after CI, signing in with Workload Identity
   Federation restricted to `main` of this repository — no service-account keys.

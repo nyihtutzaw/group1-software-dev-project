@@ -92,10 +92,21 @@ exists gcloud secrets describe crvr-demo-password ||
   openssl rand -base64 30 | tr -dc 'A-Za-z0-9' | cut -c1-16 | tr -d '\n' |
   gcloud secrets create crvr-demo-password --data-file=- --replication-policy=automatic
 
-step "Evidence bucket: gs://${BUCKET} (private)"
+step "Evidence bucket: gs://${BUCKET} (private, 7-year retention)"
 exists gcloud storage buckets describe "gs://${BUCKET}" ||
   gcloud storage buckets create "gs://${BUCKET}" --location="$REGION" \
     --uniform-bucket-level-access --public-access-prevention
+# F1 evidence is write-once (FR-02). The retention period is what actually enforces the agreed
+# seven years: until it passes, nobody — including an owner — can delete or overwrite an object.
+# Locking it is irreversible and the bucket cannot be deleted while objects are retained, so we
+# set the period here and leave LOCK_RETENTION=true as a deliberate, separate step.
+gcloud storage buckets update "gs://${BUCKET}" --retention-period=7y
+if [ "${LOCK_RETENTION:-false}" = "true" ]; then
+  step "Locking the retention policy (irreversible)"
+  gcloud storage buckets update "gs://${BUCKET}" --lock-retention-period --quiet
+else
+  echo "  retention 7y set, not locked — run again with LOCK_RETENTION=true to lock it"
+fi
 
 step "Service accounts"
 for sa in "crvr-run:CRVR Cloud Run runtime" \
