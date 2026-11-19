@@ -31,4 +31,6 @@ def require_roles(*roles: Role) -> Callable[..., User]:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Your role cannot do this")
         return user
 
+    # Read by the access matrix (features/audit/access_matrix.py) to list who may call a route.
+    checker.allowed_roles = roles  # type: ignore[attr-defined]
     return checker
