@@ -160,6 +160,13 @@ From WBS 9.x and the design report:
 
 ## Progress log
 
+### 2026-11-19 · feature/F5-admin-tutorials
+- Goal: a *Tutorials* page under System (admin) that walks through each feature (F1–F5) step by
+  step, using real screenshots with numbered marks, a sample project and downloadable sample files.
+- Plan: 1) sample files and screenshots of a fictional project taken through the whole flow
+  2) tutorial content, annotated-screenshot component, list and walkthrough pages + route/menu
+  3) tests 4) docs.
+
 ### 2026-11-19 · fix/hide-hosted-demo-accounts
 - Fix: the hosted demo's public sign-in page listed every demo account (including admin), which
   advertises the accounts to anyone who finds the URL. `/api/auth/demo-accounts` now returns the
