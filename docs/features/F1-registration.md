@@ -100,6 +100,7 @@ From WBS 4.x and the design report:
 | POST | `/api/projects/{id}/submit` | developer (own draft) | Submit; 422 "Still needed: …" if incomplete |
 | POST | `/api/projects/{id}/evidence` | developer (own draft) | Multipart `file` + `kind` → sealed `EvidenceOut` (sha256, size); 415 bad format, 413 too large |
 | GET | `/api/projects/{id}/evidence/{eid}/file` | as GET project | Download the stored bytes |
+| POST | `/api/projects/{id}/evidence/{eid}/erasure` | admin | Destroy the file's encryption key so its content can no longer be read (#45). Body: `reason` (≥ 10 chars), optional `replacement_id`. The sealed object and its row stay; downloads then answer 410 |
 
 No PUT/PATCH/DELETE exists for evidence. Ledger actions via `record_action()`: `project.created`,
 `evidence.sealed` (payload: sha256, size, kind), `project.submitted` (payload: all evidence hashes).
@@ -135,8 +136,35 @@ Migration: `20261102_47c89f71feec_add_registration_fields_and_evidence.py` (also
 - ~~Content sniffing (magic bytes) and virus scanning for uploads~~ — done in #22.
 - Locking the bucket's retention policy (`LOCK_RETENTION=true`) is still a manual step; until
   it is run, production write-once rests on the code alone.
+- Evidence keys sit in the database next to the ciphertext, so a backup is as sensitive as
+  the evidence. Moving them to Cloud KMS would separate the two (ADR 0010).
 
 ## Progress log
+
+### 2026-11-19 · feature/F1-evidence-crypto-erasure (#45)
+- Change request: a landowner's sealed land-title scan shows their national ID and home
+  address, and they ask for the personal data to be removed. The system is built so that this
+  is impossible — write-once in the API, the service, the storage interface, a database trigger
+  and the bucket's retention lock.
+- Decision (ADR 0010): **encrypt every evidence file with its own key before sealing, and erase
+  by destroying the key.** The ciphertext stays in the bucket, the `evidence_files` row is never
+  touched, and the ledger keeps the original SHA-256 — so what the file was and what it hashed
+  to stay provable while the bytes become unrecoverable.
+- Done: `crypto.py` (AES-256-GCM, one key per file); `evidence_keys` (deletable, cascade) and
+  `evidence_erasures` (append-only, with its own trigger); admin-only
+  `POST /evidence/{eid}/erasure` taking a reason and an optional redacted replacement; downloads
+  of an erased file answer 410 with the reason and a pointer to the replacement.
+- A redaction is uploaded **first** and linked as the replacement: erasing on its own would take
+  the project's evidence with it, and a verifier would find a hole.
+- GCM authenticates too, so a ciphertext altered in the bucket now answers 409 instead of
+  returning wrong bytes.
+- A missing key with no erasure row answers 404, not 410: a key lost by accident is a fault to
+  investigate, not a lawful erasure to report.
+- Test: `tests/test_evidence_erasure.py` — 25 tests, including that the write-once rule and the
+  ledger survive an erasure, that erasing one file leaves the others readable, and that no new
+  route can delete sealed evidence.
+- Changed two existing assertions: the sealed object is ciphertext now, so tests that compared
+  it to the plaintext compare the download instead.
 
 ### 2026-11-19 · feature/F1-evidence-content-scan (#22)
 - Goal: stop trusting the file name. Check what the file really is and scan it for malware

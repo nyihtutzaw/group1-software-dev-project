@@ -236,7 +236,9 @@ def test_evidence_is_sealed_read_only_on_disk(client, db, draft, storage, ledger
 
     stored = db.get(EvidenceFile, body["id"])
     path = storage / stored.storage_key
-    assert path.read_bytes() == PDF
+    # Since #45 the sealed object is ciphertext; the plaintext comes back through the API.
+    assert path.read_bytes() != PDF
+    assert PDF not in path.read_bytes()
     assert not path.stat().st_mode & (stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH)
     assert body["sealed_at"]
     assert ledger[-1]["action"] == "evidence.sealed"
