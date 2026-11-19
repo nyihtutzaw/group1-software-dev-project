@@ -10,7 +10,12 @@ import { formatNumber } from './format'
 export function BoundaryBanner({ projectId }: { projectId: number }) {
   const boundary = useProjectBoundary(projectId)
   const mapLink = (label: string): ReactNode => (
-    <Link to={`/boundary?project=${projectId}`} className="mt-1 block font-semibold text-accent">
+    <Link
+      to={`/boundary?project=${projectId}`}
+      // inline-flex + min-h-11 keeps this a 44 px tap target on a phone (#21); as a plain
+      // block link it was 20 px tall, under the 24 px minimum.
+      className="mt-1 inline-flex min-h-11 items-center font-semibold text-accent"
+    >
       {label}
     </Link>
   )

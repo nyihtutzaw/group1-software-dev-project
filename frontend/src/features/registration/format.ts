@@ -19,9 +19,19 @@ export const EVIDENCE_KINDS: Record<EvidenceKind, string> = {
   other: 'Other',
 }
 
-// Same list as the backend (service.EVIDENCE_EXTENSIONS) — the server has the final say
-export const EVIDENCE_ACCEPT =
-  '.pdf,.jpg,.jpeg,.png,.heic,.webp,.tif,.tiff,.xlsx,.xls,.ods,.csv,.gpx,.kml,.kmz,.geojson,.zip'
+// Same list as the backend (service.EVIDENCE_EXTENSIONS) — the server has the final say.
+// MIME types come first on purpose (#21): iOS matches `accept` against UTIs, so a list of
+// bare extensions it does not know — .gpx, .kml, .geojson — can grey out every file in the
+// picker and hide the camera. `image/*` is what puts "Take Photo" back for site photos.
+export const EVIDENCE_ACCEPT = [
+  'image/*',
+  'application/pdf',
+  'text/csv',
+  'application/zip',
+  '.pdf,.jpg,.jpeg,.png,.heic,.webp,.tif,.tiff',
+  '.xlsx,.xls,.ods,.csv',
+  '.gpx,.kml,.kmz,.geojson,.zip',
+].join(',')
 
 export const MIN_ADDITIONALITY_CHARS = 50
 
