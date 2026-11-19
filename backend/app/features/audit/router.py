@@ -10,6 +10,7 @@ from app.core.db import get_db
 from app.features.audit.ledger import verify_ledger_chain
 from app.features.audit.models import LedgerEntry
 from app.features.audit.schemas import LedgerPageOut, LedgerVerificationOut
+from app.features.audit.scope import ledger_filter, present
 
 router = APIRouter(prefix="/ledger", tags=["F5 audit"])
 
@@ -21,15 +22,24 @@ def list_ledger_entries(
     db: Session = Depends(get_db),
     user: User = Depends(require_roles(Role.VERIFIER, Role.REGISTRY_STAFF, Role.BUYER, Role.ADMIN)),
 ) -> LedgerPageOut:
-    """Return one page of audit ledger entries, newest first."""
-    total = db.scalar(select(func.count()).select_from(LedgerEntry)) or 0
+    """Return one page of the audit ledger entries this user may read, newest first.
+
+    Staff and admins see every entry; verifiers their assigned projects; buyers their granted
+    projects, without actor identities or sensitive payload fields (see `scope.py`).
+    """
+    visible = ledger_filter(user)
+    query = select(LedgerEntry)
+    count = select(func.count()).select_from(LedgerEntry)
+    if visible is not None:
+        query = query.where(visible)
+        count = count.where(visible)
+    total = db.scalar(count) or 0
     items = db.scalars(
-        select(LedgerEntry)
-        .order_by(LedgerEntry.id.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+        query.order_by(LedgerEntry.id.desc()).offset((page - 1) * page_size).limit(page_size)
     ).all()
-    return LedgerPageOut(items=items, total=total, page=page, page_size=page_size)
+    return LedgerPageOut(
+        items=[present(entry, user) for entry in items], total=total, page=page, page_size=page_size
+    )
 
 
 @router.get("/verify", response_model=LedgerVerificationOut)

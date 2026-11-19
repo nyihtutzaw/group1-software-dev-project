@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useAuth } from '@/auth/useAuth'
 import { Alert, Button, Card, EmptyState, PageHeader } from '@/components/ui'
 
-import { useLedger, useLedgerVerify } from './api'
+import { useLedger, useLedgerVerify, type LedgerEntry } from './api'
 
 const VERIFY_ROLES = ['verifier', 'registry_staff', 'buyer', 'admin']
 
@@ -25,6 +25,13 @@ function formatTime(value: string) {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value))
+}
+
+/** Who acted. Buyers get the role only (no email), so a missing email is not always the system. */
+function actorLabel(entry: LedgerEntry) {
+  const role = entry.actor_role ? titleCase(entry.actor_role) : null
+  if (entry.actor_email) return `${entry.actor_email} · ${role ?? 'Role not recorded'}`
+  return role ?? 'System'
 }
 
 function shortHash(value: string) {
@@ -103,11 +110,7 @@ export function LedgerPage() {
                       {formatTime(entry.created_at)}
                     </time>
                   </div>
-                  <p className="mt-0.5 break-words text-[13px] text-muted">
-                    {entry.actor_email
-                      ? `${entry.actor_email} · ${entry.actor_role ? titleCase(entry.actor_role) : 'Role not recorded'}`
-                      : 'System · system'}
-                  </p>
+                  <p className="mt-0.5 break-words text-[13px] text-muted">{actorLabel(entry)}</p>
                   <code className="mt-1 inline-block max-w-full break-all rounded-md bg-surface-2 px-2 py-1 font-mono text-[11px] text-faint">
                     {shortHash(entry.hash)}
                   </code>

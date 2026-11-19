@@ -213,29 +213,32 @@ def test_ledger_api_endpoints_and_rbac(client, login, db, make_user):
     assert client.get("/api/ledger").status_code == 403
     assert client.get("/api/ledger/verify").status_code == 403
 
-    # Buyers can view the ledger and its read-only integrity status
+    # Buyers may open the ledger, but only see projects they were granted (test_ledger_scope.py)
     login(Role.BUYER)
+    res = client.get("/api/ledger")
+    assert res.status_code == 200
+    assert res.json()["total"] == 0
+    verify_res = client.get("/api/ledger/verify")
+    assert verify_res.status_code == 200
+    assert verify_res.json() == {"valid": True, "error": None}
+
+    # Registry staff see every entry, serialized with its hash chain
+    login(Role.REGISTRY_STAFF)
     res = client.get("/api/ledger")
     assert res.status_code == 200
     page = res.json()
     entries = page["items"]
-    assert len(entries) >= 1
     assert entries[0]["action"] == "project.submitted"
     assert entries[0]["entity"] == "project"
     assert entries[0]["entity_id"] == 42
+    assert entries[0]["actor_email"] == "p@test.local"
     assert entries[0]["actor_role"] == Role.DEVELOPER.value
     assert "hash" in entries[0]
     assert "prev_hash" in entries[0]
     assert page["total"] == 1
     assert page["page"] == 1
     assert page["page_size"] == 50
-    verify_res = client.get("/api/ledger/verify")
-    assert verify_res.status_code == 200
-    assert verify_res.json() == {"valid": True, "error": None}
 
-    # Registry staff can view and verify
-    login(Role.REGISTRY_STAFF)
-    assert client.get("/api/ledger").status_code == 200
     verify_res = client.get("/api/ledger/verify")
     assert verify_res.status_code == 200
     assert verify_res.json() == {"valid": True, "error": None}
@@ -248,7 +251,7 @@ def test_ledger_api_paginates_entries_and_validates_bounds(client, login, db, ma
             db, actor=user, action="project.created", entity="project", entity_id=entity_id
         )
 
-    login(Role.BUYER)
+    login(Role.REGISTRY_STAFF)
     first = client.get("/api/ledger?page=1&page_size=2")
     assert first.status_code == 200
     assert first.json()["total"] == 3
