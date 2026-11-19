@@ -1,6 +1,13 @@
 import type { Role } from '@/auth/types'
 import type { IconName } from '@/components/ui'
 
+/** Parent menus that hold child items (shown as one collapsible entry). */
+export type NavGroupId = 'system'
+
+export const NAV_GROUPS: Record<NavGroupId, { label: string; icon: IconName }> = {
+  system: { label: 'System', icon: 'settings' },
+}
+
 export type NavItem = {
   id: string
   label: string
@@ -12,7 +19,14 @@ export type NavItem = {
   public?: boolean
   /** Feature that owns the page (see docs/features/). */
   feature: 'F1' | 'F2' | 'F3' | 'F4' | 'F5'
+  /** Show under this parent menu instead of at the top level. */
+  group?: NavGroupId
 }
+
+/** A top-level menu entry: a page, or a parent menu with its child pages. */
+export type MenuEntry =
+  | { kind: 'item'; item: NavItem }
+  | { kind: 'group'; id: NavGroupId; label: string; icon: IconName; items: NavItem[] }
 
 const ALL: Role[] = ['developer', 'verifier', 'registry_staff', 'buyer', 'admin']
 
@@ -78,11 +92,42 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['admin'],
     feature: 'F5',
   },
+  // System — admin settings, grouped under one parent menu
+  {
+    id: 'roles-access',
+    label: 'Role & Access',
+    path: '/system/roles-access',
+    icon: 'shield',
+    roles: ['admin'],
+    feature: 'F5',
+    group: 'system',
+  },
 ]
 
 /** Menu items for a role, or the public items when nobody is signed in. */
 export function navFor(role: Role | null): NavItem[] {
   return NAV_ITEMS.filter((item) => (role ? item.roles.includes(role) : item.public))
+}
+
+/** Arrange menu items for display: grouped items collapse into their parent, in first-seen order. */
+export function menuEntries(items: NavItem[]): MenuEntry[] {
+  const entries: MenuEntry[] = []
+  for (const item of items) {
+    if (!item.group) {
+      entries.push({ kind: 'item', item })
+      continue
+    }
+    const group = entries.find((e) => e.kind === 'group' && e.id === item.group)
+    if (group?.kind === 'group') group.items.push(item)
+    else entries.push({ kind: 'group', id: item.group, ...NAV_GROUPS[item.group], items: [item] })
+  }
+  return entries
+}
+
+/** True when `pathname` is the item's page or one of its sub-pages. */
+export function isUnder(item: NavItem, pathname: string): boolean {
+  if (item.path === '/') return pathname === '/'
+  return pathname === item.path || pathname.startsWith(`${item.path}/`)
 }
 
 export function navItem(id: string): NavItem {

@@ -6,7 +6,7 @@ import { Icon } from '@/components/ui'
 
 import { Avatar } from './Avatar'
 import { Brand } from './Brand'
-import type { NavItem } from './nav'
+import { NAV_GROUPS, type NavItem } from './nav'
 import { iconButton, ThemeToggle } from './ThemeToggle'
 
 /** The menu entry the current page belongs to (project pages sit under Home). */
@@ -33,6 +33,12 @@ export function TopBar({ user, items }: { user: User | null; items: NavItem[] })
   const crumbs = (
     <div className="hidden min-w-0 flex-1 items-center gap-2 text-sm desk:flex">
       <span className="text-faint">CRVR</span>
+      {section?.group && (
+        <>
+          <Icon name="chevron" strokeWidth={2} className="size-3.5 text-faint" />
+          <span className="text-faint">{NAV_GROUPS[section.group].label}</span>
+        </>
+      )}
       {section && (
         <>
           <Icon name="chevron" strokeWidth={2} className="size-3.5 text-faint" />
