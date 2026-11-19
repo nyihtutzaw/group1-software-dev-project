@@ -132,11 +132,32 @@ Migration: `20261102_47c89f71feec_add_registration_fields_and_evidence.py` (also
 
 - Which fields are mandatory per methodology? (Today: the same set for all.)
 - Should evidence be allowed after submission (e.g. a verifier asks for more)? Today: drafts only.
-- Content sniffing (magic bytes) and virus scanning for uploads — extension check only for now.
+- ~~Content sniffing (magic bytes) and virus scanning for uploads~~ — done in #22.
 - Locking the bucket's retention policy (`LOCK_RETENTION=true`) is still a manual step; until
   it is run, production write-once rests on the code alone.
 
 ## Progress log
+
+### 2026-11-19 · feature/F1-evidence-content-scan (#22)
+- Goal: stop trusting the file name. Check what the file really is and scan it for malware
+  before it is sealed.
+- Done: `scanning.py` reads the format from the first bytes (signatures for PDF, JPEG, PNG,
+  HEIC, WebP, TIFF, ZIP-based and old Excel files; text formats are checked by decoding) and
+  refuses an upload whose content does not match its extension. A `VirusScanner` streams the
+  file to clamd over the INSTREAM protocol — spoken directly, so no client library joins the
+  dependency list. Both run between weighing and sealing, and both answer 415 with a message
+  for the uploader.
+- **Fail closed**: when scanning is on and clamd cannot be reached the upload is refused, not
+  sealed unchecked. Evidence is permanent, so "we could not check it" must not become "we kept
+  it".
+- ClamAV is a compose profile (`docker compose --profile scan up -d clamav`) and off by default,
+  so `sh scripts/start.sh` stays fast. The image is amd64 only — on Apple Silicon it runs
+  emulated (still starts in ~20 s).
+- Test: `tests/test_evidence_scanning.py` — 30 tests. The EICAR case runs against a fake clamd
+  in a thread that speaks the real protocol, so it needs no container; a second test runs
+  against a real clamd and skips when there is none.
+- Changed an existing test: `test_accepted_evidence_formats` uploaded `b"evidence bytes"` under
+  eight extensions. That is exactly what #22 forbids, so each case now carries a real header.
 
 ### 2026-11-19 · feature/F1-evidence-cloud-storage (#20)
 - Goal: write production evidence to the Cloud Storage bucket instead of a local volume, without

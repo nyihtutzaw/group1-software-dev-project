@@ -57,6 +57,12 @@ class Settings(BaseSettings):
     storage_dir: str = "/data/evidence"
     # F1: largest evidence file accepted (zipped geo-tagged photo sets are the big ones)
     evidence_max_bytes: int = 50 * 1024 * 1024
+    # F1 upload scanning (#22). Off by default so a plain `pytest` or a laptop without the
+    # container still works; docker-compose and Cloud Run switch it on. When it is on and
+    # clamd cannot be reached the upload is refused rather than sealed unchecked.
+    virus_scan_enabled: bool = False
+    clamav_host: str = "clamav"
+    clamav_port: int = 3310
 
     # F2: overlap rules per methodology (change request #43, ADR 0006). An overlap blocks
     # submission and issuance when it is above `tolerance_pct` of either project's area or

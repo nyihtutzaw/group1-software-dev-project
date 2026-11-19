@@ -32,6 +32,11 @@ services:
       ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-480}
       SEED_DEMO_USERS: ${SEED_DEMO_USERS:-true}
       STORAGE_DIR: /data/evidence
+      # F1 upload scanning (#22). Off by default so `sh scripts/start.sh` stays fast; start the
+      # scanner with `docker compose --profile scan up -d clamav` and set VIRUS_SCAN_ENABLED=true.
+      VIRUS_SCAN_ENABLED: ${VIRUS_SCAN_ENABLED:-false}
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
       WATCHFILES_FORCE_POLLING: ${WATCHFILES_FORCE_POLLING:-false}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
@@ -41,6 +46,25 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  # Opt-in: the image carries the virus database, so it is big and slow to start.
+  #   docker compose --profile scan up -d clamav
+  clamav:
+    image: clamav/clamav:1.5
+    # The official image is amd64 only; on Apple Silicon it runs emulated and is slow to
+    # start. CI runs on amd64, where it is native.
+    platform: linux/amd64
+    profiles: ["scan"]
+    environment:
+      CLAMAV_NO_FRESHCLAMD: "false"
+    ports:
+      - "${CLAMAV_PORT:-3310}:3310"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 300s
 
   frontend:
     build: ./frontend
