@@ -6,6 +6,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEVELOPMENT_JWT_SECRET = "dev-only-change-me-in-production"
 MIN_PRODUCTION_JWT_SECRET_BYTES = 32
+# Password of the seeded demo accounts in development; it is public (README, sign-in page).
+DEVELOPMENT_DEMO_PASSWORD = "crvr-demo"
+MIN_PRODUCTION_DEMO_PASSWORD_LENGTH = 12
 
 
 class OverlapRuleSetting(BaseModel):
@@ -34,6 +37,18 @@ class Settings(BaseSettings):
     session_cookie: str = "crvr_session"
 
     seed_demo_users: bool = True
+    # The hosted class demo runs as production (Secure cookie, strong JWT secret) but still needs
+    # the demo accounts and sample data: DEMO_MODE=true allows them there, with a private
+    # DEMO_PASSWORD from Secret Manager instead of the public development one.
+    demo_mode: bool = False
+    demo_password: str = DEVELOPMENT_DEMO_PASSWORD
+    # Behind a proxy (Cloud Run: 1) the client address is this many entries from the right of
+    # X-Forwarded-For. 0 = no trusted proxy: use the direct peer and ignore the header.
+    forwarded_ip_hops: int = Field(default=0, ge=0)
+    # Production image only: the built frontend, served by FastAPI on the same origin as /api.
+    static_dir: str = ""
+    # Shown when the database is unreachable (e.g. stopped overnight to save cost).
+    unavailable_message: str = "CRVR is temporarily unavailable. Please try again in a few minutes."
     storage_dir: str = "/data/evidence"
     # F1: largest evidence file accepted (zipped geo-tagged photo sets are the big ones)
     evidence_max_bytes: int = 50 * 1024 * 1024
@@ -59,6 +74,33 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
+
+    @property
+    def demo_enabled(self) -> bool:
+        """Demo accounts and sample data: in development, and in production only with DEMO_MODE."""
+        if not self.seed_demo_users:
+            return False
+        return self.app_env == "development" or (self.is_production and self.demo_mode)
+
+    @property
+    def demo_password_is_public(self) -> bool:
+        return self.demo_password == DEVELOPMENT_DEMO_PASSWORD
+
+    @model_validator(mode="after")
+    def validate_production_demo_password(self) -> Self:
+        if (
+            self.is_production
+            and self.demo_mode
+            and (
+                self.demo_password_is_public
+                or len(self.demo_password) < MIN_PRODUCTION_DEMO_PASSWORD_LENGTH
+            )
+        ):
+            raise ValueError(
+                "DEMO_MODE in production requires a private DEMO_PASSWORD with at least "
+                f"{MIN_PRODUCTION_DEMO_PASSWORD_LENGTH} characters; load it from Secret Manager."
+            )
+        return self
 
     @model_validator(mode="after")
     def validate_production_jwt_secret(self) -> Self:

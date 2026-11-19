@@ -129,7 +129,7 @@ def _buyer_projects(user: User) -> Select[tuple[str]]:
 def _visible_credits() -> Select[tuple[RegistryCredit]]:
     stmt = select(RegistryCredit)
     settings = get_settings()
-    if settings.app_env != "development" or not settings.seed_demo_users:
+    if not settings.demo_enabled:
         stmt = stmt.where(RegistryCredit.is_demo.is_(False))
     return stmt
 

@@ -91,3 +91,5 @@ class DemoAccount(BaseModel):
     email: str
     full_name: str
     role: Role
+    # Only when the demo password is the public development one (one-click sign-in).
+    password: str | None = None
