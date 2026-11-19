@@ -64,9 +64,10 @@ first week.
 
 ## Giving the professor access
 
-Send the URL and the demo password privately (not in GitHub). The sign-in page lists the demo
-accounts; clicking one fills in its e-mail and the password is typed by hand. Mention the
-23:00–06:00 closed hours, or run `hold` during the grading week.
+Send the URL, the demo account e-mails and the demo password privately (not in GitHub). The
+hosted sign-in page does not list the accounts, so include them: `developer@`, `developer2@`,
+`verifier@`, `staff@`, `buyer@` and `admin@crvr.local`. Mention the 23:00–06:00 closed hours, or
+run `hold` during the grading week.
 
 Changing the password: add a new version of `crvr-demo-password` in Secret Manager, then run
 **Reset demo data** (existing accounts keep the password they were created with).

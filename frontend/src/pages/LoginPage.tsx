@@ -51,16 +51,6 @@ export function LoginPage() {
     signIn({ email, password })
   }
 
-  // Development sends the public demo password: one click signs in. The hosted demo keeps its
-  // password private, so the click fills in the email and the password is typed by hand.
-  const demoPassword = demo.data?.[0]?.password ?? null
-  const pickDemoAccount = (account: DemoAccount) => {
-    if (account.password) return signIn({ email: account.email, password: account.password })
-    setEmail(account.email)
-    setPassword('')
-    document.getElementById('password')?.focus()
-  }
-
   return (
     <div className="grid min-h-screen desk:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       <aside className="relative hidden flex-col justify-between overflow-hidden border-r border-line bg-accent-soft p-10 desk:flex">
@@ -134,14 +124,13 @@ export function LoginPage() {
             </Button>
           </form>
 
+          {/* Local development only: the server lists no accounts on the hosted demo. */}
           {demo.data && demo.data.length > 0 && (
             <section className="mt-8">
               <SectionHeader
                 title="Demo accounts"
                 action={
-                  <span className="font-normal text-faint">
-                    {demoPassword ? `password ${demoPassword}` : 'password from your instructor'}
-                  </span>
+                  <span className="font-normal text-faint">password {demo.data[0].password}</span>
                 }
               />
               <Card className="overflow-hidden">
@@ -150,7 +139,7 @@ export function LoginPage() {
                     key={account.email}
                     type="button"
                     className="flex w-full items-center justify-between gap-3 border-b border-line px-4 py-2.5 text-left transition-colors last:border-b-0 hover:bg-surface-2"
-                    onClick={() => pickDemoAccount(account)}
+                    onClick={() => signIn({ email: account.email, password: account.password })}
                   >
                     <span className="min-w-0">
                       <b className="block truncate text-sm font-semibold">{account.full_name}</b>
