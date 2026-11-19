@@ -19,6 +19,8 @@ integrity timeline page are complete. Failed sign-ins and forbidden requests are
 separate security log, and repeated sign-in failures are temporarily blocked. Admins can list and
 create accounts, change roles, and deactivate or reactivate users from `/admin/users`, and each
 change is written to the ledger. Security events older than 90 days are deleted automatically.
+A **System** menu holds admin settings; its *Role & Access* page shows the role, page-access and
+API-access matrices read-only.
 
 ## Scope
 
@@ -36,7 +38,7 @@ flagging hook (deferred).
 From WBS 9.x and the design report:
 
 1. All users authenticate; sessions are managed securely (9.1.1). ✅ shell
-2. The access matrix is enforced; unauthorised access is blocked and logged (9.1.2). ✅ 403 responses are logged.
+2. The access matrix is enforced; unauthorised access is blocked and logged (9.1.2). ✅ 403 responses are logged; admins can view the matrix at System › Role & Access.
 3. The same user cannot both submit and approve a critical action (9.1.3).
 4. Ledger records are hash-chained; tampering is detectable (9.2.1).
 5. 100% of critical verification and issuance actions are recorded (9.2.2).
@@ -73,6 +75,15 @@ From WBS 9.x and the design report:
   scheduler (the hosted demo scales to zero). `python -m app.features.audit.retention` runs the same
   deletion by hand or from a scheduled job. The ledger is never deleted; evidence retention is the
   production bucket's retention lock (#20).
+
+- 2026-11-19 — **Access matrix is read from the code, not stored**: `require_roles()` tags its
+  checker with `allowed_roles`, and `GET /api/admin/access-matrix` walks the mounted routes
+  (`fastapi.routing.iter_route_contexts`, as FastAPI's OpenAPI does) to list who may call each
+  endpoint. The page matrix comes from `layout/nav.ts`. Nothing can drift or be edited at run time;
+  changing access means a code change and a reviewed PR. Ownership rules inside services are not
+  shown.
+- 2026-11-19 — **System menu**: admin settings pages go under one collapsible *System* parent
+  (`NavItem.group = 'system'`, paths `/system/<slug>`). *Users* stays a top-level menu for now.
 
 - 2026-10-28 — **F2 added a `record_action()` stub** in `backend/app/features/audit/ledger.py`
   (`record_action(db, *, actor, action, entity, entity_id, payload)`, logs only). Replace the body
@@ -114,6 +125,7 @@ From WBS 9.x and the design report:
 | GET | `/api/admin/users` | admin | List users without credential data |
 | POST | `/api/admin/users` | admin | Create a user with an admin-provided initial password |
 | PATCH | `/api/admin/users/{user_id}` | admin | Change a user's role or active status |
+| GET | `/api/admin/access-matrix` | admin | Every API endpoint with the roles allowed to call it (read-only) |
 | GET | `/api/ledger` | verifier, registry_staff, buyer, admin | Paginated ledger entries, newest first. Staff/admin: all. Verifier: assigned projects. Buyer: granted projects, no actor email/ID, traceability payload fields only |
 | GET | `/api/ledger/verify` | verifier, registry_staff, buyer, admin | Verify cryptographic integrity of ledger chain |
 
@@ -124,6 +136,7 @@ From WBS 9.x and the design report:
 | `/login` | public | Sign-in + demo accounts (dev) |
 | `/ledger` | verifier, registry_staff, buyer, admin | Paginated audit timeline with chain integrity status |
 | `/admin/users` | admin | List accounts, create users, change roles, and deactivate or reactivate accounts |
+| `/system/roles-access` | admin | System › Role & Access: roles, page-access and API-access matrices, read-only |
 
 ## Data model
 
@@ -153,6 +166,17 @@ From WBS 9.x and the design report:
 - Plan: 1) admin-only `GET /api/admin/access-matrix`, read from each route's `require_roles`
   2) menu groups in `layout/nav.ts` (sidebar section, one tab on phones, breadcrumb)
   3) `/system/roles-access` page with roles, page-access and API-access tables 4) tests + this doc
+- Done: `require_roles()` tags its checker with `allowed_roles`; the admin-only
+  `GET /api/admin/access-matrix` lists every `/api` endpoint with its area, summary and allowed
+  roles (or public / any signed-in user). `nav.ts` supports parent menus (`group`, `menuEntries`,
+  `isUnder`); the sidebar shows *System* as a collapsible section, phones get one *System* tab and
+  the breadcrumb shows *System › Role & Access*. The page has three tables (roles, page access,
+  API access) and no editing controls. New `settings` and `shield` icons in the UI kit.
+- Note: FastAPI 0.162 mounts included routers lazily, so `app.routes` is not flat; the matrix uses
+  `iter_route_contexts` to get the effective routes.
+- Validation: backend Ruff and all 252 tests passed; frontend Prettier, ESLint, typecheck, all 90
+  tests and the production build passed.
+- Next: move other admin settings (e.g. *Users*) under *System* if the team agrees.
 
 ### 2026-11-19 · fix/F5-security-event-retention
 - Done: `backend/app/features/audit/retention.py` deletes security events older than 90 days;
