@@ -57,8 +57,9 @@ From WBS 4.x and the design report:
   still needed (all fields, additionality proof, ≥ 1 other evidence file, F2 `issuance_blocked()`
   is `None`). The API returns it as `missing`, the form shows it, `/submit` enforces it (422).
 - 2026-11-02 — Only **developers** create/edit/submit; admins and registry staff read everything.
-  The *Submit* menu item is developer-only. Verifiers may open **submitted** projects (F3 will
-  narrow to assignments). Projects a user may not see answer **404**, not 403.
+  The *Submit* menu item is developer-only. Verifiers may open **submitted** projects that are
+  currently assigned to them (narrowed 2026-11-19, WBS 7.1.1). Projects a user may not see answer
+  **404**, not 403.
 - 2026-11-02 — After submission F3 moves the status (see F3 doc): a verifier's "request changes"
   returns the project to `draft` (and clears `submitted_at`) so the developer can edit, add
   evidence and resubmit; staff approval sets `verified`.
@@ -85,7 +86,7 @@ From WBS 4.x and the design report:
 |---|---|---|---|
 | GET | `/api/projects` | developer (own), registry_staff, admin | List (`ProjectOut`: id, code, name, status, methodology, area_ha, est_removal_tco2e, submitted_at, evidence_count, overlap) |
 | POST | `/api/projects` | developer | Start a draft (`ProjectIn`, only `name` required) → `ProjectDetail` 201 |
-| GET | `/api/projects/{id}` | developer (own), verifier (submitted), registry_staff, admin | `ProjectDetail`: fields, owner, evidence, `missing`, `boundary_blocked`, `can_edit` |
+| GET | `/api/projects/{id}` | developer (own), verifier (assigned + submitted), registry_staff, admin | `ProjectDetail`: fields, owner, evidence, `missing`, `boundary_blocked`, `can_edit` |
 | PUT | `/api/projects/{id}` | developer (own draft) | Save the draft's fields; 409 once submitted |
 | POST | `/api/projects/{id}/submit` | developer (own draft) | Submit; 422 "Still needed: …" if incomplete |
 | POST | `/api/projects/{id}/evidence` | developer (own draft) | Multipart `file` + `kind` → sealed `EvidenceOut` (sha256, size); 415 bad format, 413 too large |
@@ -125,6 +126,12 @@ Migration: `20261102_47c89f71feec_add_registration_fields_and_evidence.py` (also
 - Content sniffing (magic bytes) and virus scanning for uploads — extension check only for now.
 
 ## Progress log
+
+### 2026-11-19 · fix/F1-verifier-assigned-projects
+- Fix: any verifier could open any submitted project and download its evidence. `get_project()`
+  now also requires the verifier to be the project's current F3 assignee, so the project page and
+  evidence downloads answer 404 otherwise. A verifier who is reassigned away loses access.
+- Test: `test_verifiers_see_only_submitted_projects_assigned_to_them`.
 
 ### 2026-11-02 · feature/F1-project-registration
 - Goal: all acceptance criteria of issue #3 on one branch — draft → submit registration with

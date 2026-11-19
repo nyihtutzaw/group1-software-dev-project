@@ -17,7 +17,7 @@ from app.features.registration.schemas import EvidenceOut, ProjectDetail, Projec
 router = APIRouter(prefix="/projects", tags=["F1 registration"])
 
 LIST_ROLES = (Role.DEVELOPER, Role.REGISTRY_STAFF, Role.ADMIN)
-# Verifiers may open submitted projects (F3 will narrow this to their assignments)
+# Verifiers may open submitted projects assigned to them (see service.get_project)
 READ_ROLES = (Role.DEVELOPER, Role.VERIFIER, Role.REGISTRY_STAFF, Role.ADMIN)
 
 
