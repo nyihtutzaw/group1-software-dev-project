@@ -13,8 +13,8 @@
 
 ## Status
 
-**In review** — change request #43 (overlap rules per methodology with an area cap) on
-`feature/F2-methodology-tolerance`. The original seven acceptance criteria are merged (#4 closed).
+**Merged** — the seven acceptance criteria (#4) and change request #43 (overlap rules per
+methodology with an area cap, PR #46) are on `main`.
 Developers draw (pen tool, phone-friendly) or upload a boundary, see the overlap check live, and
 save it; overlaps above their methodology's tolerance or area cap are flagged and block issuance
 until registry staff resolve them.

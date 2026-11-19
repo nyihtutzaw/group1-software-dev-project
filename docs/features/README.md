@@ -27,7 +27,8 @@ in parallel; these are the hand-offs to agree early:
 
 ## Deferred — designed, not built this term
 
-Do **not** implement these; the design keeps room for them.
+Do **not** implement these; the design keeps room for them. Their data model, endpoints and data
+contract are in [deferred-designs.md](deferred-designs.md).
 
 - **Satellite monitoring (FR-05, WBS 6.0).** Continuous land-cover change detection. Needs a
   commercial imagery subscription we cannot procure. The home dashboard keeps a monitoring-alert
