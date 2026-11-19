@@ -29,6 +29,8 @@ const credit: Omit<CreditDetail, 'ledger_status'> = {
   issued_at: '2026-02-02T00:00:00Z',
   history: [{ action: 'issued', occurred_at: '2026-02-02T00:00:00Z' }],
   monitoring: 'not_available',
+  buffer_quantity: null,
+  buffer_serial: null,
 }
 const retirements: Retirements = {
   quantity: 8400,

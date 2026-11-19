@@ -132,11 +132,15 @@ def test_approve_issue_and_read_real_credit_in_registry(client, db, workflow):
     assert not rows[0].is_demo
     client.post("/api/auth/logout")
     results = client.get("/api/registry/credits", params={"q": workflow["project"].code}).json()
-    assert results["total"] == 2
-    active = next(item for item in results["items"] if item["status"] == "active")
-    assert active == credit
+    assert [item["status"] for item in results["items"]] == ["active"]  # buffer: not a 2nd row
+    assert results["items"][0] == credit
+    every = client.get(
+        "/api/registry/credits", params={"q": workflow["project"].code, "include_buffer": True}
+    ).json()
+    assert sorted(item["status"] for item in every["items"]) == ["active", "buffer"]
     detail = client.get(f"/api/registry/credits/{credit['id']}").json()
     assert detail["history"][0]["action"] == "issued"
+    assert detail["buffer_quantity"] == 7
     assert client.get(f"/api/registry/credits/{credit['id']}/integrity").json()["snapshot_matches"]
     buffer = next(row for row in rows if row.status == "buffer")
     assert (
@@ -411,3 +415,30 @@ def test_demo_records_are_hidden_outside_local_development(client, db, make_user
     monkeypatch.setattr(get_settings(), "app_env", "development")
     monkeypatch.setattr(get_settings(), "seed_demo_users", False)
     assert client.get("/api/registry/credits").json()["total"] == 0
+
+
+def test_review_offers_issuing_to_staff_and_then_shows_the_batch(client, db, workflow):
+    from app.features.verification.models import VerificationAssignment
+
+    assignment = db.scalar(
+        select(VerificationAssignment).where(
+            VerificationAssignment.project_id == workflow["project"].id
+        )
+    )
+    url = f"/api/verifications/assignments/{assignment.id}"
+    sign_in(client, workflow["staff"])
+    before = client.get(url).json()
+    assert (before["can_issue"], before["buffer_percent"], before["issuance"]) == (True, 10, None)
+    sign_in(client, workflow["verifier"])
+    assert client.get(url).json()["can_issue"] is False
+
+    credit = issue(client, workflow)
+
+    after = client.get(url).json()
+    assert after["can_issue"] is False
+    assert after["issuance"] == {
+        "credit_id": credit["id"],
+        "vintage": ISSUE["vintage"],
+        "quantity": 66,
+        "buffer_quantity": 7,
+    }

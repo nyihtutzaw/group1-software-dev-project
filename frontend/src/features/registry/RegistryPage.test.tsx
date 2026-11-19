@@ -38,6 +38,8 @@ const credit: CreditDetail = {
   issued_at: '2026-02-02T00:00:00Z',
   history: [{ action: 'issued', occurred_at: '2026-02-02T00:00:00Z' }],
   monitoring: 'not_available',
+  buffer_quantity: null,
+  buffer_serial: null,
 }
 const page: CreditPageData = { items: [credit], total: 1, page: 1, page_size: 20 }
 const noRetirements = { quantity: 8400, retired_quantity: 0, items: [] }
@@ -288,5 +290,17 @@ describe('Public registry', () => {
       'href',
       '/registry?q=nan',
     )
+  })
+
+  it('shows the buffer pool on the batch it was held back from', async () => {
+    responses({
+      '/api/registry/credits/7': { ...credit, buffer_quantity: 840, buffer_serial: 'TH-B' },
+    })
+    renderRegistry()
+    const panel = await selectCredit()
+
+    expect(
+      await within(panel).findByText('840 tCO₂e held back as insurance, not for sale'),
+    ).toBeInTheDocument()
   })
 })

@@ -11,7 +11,7 @@ from app.core.db import get_db
 from app.features.registry import access, service
 from app.features.registry.holdings import RetirementsOut, retirements
 from app.features.registry.holdings import router as holdings_router
-from app.features.registry.models import RegistryCreditEvent
+from app.features.registry.models import RegistryCredit, RegistryCreditEvent
 from app.features.registry.schemas import (
     CreditDetail,
     CreditEventOut,
@@ -41,10 +41,15 @@ def list_credits(
     q: str = Query(default="", max_length=200),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    include_buffer: bool = Query(default=False),
     db: Session = Depends(get_db),
     user: User | None = Depends(optional_user),
 ) -> CreditPage:
-    return service.list_credits(db, user=user, q=q, page=page, page_size=page_size)
+    """Issued batches, newest vintage first. Buffer pools are listed only with `include_buffer`
+    or when `q` is their exact serial; each sellable batch's page shows its buffer."""
+    return service.list_credits(
+        db, user=user, q=q, page=page, page_size=page_size, include_buffer=include_buffer
+    )
 
 
 @router.get("/credits/{credit_id}", response_model=CreditDetail)
@@ -59,9 +64,22 @@ def credit_detail(
         .where(RegistryCreditEvent.credit_id == credit.id)
         .order_by(RegistryCreditEvent.occurred_at, RegistryCreditEvent.id)
     ).all()
+    buffer = (
+        db.scalar(
+            select(RegistryCredit).where(
+                RegistryCredit.source_approval_id == credit.source_approval_id,
+                RegistryCredit.status == "buffer",
+                RegistryCredit.id != credit.id,
+            )
+        )
+        if credit.source_approval_id is not None and credit.status != "buffer"
+        else None
+    )
     return CreditDetail(
         **CreditOut.model_validate(credit).model_dump(),
         history=[CreditEventOut.model_validate(event) for event in history],
+        buffer_quantity=buffer.quantity if buffer else None,
+        buffer_serial=buffer.serial if buffer else None,
     )
 
 

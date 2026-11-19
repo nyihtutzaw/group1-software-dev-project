@@ -97,7 +97,7 @@ From WBS 7.x and the design report:
 | Route | Roles | Shows |
 |---|---|---|
 | `/verify` | verifier, registry_staff, admin | Queue in tabs (In progress · Awaiting approval · Approved), and for staff/admin an Assign verifier tab; each row opens its review |
-| `/verify/:id` | verifier, registry_staff, admin | One review: tabs for Review (checklist, note, sign-off or the staff decision), Evidence & checks, and History; summary panel on the side |
+| `/verify/:id` | verifier, registry_staff, admin | One review: tabs for Review (checklist, note, sign-off or the staff decision), Evidence & checks, and History; summary panel on the side. After approval, staff see **Issue credits** (country, vintage, verified tonnes, with the buffer split shown live); once issued, the card shows the batch and links to the public registry |
 | `/` | developer | Verifier note when changes were requested, above the F1 placeholder |
 
 ## Data model
@@ -121,6 +121,13 @@ None for assignment or the buffer split. A later vintage or a second tradable ba
 approval is still out of scope (see the 2026-11-16 issuance note).
 
 ## Progress log
+
+### 2026-11-19 · chore/live-demo-flow
+- Issue credits from the review page instead of the API docs: `ReviewOut` gains `buffer_percent`,
+  `can_issue` (staff, approved, project VERIFIED, nothing issued yet) and `issuance` (sellable
+  batch id, vintage, tonnes, buffer tonnes). The card calls the existing issue endpoint, so its
+  rules are unchanged. Tests: `test_review_offers_issuing_to_staff_and_then_shows_the_batch`,
+  `VerifyPage.test.tsx`.
 
 ### 2026-11-01 · feature/F3-assignment-queue
 - Goal: an assigned verifier sees only their projects, oldest due date first, with the due date

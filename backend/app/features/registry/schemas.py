@@ -47,6 +47,9 @@ class CreditEventOut(BaseModel):
 class CreditDetail(CreditOut):
     history: list[CreditEventOut]
     monitoring: Literal["not_available"] = "not_available"
+    # The buffer pool held back from the same issuance (sellable batches only)
+    buffer_quantity: int | None = None
+    buffer_serial: str | None = None
 
 
 class EvidenceOut(BaseModel):

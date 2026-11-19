@@ -25,6 +25,9 @@ export type CreditPage = { items: Credit[]; total: number; page: number; page_si
 export type CreditDetail = Credit & {
   history: { action: 'issued' | 'retired' | 'revoked'; occurred_at: string }[]
   monitoring: 'not_available'
+  /** Held back from the same issuance as insurance (sellable batches only); not listed apart */
+  buffer_quantity: number | null
+  buffer_serial: string | null
 }
 export type BuyerEvidenceSummary = {
   kind: 'land_title' | 'survey' | 'photo' | 'gps' | 'spreadsheet' | 'additionality_proof' | 'other'

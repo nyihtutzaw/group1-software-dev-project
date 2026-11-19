@@ -112,6 +112,14 @@ function CreditBody({
                 { label: 'Methodology', value: credit.methodology },
                 { label: 'Vintage', value: credit.vintage, mono: true },
                 { label: 'Quantity', value: `${credit.quantity.toLocaleString()} tCO₂e` },
+                ...(credit.buffer_quantity
+                  ? [
+                      {
+                        label: 'Buffer pool',
+                        value: `${credit.buffer_quantity.toLocaleString()} tCO₂e held back as insurance, not for sale`,
+                      },
+                    ]
+                  : []),
               ]}
             />
           </Card>
