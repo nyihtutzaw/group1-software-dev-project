@@ -5,9 +5,11 @@ on:
   push:
     branches: [main]
 
+# A newer push cancels the older run on pull requests. On main it waits instead, so a deploy is
+# never stopped halfway (only the newest waiting commit is kept, and it includes the older ones).
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   backend:
@@ -59,3 +61,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sh scripts/sync-agent-skills.sh --check
+
+  # Pushes to main only: the commit's checks turn fully green once the new version is live.
+  deploy:
+    needs: [backend, frontend, agent-skills]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write # keyless sign-in to Google Cloud
+    uses: ./.github/workflows/deploy.yml

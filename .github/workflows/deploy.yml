@@ -1,18 +1,11 @@
-# Deploy the hosted class demo to Google Cloud Run after CI passes on main.
-# Setup and runbook: docs/deployment.md. Also runnable by hand (Actions → Deploy → Run workflow).
+# Deploy the hosted class demo to Google Cloud Run. Setup and runbook: docs/deployment.md.
+# Runs as the last job of CI on every push to main (so the commit only turns fully green once the
+# new version is live), or by hand: Actions → Deploy → Run workflow (redeploys the chosen commit).
 name: Deploy
 
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
-
-# One deploy at a time; a newer one waits instead of cancelling a half-finished rollout.
-concurrency:
-  group: deploy
-  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -20,19 +13,18 @@ permissions:
 
 jobs:
   deploy:
-    # Only after a successful CI run for a push to main (not for pull requests).
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
+    # One deploy at a time (shared with Reset demo data); a newer one waits, never cancels.
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
     environment:
       name: demo
       url: ${{ steps.deploy.outputs.url }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.sha }}
 
       - name: Image name
         id: image

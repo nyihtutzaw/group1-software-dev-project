@@ -11,7 +11,7 @@ password, not the public `crvr-demo`.
 ## What runs where
 
 ```
-push to main ─► CI ─► Deploy workflow (keyless sign-in, main branch only)
+push to main ─► CI: backend · frontend · agent-skills ─► deploy job (keyless sign-in, main only)
                          1. build infra/cloudrun/Dockerfile → Artifact Registry (tag = git SHA)
                          2. start the database if it is stopped
                          3. Cloud Run job "crvr-tasks": alembic upgrade + demo seed
@@ -23,6 +23,11 @@ Browser ─► Cloud Run "crvr" (FastAPI: /api/* + the built React app on the sa
               └─► gs://zaw-personal-project-crvr-evidence (mounted at /data/evidence)
 Secrets (Secret Manager): crvr-database-url · crvr-jwt-secret · crvr-demo-password
 ```
+
+The deploy is the last job of CI (`ci.yml` calls `deploy.yml`), so the commit on `main` is only
+fully green once the new version is live: a yellow `deploy / deploy` check means it is still
+rolling out (~3 min after the tests). On `main` a newer push waits for the running CI instead of
+cancelling it, so a deploy is never cut off halfway.
 
 | | Setting | Why |
 |---|---|---|
@@ -47,7 +52,7 @@ first week.
 
 | I want to… | GitHub (browser/phone) | Terminal |
 |---|---|---|
-| Deploy | merge to `main` (or Actions → **Deploy** → Run) | — |
+| Deploy | merge to `main`; live when the commit's `deploy / deploy` check is green (~7 min). Redeploy: Actions → **Deploy** → Run | — |
 | See if it is on | Actions → **Demo power** → `status` | `sh infra/gcp/power.sh status` |
 | Turn the database on now | **Demo power** → `on` | `sh infra/gcp/power.sh on` |
 | Turn it off now | **Demo power** → `off` | `sh infra/gcp/power.sh off` |
@@ -137,3 +142,9 @@ curl -X POST -H "Authorization: Bearer $(gcloud auth print-access-token)" \
 - Domain: verified `zaw27.com`, added the TXT + CNAME records in Namecheap, mapped
   `crvr.zaw27.com` to the service.
 - Next: merge this PR so later deploys run from GitHub Actions.
+
+### 2026-11-19 · chore/deploy-in-ci
+- The green check on a `main` commit only covered CI, while the deploy ran as a separate
+  workflow 3 minutes later, so "green" looked like "deployed" when it was not. The deploy is now
+  the last job of CI (`deploy.yml` became a reusable workflow, still runnable by hand), and CI on
+  `main` queues instead of cancelling so a rollout is never interrupted.

@@ -85,7 +85,7 @@ src/index.css           design tokens (light + dark) → Tailwind utilities; lib
 
 - **CI** (`.github/workflows/ci.yml`, every PR and push to main): backend ruff + migrations check +
   pytest against the same `infra/db` PostGIS image used locally; frontend lint, typecheck, tests, build; agent-skill stubs in sync.
-- **Deployment** (`.github/workflows/deploy.yml`, after CI passes on main): one hosted class demo
+- **Deployment** (`.github/workflows/deploy.yml`, the last CI job on pushes to main): one hosted class demo
   on Google Cloud — a single Cloud Run service (FastAPI serving `/api` and the built frontend from
   `infra/cloudrun/Dockerfile`), Cloud SQL PostgreSQL 17 + PostGIS stopped overnight, a private
   Cloud Storage bucket mounted for evidence, secrets from Secret Manager. It runs as
