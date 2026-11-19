@@ -139,6 +139,9 @@ def test_the_family_is_read_from_the_first_bytes(head, family):
         ("boundary.kmz", ZIP),
         ("track.gpx", GPX),
         ("plots.csv", b"id,area\n1,12\n"),
+        # Thai text: byte 32 falls in the middle of a three-byte character
+        ("plots-th.csv", "plot,name\nA,บ้านป่าไม้ชุมชน\n".encode()),
+        ("plots-bom.csv", "\ufeffแปลง,พื้นที่\nก,12\n".encode()),
     ],
 )
 def test_a_genuine_file_passes(filename, data, tmp_path):

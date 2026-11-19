@@ -12,6 +12,7 @@ upload has been weighed and before it is sealed, because sealing cannot be undon
 Both raise `EvidenceRejectedError` with a message meant for the person who uploaded the file.
 """
 
+import codecs
 import socket
 import struct
 from pathlib import Path
@@ -99,8 +100,12 @@ def _looks_like_text(head: bytes) -> bool:
     """Text has no signature, so treat 'decodes as UTF-8 and holds no control bytes' as text."""
     if not head:
         return False
+    # `head` is only the first SNIFF_BYTES of the file, so it can end in the middle of a
+    # multi-byte character — every Thai letter is three bytes. An incremental decoder with
+    # final=False holds back an unfinished last character instead of rejecting it.
+    decoder = codecs.getincrementaldecoder("utf-8")()
     try:
-        decoded = head.lstrip(b"\xef\xbb\xbf").decode("utf-8")
+        decoded = decoder.decode(head.lstrip(b"\xef\xbb\xbf"), final=False)
     except UnicodeDecodeError:
         return False
     # Tab, newline and carriage return are the only control characters a CSV or GPX needs.
