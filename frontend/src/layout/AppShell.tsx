@@ -2,14 +2,13 @@ import { Outlet, useLocation } from 'react-router'
 
 import { useAuth } from '@/auth/useAuth'
 
-import { BottomNav } from './BottomNav'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { navFor } from './nav'
 
 /**
- * Responsive shell from the mock-up: phones get a top bar + bottom tab bar,
- * screens ≥ 880px (`desk:`) get a fixed sidebar instead of the tab bar.
+ * Responsive shell: screens ≥ 880px (`desk:`) get a fixed sidebar; phones get a top bar whose
+ * hamburger button opens the same menu as a drawer (MobileMenu).
  */
 export function AppShell() {
   const { user, isLoading } = useAuth()
@@ -24,7 +23,7 @@ export function AppShell() {
   return (
     <div className="grid min-h-screen grid-cols-1 desk:grid-cols-[248px_1fr]">
       <Sidebar items={items} user={user} />
-      <div className="min-w-0 pb-[calc(62px+env(safe-area-inset-bottom))] desk:pb-0">
+      <div className="min-w-0 pb-[env(safe-area-inset-bottom)] desk:pb-0">
         <TopBar user={user} items={items} />
         {/* key forces the fade-in animation on every page change */}
         <main
@@ -34,7 +33,6 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
-      <BottomNav items={items} />
     </div>
   )
 }

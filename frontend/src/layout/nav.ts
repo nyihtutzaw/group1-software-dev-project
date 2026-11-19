@@ -30,7 +30,7 @@ export type MenuEntry =
 
 const ALL: Role[] = ['developer', 'verifier', 'registry_staff', 'buyer', 'admin']
 
-// The single source of truth for menus (sidebar + bottom bar) and route guards.
+// The single source of truth for menus (sidebar + phone drawer) and route guards.
 export const NAV_ITEMS: NavItem[] = [
   { id: 'home', label: 'Home', path: '/', icon: 'home', roles: ALL, feature: 'F1' },
   {
@@ -98,6 +98,15 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Role & Access',
     path: '/system/roles-access',
     icon: 'shield',
+    roles: ['admin'],
+    feature: 'F5',
+    group: 'system',
+  },
+  {
+    id: 'tutorials',
+    label: 'Tutorials',
+    path: '/system/tutorials',
+    icon: 'book',
     roles: ['admin'],
     feature: 'F5',
     group: 'system',

@@ -59,12 +59,10 @@ function MenuGroup({ group }: { group: Extract<MenuEntry, { kind: 'group' }> }) 
   )
 }
 
-export function Sidebar({ items, user }: { items: NavItem[]; user: User | null }) {
+/** Menu links and the signed-in user, shared by the desktop sidebar and the phone drawer. */
+export function MenuPanel({ items, user }: { items: NavItem[]; user: User | null }) {
   return (
-    <aside className="sticky top-0 hidden h-screen flex-col border-r border-line bg-surface desk:flex">
-      <div className="flex h-16 flex-none items-center border-b border-line px-5">
-        <Brand />
-      </div>
+    <>
       <nav aria-label="Main" className="grid flex-1 content-start gap-0.5 overflow-y-auto p-3">
         <span className="px-3 pt-2 pb-2 text-xs font-medium text-faint">Menu</span>
         {menuEntries(items).map((entry) =>
@@ -84,6 +82,18 @@ export function Sidebar({ items, user }: { items: NavItem[]; user: User | null }
           </span>
         </div>
       )}
+    </>
+  )
+}
+
+/** Desktop (≥ 880 px) sidebar. Phones open the same menu from the top bar (MobileMenu). */
+export function Sidebar({ items, user }: { items: NavItem[]; user: User | null }) {
+  return (
+    <aside className="sticky top-0 hidden h-screen flex-col border-r border-line bg-surface desk:flex">
+      <div className="flex h-16 flex-none items-center border-b border-line px-5">
+        <Brand />
+      </div>
+      <MenuPanel items={items} user={user} />
     </aside>
   )
 }
