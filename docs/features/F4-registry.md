@@ -13,13 +13,10 @@
 
 ## Status
 
-Issues #39 and #40 implemented locally on `feature/F4-real-integrations`, based on main `bb0940f`.
-Reuses merged PR #11 and the current registry table, credit page and evidence dialog. Real F3
-issuance publishes into the existing F4 batch table; evidence reads F1's safe sealed metadata.
-Because #23/#25 were absent on main, this branch includes their minimal service prerequisites
-(see F1/F3 docs), which require cross-feature review. No remote issue status was changed.
-Verify authenticity now checks the F5 audit ledger (#29). Registry staff manage buyer access on
-`/buyer-access` (#30). Buyers can retire allocated credits (#44).
+**Merged** — public search and credit page (#6), real F3-issued credits and F1 evidence summaries
+(#39, #40, #23, #25 · PR #56), Verify authenticity against the F5 ledger (#29 · PR #57), staff
+buyer-access screen (#30 · PR #58) and credit retirement (#44 · PR #59). Buffer batches from F3
+(#42 · PR #60) are listed with status `buffer` and cannot be allocated or retired.
 
 ## Scope
 
@@ -173,11 +170,8 @@ seeds on normal startup. These are fictional demo credits and approvals, never r
 
 - #44 impact analysis and decision on the change request are still for the owner/team to record
   on the issue; this branch implements the minimal holdings model described above.
-- Buffer credits (#42) are not built. When they are, allocation and retirement must refuse
-  buffer batches (`holdings.py` notes this).
 - Revoking a buyer's project access hides their holdings and the retire action with the credit;
   their retired records stay public. Decide whether holders keep access automatically.
-- Cross-feature review of the minimal #23/#25 prerequisites included on this local branch.
 - Multiple issuance batches or vintages per approval require a separate issuance policy.
 - `verify_ledger_chain` walks the whole ledger on each public authenticity check; fine at
   class-project scale, but a cached chain checkpoint is needed if the ledger grows large.

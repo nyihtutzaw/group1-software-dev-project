@@ -13,10 +13,11 @@
 
 ## Status
 
-**Built, ready for review** on `feature/F1-project-registration` (closes #3). Developers register a
-project in a 4-step form, save and resume drafts, upload evidence that is sealed on upload, see
+**Merged** (#3 closed). Developers register a project in a 4-step form, save and resume drafts, upload evidence that is sealed on upload, see
 F2's overlap check inline, and submit only a complete draft. Home shows live status for
-developers (own) and registry staff/admin (all).
+developers (own) and registry staff/admin (all). Open follow-ups: #20 (write-once Cloud Storage in
+production), #21 (real-phone test), #22 (file-content check and virus scan), #45 (personal data in
+sealed evidence).
 
 ## Scope
 

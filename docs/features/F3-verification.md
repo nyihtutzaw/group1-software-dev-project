@@ -13,10 +13,9 @@
 
 ## Status
 
-In progress — queue, checklist, maker-checker and issuance are on `main`. This branch
-(`fix/F3-review-followups`) records who assigns verifiers, lists real evidence on the baseline
-checklist line, lets staff reassign after a rejection or a request for changes, and splits issued
-credits into a tradable batch and a non-tradable buffer pool.
+**Merged** — queue, checklist, maker-checker, issuance, verifier reassignment (#26), the
+assignment decision (#28, ADR 0007), real evidence on the checklist (#27) and the buffer pool (#42)
+are on `main` (PRs #60, #61). All seven acceptance criteria are met.
 
 ## Scope
 
@@ -32,13 +31,14 @@ so separation of duties is enforced by the system, not by convention.
 
 From WBS 7.x and the design report:
 
-1. An assigned verifier sees only their projects' evidence (7.1.1).
-2. The verifier reviews evidence and automatic checks in one place (7.1.2).
-3. The verifier submits a structured verification report (checklist + note) (7.2.1).
-4. Registry staff approve or reject with a recorded rationale (7.2.2).
-5. The approver can never be the verifier/submitter of the same decision (FR-10).
-6. The full verification chain is retrievable per project (7.3.1).
-7. Sign-off and approval are written to the audit ledger (with F5).
+1. ✅ An assigned verifier sees only their projects' evidence (7.1.1) — also on F1's project page
+   and evidence download since `fix/F1-verifier-assigned-projects`.
+2. ✅ The verifier reviews evidence and automatic checks in one place (7.1.2).
+3. ✅ The verifier submits a structured verification report (checklist + note) (7.2.1).
+4. ✅ Registry staff approve or reject with a recorded rationale (7.2.2).
+5. ✅ The approver can never be the verifier/submitter of the same decision (FR-10).
+6. ✅ The full verification chain is retrievable per project (7.3.1).
+7. ✅ Sign-off and approval are written to the audit ledger (with F5).
 
 ## Decisions
 
