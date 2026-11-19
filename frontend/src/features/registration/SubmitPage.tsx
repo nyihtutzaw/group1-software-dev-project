@@ -243,16 +243,21 @@ function StepNav({
   onPick: (n: number) => void
 }) {
   return (
-    <ol aria-label="Registration steps" className="mb-5 grid grid-cols-4 gap-1 text-[11.5px]">
+    <ol
+      aria-label="Registration steps"
+      className="mb-5 grid grid-cols-4 items-stretch gap-1 text-[11.5px]"
+    >
       {STEPS.map((label, i) => (
-        <li key={label}>
+        <li key={label} className="flex">
           <button
             type="button"
             disabled={!enabled || i + 1 === step}
             aria-current={i + 1 === step ? 'step' : undefined}
             onClick={() => onPick(i + 1)}
             className={cn(
-              'w-full text-left leading-tight text-faint enabled:hover:text-accent disabled:cursor-default',
+              // min-h-11 keeps every step a 44 px tap target on a phone: without it the
+              // one-line steps were 14 px tall and the wrapping one was twice that.
+              'flex min-h-11 w-full items-center py-2 text-left leading-tight text-faint enabled:hover:text-accent disabled:cursor-default',
               i + 1 === step && 'font-semibold text-ink',
             )}
           >

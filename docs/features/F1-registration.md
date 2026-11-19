@@ -128,6 +128,26 @@ Migration: `20261102_47c89f71feec_add_registration_fields_and_evidence.py` (also
 
 ## Progress log
 
+### 2026-11-19 · fix/registration-phone-420px (#21)
+- Goal: run the 4-step registration and evidence upload at 420 px and fix what it finds.
+- Measured in a 420 × 880 viewport, signed in as a developer, through all four steps. No
+  horizontal scrolling anywhere, no clipped text, and every card, field and button fits.
+- **Fixed — step tabs were 14 px tall.** The four stepper buttons had no vertical padding, so
+  the one-line ones were 14 px and "Boundary & evidence" was 29 px because it wrapped. Under
+  the 24 px minimum in WCAG 2.5.8 and hard to hit with a thumb. They are now a uniform 45 px.
+- **Fixed — the file picker hid the camera on iOS.** `accept` was a list of bare extensions.
+  iOS matches it against UTIs, so extensions it does not know (`.gpx`, `.kml`, `.geojson`) can
+  grey out every file in the picker and remove "Take Photo". MIME types now lead the list, with
+  `image/*` putting the camera back; the extensions stay for the geospatial formats.
+- **Fixed — "Draw the boundary" was a 20 px link.** Now a 44 px inline-flex target.
+- Test: `src/features/registration/phone.test.tsx`. jsdom has no layout engine, so the tests
+  assert the sizing class on each target and the order of the `accept` list rather than pixel
+  heights; the measurements are above.
+- **Still open: this was an emulated 420 px viewport, not a real device.** What it cannot tell
+  us is whether the camera actually opens and returns a usable photo on iOS, whether a GPX file
+  can be picked from Files on Android, and how a 50 MB upload behaves on mobile data. Those
+  three need a real Android and iPhone — the remaining half of this issue.
+
 ### 2026-11-19 · fix/F1-verifier-assigned-projects
 - Fix: any verifier could open any submitted project and download its evidence. `get_project()`
   now also requires the verifier to be the project's current F3 assignee, so the project page and
