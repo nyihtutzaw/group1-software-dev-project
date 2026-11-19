@@ -6,6 +6,7 @@ import { Icon } from '@/components/ui'
 
 import { Avatar } from './Avatar'
 import { Brand } from './Brand'
+import { MobileMenu } from './MobileMenu'
 import { NAV_GROUPS, type NavItem } from './nav'
 import { iconButton, ThemeToggle } from './ThemeToggle'
 
@@ -51,6 +52,7 @@ export function TopBar({ user, items }: { user: User | null; items: NavItem[] })
   if (!user) {
     return (
       <header className={bar}>
+        <MobileMenu items={items} user={null} />
         <div className="flex-1 desk:hidden">
           <Brand />
         </div>
@@ -71,6 +73,7 @@ export function TopBar({ user, items }: { user: User | null; items: NavItem[] })
 
   return (
     <header className={bar}>
+      <MobileMenu items={items} user={user} />
       <div className="min-w-0 flex-1 desk:hidden">
         <Brand />
       </div>

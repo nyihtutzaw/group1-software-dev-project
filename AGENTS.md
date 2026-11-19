@@ -80,7 +80,7 @@ backend/
   tests/                      pytest — real PostGIS test DB, rolled back per test
 frontend/
   src/App.tsx                 routes (each guarded by its entry in layout/nav.ts)
-  src/layout/                 AppShell, Sidebar, BottomNav, TopBar, nav.ts (menus + roles)
+  src/layout/                 AppShell, Sidebar, MobileMenu, TopBar, nav.ts (menus + roles)
   src/components/ui/          shared UI kit from the mock-up
   src/features/<feature>/     the feature's pages and components
   src/auth/  src/lib/         useAuth, Guarded, api client

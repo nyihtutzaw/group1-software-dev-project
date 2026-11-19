@@ -116,6 +116,29 @@
   .page-enter {
     animation: page-fade 0.18s ease-out;
   }
+  /* Phone menu drawer (layout/MobileMenu.tsx) */
+  .drawer-in {
+    animation: drawer-slide 0.2s ease-out;
+  }
+  .drawer-fade {
+    animation: drawer-fade 0.2s ease-out;
+  }
+  @keyframes drawer-slide {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: none;
+    }
+  }
+  @keyframes drawer-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
   @keyframes page-fade {
     from {
       opacity: 0;
