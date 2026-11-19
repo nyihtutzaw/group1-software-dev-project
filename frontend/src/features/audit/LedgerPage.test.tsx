@@ -24,15 +24,29 @@ const PAGE = { total: 1, page: 1, page_size: 50, items: [ENTRY] }
 
 describe('LedgerPage', () => {
   it('shows entries and integrity status for a buyer', async () => {
+    // the API hides who acted from buyers but keeps the role
+    const buyerEntry = { ...ENTRY, actor_id: null, actor_email: null }
     vi.spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(Response.json(PAGE))
+      .mockResolvedValueOnce(Response.json({ ...PAGE, items: [buyerEntry] }))
       .mockResolvedValueOnce(Response.json({ valid: true, error: null }))
 
     renderWithProviders(<LedgerPage />, { user: makeUser('buyer') })
 
     expect(await screen.findByText('Boundary — Saved')).toBeInTheDocument()
-    expect(screen.getByText(/dev@example\.com · Developer/)).toBeInTheDocument()
+    expect(screen.getByText('Developer')).toBeInTheDocument()
     expect(await screen.findByText(/chain intact/i)).toBeInTheDocument()
+  })
+
+  it('shows the actor email and role to registry staff, and system actions as System', async () => {
+    const systemEntry = { ...ENTRY, id: 2, actor_id: null, actor_email: null, actor_role: null }
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({ ...PAGE, total: 2, items: [ENTRY, systemEntry] }))
+      .mockResolvedValueOnce(Response.json({ valid: true, error: null }))
+
+    renderWithProviders(<LedgerPage />, { user: makeUser('registry_staff') })
+
+    expect(await screen.findByText('dev@example.com · Developer')).toBeInTheDocument()
+    expect(screen.getByText('System')).toBeInTheDocument()
   })
 
   it('shows chain-intact alert for registry_staff', async () => {

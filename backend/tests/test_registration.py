@@ -2,6 +2,7 @@
 
 import hashlib
 import stat
+from datetime import date
 
 import pytest
 from sqlalchemy import delete, update
@@ -12,7 +13,8 @@ from app.core.config import get_settings
 from app.features.boundary import service as boundary_service
 from app.features.boundary.models import BoundarySource
 from app.features.registration import service
-from app.features.registration.models import EvidenceFile, Project
+from app.features.registration.models import EvidenceFile, EvidenceKind, Project
+from app.features.verification.models import VerificationAssignment
 from tests.geo import BASE, square
 
 COMPLETE = {
@@ -368,15 +370,43 @@ def test_registry_staff_see_drafts_but_cannot_change_them(client, make_project, 
     assert client.put(f"/api/projects/{project.id}", json=COMPLETE).status_code == 403
 
 
-def test_verifiers_see_submitted_projects_only(client, db, make_project, login):
-    draft_project = make_project()
-    submitted = make_project()
-    submitted.status = "submitted"
+def test_verifiers_see_only_submitted_projects_assigned_to_them(
+    client, db, make_project, make_user, login
+):
+    staff = make_user(Role.REGISTRY_STAFF, email="staff@test.local")
+    other_verifier = make_user(Role.VERIFIER, email="other.verifier@test.local")
+    mine, theirs, unassigned, draft = (make_project() for _ in range(4))
+    for project in (mine, theirs, unassigned):
+        project.status = "submitted"
+    evidence = EvidenceFile(
+        project_id=theirs.id,
+        kind=EvidenceKind.LAND_TITLE,
+        filename="title.pdf",
+        content_type="application/pdf",
+        size_bytes=3,
+        sha256="0" * 64,
+        storage_key="x/title.pdf",
+        uploaded_by_id=theirs.owner_id,
+    )
+    db.add(evidence)
+    verifier = login(Role.VERIFIER)
+    for project, assignee in ((mine, verifier), (theirs, other_verifier), (draft, verifier)):
+        db.add(
+            VerificationAssignment(
+                project_id=project.id,
+                verifier_id=assignee.id,
+                assigned_by_id=staff.id,
+                due_date=date(2026, 12, 1),
+            )
+        )
     db.flush()
-    login(Role.VERIFIER)
 
-    assert client.get(f"/api/projects/{draft_project.id}").status_code == 404
-    assert client.get(f"/api/projects/{submitted.id}").status_code == 200
+    assert client.get(f"/api/projects/{mine.id}").status_code == 200
+    assert client.get(f"/api/projects/{theirs.id}").status_code == 404
+    assert client.get(f"/api/projects/{theirs.id}/evidence/{evidence.id}/file").status_code == 404
+    assert client.get(f"/api/projects/{unassigned.id}").status_code == 404
+    # a draft (e.g. after "request changes") stays hidden even from its verifier
+    assert client.get(f"/api/projects/{draft.id}").status_code == 404
 
 
 def test_buyers_cannot_open_projects(client, make_project, login):

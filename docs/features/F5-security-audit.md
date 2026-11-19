@@ -52,6 +52,14 @@ From WBS 9.x and the design report:
   Formula: `hash = sha256(prev_hash || canonical_json(entry))`. Genesis `prev_hash` is `'0' * 64`.
   An `immutable_ledger_entries` PostgreSQL BEFORE UPDATE OR DELETE trigger blocks modifications
   at the DB level. `record_action()` signature remains unchanged and inserts into caller transaction.
+- 2026-11-19 — **Ledger read scope.** The design report says buyers read the ledger, but returning
+  all of it exposed every user's email, file names and projects the buyer was never granted
+  (WBS 8.1.1, 8.3.1). Now registry staff and admins read every entry; a verifier reads the entries
+  of projects currently assigned to them (WBS 7.1.1); a buyer reads entries of granted projects,
+  their own allocations and their own access grants, with `actor_id`/`actor_email` removed (the
+  role stays) and the payload limited to the fields in `BUYER_PAYLOAD_FIELDS`
+  (`backend/app/features/audit/scope.py`). `/api/ledger/verify` still checks the whole chain for
+  every allowed role and returns only valid/error.
 - 2026-11-15 — **Ledger actor role snapshot (#32)**: preserve the actor's role when each action is
   recorded so the timeline does not misstate a historical role after an account role change.
 - 2026-11-15 — **Security events and retention (#34/#35)**: keep failed sign-ins and 403 events in
@@ -106,7 +114,7 @@ From WBS 9.x and the design report:
 | GET | `/api/admin/users` | admin | List users without credential data |
 | POST | `/api/admin/users` | admin | Create a user with an admin-provided initial password |
 | PATCH | `/api/admin/users/{user_id}` | admin | Change a user's role or active status |
-| GET | `/api/ledger` | verifier, registry_staff, buyer, admin | Paginated ledger entries, newest first |
+| GET | `/api/ledger` | verifier, registry_staff, buyer, admin | Paginated ledger entries, newest first. Staff/admin: all. Verifier: assigned projects. Buyer: granted projects, no actor email/ID, traceability payload fields only |
 | GET | `/api/ledger/verify` | verifier, registry_staff, buyer, admin | Verify cryptographic integrity of ledger chain |
 
 ## Pages
@@ -144,6 +152,13 @@ From WBS 9.x and the design report:
   called on every new security event and runnable as a command. Tests in
   `tests/test_security_retention.py` (boundary at exactly 90 days, deletion on record, ledger
   untouched).
+
+### 2026-11-19 · fix/F5-ledger-scope
+- Fix: buyers could read the whole ledger (all user emails, evidence file names, other projects'
+  entries) and verifiers every project's entries. `/api/ledger` is now scoped per role (see the
+  2026-11-19 decision). The ledger page shows the role alone when the email is hidden.
+- Tests: `tests/test_ledger_scope.py` (staff all, verifier assigned only, buyer granted only and
+  redacted, no-grant buyer sees nothing); `test_audit.py` updated; frontend actor label tests.
 
 ### 2026-11-15 · fix/admin-user-local-email
 - Fix: creating a user at `/admin/users` rejected `@crvr.local` emails (the domain of the demo and
