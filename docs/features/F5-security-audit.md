@@ -147,6 +147,13 @@ From WBS 9.x and the design report:
 
 ## Progress log
 
+### 2026-11-19 · feature/F5-role-access-matrix
+- Goal: a **System** menu group for admins, with a first child page **Role & Access** that shows the
+  role and access matrix as read-only tables (acceptance criterion 2: the access matrix).
+- Plan: 1) admin-only `GET /api/admin/access-matrix`, read from each route's `require_roles`
+  2) menu groups in `layout/nav.ts` (sidebar section, one tab on phones, breadcrumb)
+  3) `/system/roles-access` page with roles, page-access and API-access tables 4) tests + this doc
+
 ### 2026-11-19 · fix/F5-security-event-retention
 - Done: `backend/app/features/audit/retention.py` deletes security events older than 90 days;
   called on every new security event and runnable as a command. Tests in
