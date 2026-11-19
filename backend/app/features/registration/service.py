@@ -7,13 +7,24 @@ files on a Docker volume; production stores them in a Cloud Storage bucket whose
 retention policy enforces the seven-year period (#20).
 """
 
+from contextlib import closing
 from datetime import UTC, datetime
+from io import BytesIO
 from pathlib import Path
 from typing import BinaryIO
 from uuid import uuid4
 
 from fastapi import HTTPException, status
-from sqlalchemy import ColumnElement, Exists, ScalarSelect, exists, func, select, text
+from sqlalchemy import (
+    ColumnElement,
+    Exists,
+    ScalarSelect,
+    delete,
+    exists,
+    func,
+    select,
+    text,
+)
 from sqlalchemy.orm import Session
 
 from app.auth.models import Role, User
@@ -21,7 +32,20 @@ from app.core.config import get_settings
 from app.features.audit.ledger import record_action
 from app.features.boundary.models import BLOCKING_STATUSES, OverlapFlag
 from app.features.boundary.service import issuance_blocked
-from app.features.registration.models import EvidenceFile, EvidenceKind, Project, ProjectStatus
+from app.features.registration.crypto import (
+    EvidenceUndecryptableError,
+    decrypt,
+    encrypt,
+    new_key,
+)
+from app.features.registration.models import (
+    EvidenceErasure,
+    EvidenceFile,
+    EvidenceKey,
+    EvidenceKind,
+    Project,
+    ProjectStatus,
+)
 from app.features.registration.scanning import (
     EvidenceRejectedError,
     NoVirusScanner,
@@ -244,10 +268,15 @@ def store_evidence(
     except EvidenceRejectedError as rejected:
         buffer.close()
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, str(rejected)) from None
+    # Encrypt before sealing (#45): the bucket holds ciphertext, the key lives in a table we
+    # are allowed to delete. That is what makes erasure possible without touching the sealed
+    # object or its row.
+    file_key = new_key()
     try:
-        get_storage().seal(key, buffer)
+        nonce, ciphertext = encrypt(buffer.read(), file_key)
     finally:
         buffer.close()
+    get_storage().seal(key, BytesIO(ciphertext))
 
     evidence = EvidenceFile(
         project_id=project.id,
@@ -261,6 +290,7 @@ def store_evidence(
     )
     db.add(evidence)
     db.flush()
+    db.add(EvidenceKey(evidence_id=evidence.id, key=file_key, nonce=nonce))
     record_action(
         db,
         actor=user,
@@ -281,14 +311,122 @@ def store_evidence(
 
 
 def get_evidence(db: Session, project: Project, evidence_id: int) -> tuple[EvidenceFile, BinaryIO]:
-    """The row plus an open stream of the sealed bytes. The caller closes the stream."""
+    """The row plus a stream of the decrypted bytes. The caller closes the stream."""
     evidence = db.get(EvidenceFile, evidence_id)
     if evidence is None or evidence.project_id != project.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Evidence file not found")
+
+    file_key = db.get(EvidenceKey, evidence.id)
+    if file_key is None:
+        # No key: either it was destroyed on purpose (#45), or this file predates encryption.
+        erasure = db.scalar(
+            select(EvidenceErasure).where(EvidenceErasure.evidence_id == evidence.id)
+        )
+        if erasure is not None:
+            raise HTTPException(status.HTTP_410_GONE, _erasure_message(erasure))
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "The stored file cannot be opened: its key is missing"
+        )
+
     try:
-        return evidence, get_storage().open(evidence.storage_key)
+        stream = get_storage().open(evidence.storage_key)
     except EvidenceMissingError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "The stored file is missing") from None
+    if file_key.key is None or file_key.nonce is None:
+        # Sealed before encryption (#45): the stored object is the plaintext itself.
+        return evidence, stream
+    with closing(stream):
+        ciphertext = stream.read()
+    try:
+        plaintext = decrypt(ciphertext, file_key.key, file_key.nonce)
+    except EvidenceUndecryptableError:
+        # GCM failed, so the stored bytes are not the bytes we sealed.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "The stored file does not match its seal and was not returned.",
+        ) from None
+    return evidence, BytesIO(plaintext)
+
+
+def _erasure_message(erasure: EvidenceErasure) -> str:
+    erased_on = erasure.erased_at.date().isoformat()
+    message = (
+        f"This file's content was erased on {erased_on} at the request of the data subject. "
+        f"Reason: {erasure.reason}"
+    )
+    if erasure.replacement_id is not None:
+        message += f" A redacted replacement was uploaded as evidence {erasure.replacement_id}."
+    return message
+
+
+def erase_evidence(
+    db: Session,
+    project: Project,
+    user: User,
+    *,
+    evidence_id: int,
+    reason: str,
+    replacement_id: int | None,
+) -> EvidenceErasure:
+    """Destroy one file's key so its content can no longer be read (#45, ADR 0010).
+
+    Nothing is updated and nothing is deleted except the key: the ciphertext stays in the
+    bucket under its retention lock, the `evidence_files` row is untouched, and the ledger
+    keeps the original SHA-256 as proof of what was once there.
+    """
+    evidence = db.get(EvidenceFile, evidence_id)
+    if evidence is None or evidence.project_id != project.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Evidence file not found")
+    if db.scalar(select(EvidenceErasure).where(EvidenceErasure.evidence_id == evidence.id)):
+        raise HTTPException(status.HTTP_409_CONFLICT, "This file's content has already been erased")
+
+    replacement = None
+    if replacement_id is not None:
+        replacement = db.get(EvidenceFile, replacement_id)
+        if replacement is None or replacement.project_id != project.id:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                "The replacement must be an evidence file on the same project",
+            )
+        if replacement.id == evidence.id:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                "A file cannot replace itself",
+            )
+
+    # A file sealed before encryption has no key to destroy: the app stops serving it, but its
+    # plaintext stays in storage until removed there. The ledger says so rather than hiding it.
+    file_key = db.get(EvidenceKey, evidence.id)
+    plaintext_in_storage = file_key is not None and file_key.key is None
+
+    erasure = EvidenceErasure(
+        evidence_id=evidence.id,
+        reason=reason.strip(),
+        replacement_id=replacement.id if replacement else None,
+        erased_by_id=user.id,
+    )
+    db.add(erasure)
+    db.execute(delete(EvidenceKey).where(EvidenceKey.evidence_id == evidence.id))
+    record_action(
+        db,
+        actor=user,
+        action="evidence.erased",
+        entity="project",
+        entity_id=project.id,
+        payload={
+            "evidence_id": evidence.id,
+            "filename": evidence.filename,
+            # Kept on purpose: the ledger still shows which file this was and that its bytes
+            # hashed to this value, without being able to reproduce them.
+            "sha256": evidence.sha256,
+            "reason": erasure.reason,
+            "replacement_id": erasure.replacement_id,
+            "plaintext_in_storage": plaintext_in_storage,
+        },
+    )
+    db.commit()
+    db.refresh(erasure)
+    return erasure
 
 
 # --- submission -----------------------------------------------------------------------

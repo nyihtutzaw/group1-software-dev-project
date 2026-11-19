@@ -221,8 +221,9 @@ def test_upload_and_download_work_on_the_bucket_backend(client, login, monkeypat
     body = sealed.json()
     assert body["sha256"] == hashlib.sha256(PDF).hexdigest()
     assert body["size_bytes"] == len(PDF)
-    # The bytes went to the bucket, and only to the bucket
-    assert list(fake.store.values()) == [PDF]
+    # The bytes went to the bucket, and only to the bucket — as ciphertext (#45)
+    assert len(fake.store) == 1
+    assert PDF not in next(iter(fake.store.values()))
 
     downloaded = client.get(f"/api/projects/{project['id']}/evidence/{body['id']}/file")
 
