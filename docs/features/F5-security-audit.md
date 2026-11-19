@@ -5,7 +5,7 @@
 
 | | |
 |---|---|
-| **Owner** | Put Thitisawat (also: Docker, GitHub Actions, Cloud Run; supported by Nyi Htut Zaw) |
+| **Owner** | Put Thitisawat (security & audit). Deployment (Docker, GitHub Actions CI/CD, Google Cloud) is led by Nyi Htut Zaw, with Put Thitisawat helping |
 | **Issue** | [#7](https://github.com/nyihtutzaw/group1-software-dev-project/issues/7) — requirements and acceptance checklist |
 | **Requirements** | FR-07 Immutable audit history · FR-09 Audit logging · FR-10 User & role management · WBS 9.0 |
 | **Code** | `backend/app/auth/`, `backend/app/features/audit/` · `frontend/src/features/audit/`, `frontend/src/auth/` |
