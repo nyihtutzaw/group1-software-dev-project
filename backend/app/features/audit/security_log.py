@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.features.audit.models import SecurityEvent
+from app.features.audit.retention import purge_expired_security_events
 
 FAILED_SIGN_IN = "failed_sign_in"
 SIGN_IN_SUCCEEDED = "sign_in_succeeded"
@@ -49,6 +50,8 @@ def record_security_event(
     subject_hash: str | None = None,
     created_at: datetime | None = None,
 ) -> SecurityEvent:
+    # enforce the 90-day retention as events arrive (cheap: created_at is indexed)
+    purge_expired_security_events(db)
     event = SecurityEvent(
         event_type=event_type,
         actor_id=actor_id,
