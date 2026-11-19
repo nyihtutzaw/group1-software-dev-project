@@ -529,6 +529,9 @@ def test_staff_can_reassign_after_request_changes(
     reassigned = [event for event in body["chain"] if event["kind"] == "reassigned"]
     assert len(reassigned) == 1
     assert reassigned[0]["summary"].startswith("Reassigned to")
+    # the original entry keeps the first verifier and due date
+    [assigned] = [event for event in body["chain"] if event["kind"] == "assigned"]
+    assert assigned["summary"] == f"Assigned to {verifier.full_name} · due {created['due_date']}"
     assert calls[-1]["action"] == "verification.reassigned"
 
     sign_in(client, verifier)

@@ -203,3 +203,9 @@ approval is still out of scope (see the 2026-11-16 issuance note).
   or retired.
 - Next: none on these four issues. F4's public registry already lists the buffer row because
   `CreditOut.status` now includes `buffer`.
+
+### 2026-11-19 · fix/F3-history-keeps-original-assignment
+- Fix: after a reassignment, the first History entry ("Assigned to … · due …") showed the new
+  verifier and due date, because it read the assignment row, which reassignment updates. It now
+  reads the original values from the first reassignment record, so the history no longer changes
+  after the fact. The reassignment test checks the original entry.
