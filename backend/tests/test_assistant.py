@@ -143,7 +143,7 @@ def test_questions_are_rate_limited_per_admin(client, login, monkeypatch):
 
 @pytest.mark.parametrize(
     ("status", "detail"),
-    [(402, "credit has run out"), (401, "key was refused"), (500, "OpenRouter 500: boom")],
+    [(402, "credit has run out"), (401, "key was refused"), (500, "(OpenRouter 500): boom")],
 )
 def test_openrouter_errors_become_readable_messages(client, login, monkeypatch, status, detail):
     def refuse(request, timeout):
