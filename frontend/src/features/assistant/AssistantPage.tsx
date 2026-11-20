@@ -28,8 +28,15 @@ export function AssistantPage() {
   const abort = useRef<AbortController | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
 
-  useEffect(() => saveChat(userId, messages), [userId, messages])
-  useEffect(() => bottom.current?.scrollIntoView?.({ block: 'end' }), [messages])
+  // Braces matter: an effect's return value is its cleanup. Chrome's scrollIntoView now returns a
+  // Promise, and returning it made React call the Promise on the next update or when leaving the
+  // page ("l is not a function"), which blanked the whole app.
+  useEffect(() => {
+    saveChat(userId, messages)
+  }, [userId, messages])
+  useEffect(() => {
+    bottom.current?.scrollIntoView?.({ block: 'end' })
+  }, [messages])
   useEffect(() => () => abort.current?.abort(), [])
 
   const enabled = status.data?.enabled ?? false

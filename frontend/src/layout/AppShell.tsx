@@ -2,6 +2,7 @@ import { Outlet, useLocation } from 'react-router'
 
 import { useAuth } from '@/auth/useAuth'
 
+import { ErrorBoundary } from './ErrorBoundary'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { navFor } from './nav'
@@ -25,13 +26,17 @@ export function AppShell() {
       <Sidebar items={items} user={user} />
       <div className="min-w-0 pb-[env(safe-area-inset-bottom)] desk:pb-0">
         <TopBar user={user} items={items} />
-        {/* key forces the fade-in animation on every page change */}
-        <main
-          key={pathname}
-          className="page-enter mx-auto max-w-[1120px] px-4 pt-5 pb-8 desk:px-8 desk:pt-8 desk:pb-12"
-        >
-          <Outlet />
-        </main>
+        {/* A crashing page shows an error card here; the menu stays usable. It sits outside the
+            keyed <main> so it also catches errors thrown while the previous page unmounts. */}
+        <ErrorBoundary resetKey={pathname}>
+          {/* key forces the fade-in animation on every page change */}
+          <main
+            key={pathname}
+            className="page-enter mx-auto max-w-[1120px] px-4 pt-5 pb-8 desk:px-8 desk:pt-8 desk:pb-12"
+          >
+            <Outlet />
+          </main>
+        </ErrorBoundary>
       </div>
     </div>
   )
