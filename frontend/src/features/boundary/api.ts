@@ -71,6 +71,8 @@ export function useSaveBoundary(projectId: number | null) {
     onSuccess: (saved) => {
       qc.setQueryData(KEYS.project(saved.project_id), saved)
       qc.invalidateQueries({ queryKey: KEYS.all, exact: true })
+      // F1's project detail lists what still blocks submission, the boundary among them.
+      qc.invalidateQueries({ queryKey: ['projects', saved.project_id] })
     },
   })
 }

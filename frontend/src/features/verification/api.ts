@@ -57,6 +57,10 @@ export type Review = {
     summary: string
     note: string | null
   }[]
+  /** Share of issued tonnes kept back as the buffer pool, from the verifier's risk rating */
+  buffer_percent: number | null
+  can_issue: boolean
+  issuance: { credit_id: number; vintage: number; quantity: number; buffer_quantity: number } | null
 }
 
 export type VerifierOption = { id: number; full_name: string; email: string }
@@ -162,6 +166,22 @@ export function useDecide(reportId: number) {
     onSuccess: (review) => {
       qc.setQueryData(['verifications', 'review', review.item.id], review)
       void qc.invalidateQueries({ queryKey: queueKey })
+    },
+  })
+}
+
+export type IssueBody = { country: string; vintage: number; quantity: number }
+
+/** Staff issue credits for an approved project (one batch per approval, F4 publishes it). */
+export function useIssueCredits(projectId: number, assignmentId: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: IssueBody) =>
+      api.post<{ id: number }>(`/verifications/projects/${projectId}/issue`, body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['verifications', 'review', assignmentId] })
+      void qc.invalidateQueries({ queryKey: queueKey })
+      void qc.invalidateQueries({ queryKey: ['registry'] })
     },
   })
 }

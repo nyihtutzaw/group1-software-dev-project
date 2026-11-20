@@ -33,3 +33,8 @@ export function groupOf(status: AssignmentStatus): QueueGroup {
   if (status === 'approved') return 'approved'
   return 'open' // assigned, in review, changes requested, rejected — still with the verifier
 }
+
+/** Tonnes kept back as the buffer pool; same half-up rounding as issuance.py `_split_buffer`. */
+export function bufferOf(quantity: number, percent: number) {
+  return Math.floor((quantity * percent + 50) / 100)
+}

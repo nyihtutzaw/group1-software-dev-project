@@ -98,6 +98,9 @@ const review: Review = {
       note: null,
     },
   ],
+  buffer_percent: null,
+  can_issue: false,
+  issuance: null,
 }
 
 function mockApi(pages: { queue?: Queue; review?: Review } = {}) {
@@ -284,5 +287,55 @@ describe('Developer notes', () => {
     expect(
       await screen.findByText('Land title name does not match the applicant.'),
     ).toBeInTheDocument()
+  })
+
+  it('lets registry staff issue credits after approval, then links to the registry', async () => {
+    const approved: Review = {
+      ...review,
+      item: { ...item, status: 'approved' },
+      can_submit: false,
+      risk_rating: 'low',
+      buffer_percent: 10,
+      can_issue: true,
+      approval: {
+        id: 3,
+        decision: 'approved',
+        rationale: 'Checklist complete.',
+        approver_name: 'Naree Suwan',
+        decided_at: '2026-09-30T00:00:00Z',
+      },
+    }
+    const issued: Review = {
+      ...approved,
+      can_issue: false,
+      issuance: { credit_id: 11, vintage: 2026, quantity: 4320, buffer_quantity: 480 },
+    }
+    let current = approved
+    const issue = vi.fn(() => {
+      current = issued
+      return { id: 11 }
+    })
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = String(input)
+      if (path === '/api/verifications/assignments/4') return Response.json(current)
+      if (path === '/api/verifications/projects/9/issue' && init?.method === 'POST') {
+        return Response.json(issue(), { status: 201 })
+      }
+      return Response.json(queue)
+    })
+    renderVerify('/verify/4', makeUser('registry_staff'))
+
+    await userEvent.type(await screen.findByLabelText('Verified tonnes (tCO₂e)'), '4800')
+    expect(
+      screen.getByText(/480 t \(10%\) go to the buffer pool as insurance; 4,320 t can be sold/),
+    ).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Issue credits' }))
+
+    expect(await screen.findByText('4,320 credits issued for 2026')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'View on the public registry' })).toHaveAttribute(
+      'href',
+      '/registry/11',
+    )
+    expect(issue).toHaveBeenCalledTimes(1)
   })
 })

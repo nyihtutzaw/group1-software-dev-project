@@ -99,7 +99,7 @@ module, mounted under `/registry`).
 
 | Route | Roles | Shows |
 |---|---|---|
-| `/registry` | public + all signed-in | Search and a paginated results table; search text and page are kept in the URL |
+| `/registry` | public + all signed-in | Search and a paginated results table; search text and page are kept in the URL. One row per issuance: buffer pools are left out (API `include_buffer=true`, or search by their exact serial) and shown on their batch's page instead |
 | `/buyer-access` | registry staff, admin | Grant form (project + buyer) and the current grants with Revoke (confirmation dialog) |
 | `/registry/:id` | public + all signed-in | One credit: origin, verification & approval, history, public retirements; Verify authenticity result beside it; the evidence pack opens in a dialog. Staff also see **Holdings** with an allocate form; buyers see **Your credits** with Retire (dialog with permanence warning, quantity, beneficiary, reason, reporting year) |
 
@@ -177,6 +177,12 @@ seeds on normal startup. These are fictional demo credits and approvals, never r
   class-project scale, but a cached chain checkpoint is needed if the ledger grows large.
 
 ## Progress log
+
+### 2026-11-19 · chore/live-demo-flow
+- The registry list no longer shows the buffer pool as a second row next to its sellable batch
+  (it read as a duplicate). `GET /api/registry/credits` leaves buffers out unless
+  `include_buffer=true` or `q` is the buffer's exact serial; the credit page shows "Buffer pool:
+  N tCO₂e held back as insurance, not for sale" (`buffer_quantity`, `buffer_serial` on the detail).
 
 ### 2026-10-28 · feature/F4-public-registry
 - Goal: implement F4 acceptance criteria using persisted, explicitly published registry records.

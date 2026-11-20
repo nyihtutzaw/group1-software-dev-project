@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 
 import { useAuth } from '@/auth/useAuth'
 import {
@@ -98,6 +98,8 @@ export function BoundaryPage() {
           )}
           canEdit={saved.data ? saved.data.can_edit : role === 'developer' || role === 'admin'}
           canResolve={role === 'registry_staff' || role === 'admin'}
+          // Opened from F1's registration (step 3 or 4): offer the way back once it is saved.
+          fromSubmit={params.get('from') === 'submit' && project.id === requested}
         />
       )}
     </>
@@ -112,6 +114,7 @@ function BoundaryEditor({
   context,
   canEdit,
   canResolve,
+  fromSubmit = false,
 }: {
   project: ProjectOption
   saved: ProjectBoundary | null
@@ -120,7 +123,9 @@ function BoundaryEditor({
   context: BoundaryFeature[]
   canEdit: boolean
   canResolve: boolean
+  fromSubmit?: boolean
 }) {
+  const navigate = useNavigate()
   const [draft, setDraft] = useState<Geometry | null>(saved?.geometry ?? null)
   const [source, setSource] = useState<'drawn' | 'uploaded'>(saved?.source ?? 'drawn')
   const [dirty, setDirty] = useState(false)
@@ -271,6 +276,18 @@ function BoundaryEditor({
         aria-label="Boundary file"
         onChange={(e) => onFile(e.target.files?.[0])}
       />
+
+      {fromSubmit && saved && !dirty && !saved.issuance_blocked && (
+        <Alert className="mt-[13px]" tone="ok" title="Boundary saved">
+          Go back to the registration to review and submit the project.
+          <Button
+            className="mt-2.5"
+            onClick={() => navigate(`/projects/${project.id}/edit?step=4`)}
+          >
+            Back to submission
+          </Button>
+        </Alert>
+      )}
 
       {saved && !dirty && (
         <FlagList

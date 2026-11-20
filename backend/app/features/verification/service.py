@@ -12,13 +12,16 @@ from app.features.audit.ledger import record_action
 from app.features.boundary.geometry import count_other_boundaries
 from app.features.boundary.service import issuance_blocked
 from app.features.registration.models import EvidenceFile, EvidenceKind, Project, ProjectStatus
+from app.features.registry.models import RegistryCredit
 from app.features.verification.models import (
+    BUFFER_PERCENT,
     CHECKLIST,
     CLOSED,
     Approval,
     ApprovalDecision,
     AssignmentStatus,
     ReportDecision,
+    RiskRating,
     VerificationAssignment,
     VerificationReassignment,
     VerificationReport,
@@ -33,6 +36,7 @@ from app.features.verification.schemas import (
     CheckLine,
     ChipTone,
     EvidenceLine,
+    IssuanceOut,
     NoteOut,
     QueueItem,
     QueueOut,
@@ -341,6 +345,7 @@ def _review(
         and approval is None
         and block is None
     )
+    issuance = _issuance(db, approval)
     return ReviewOut(
         item=_item(db, assignment, project, today),
         evidence=[
@@ -364,6 +369,34 @@ def _review(
         report_id=report.id if report else None,
         approval=_approval_out(db, approval),
         chain=_chain(db, assignment, project),
+        buffer_percent=BUFFER_PERCENT[RiskRating(report.risk_rating)]
+        if report and report.risk_rating
+        else None,
+        can_issue=user.role in STAFF
+        and approval is not None
+        and approval.decision == ApprovalDecision.APPROVED
+        and project.status == ProjectStatus.VERIFIED
+        and issuance is None,
+        issuance=issuance,
+    )
+
+
+def _issuance(db: Session, approval: Approval | None) -> IssuanceOut | None:
+    """The batches issued for this approval (one sellable, one buffer), if any."""
+    if approval is None:
+        return None
+    batches = db.scalars(
+        select(RegistryCredit).where(RegistryCredit.source_approval_id == approval.id)
+    ).all()
+    sellable = next((c for c in batches if c.status != "buffer"), None)
+    if sellable is None:
+        return None
+    buffer = sum(c.quantity for c in batches if c.status == "buffer")
+    return IssuanceOut(
+        credit_id=sellable.id,
+        vintage=sellable.vintage,
+        quantity=sellable.quantity,
+        buffer_quantity=buffer,
     )
 
 

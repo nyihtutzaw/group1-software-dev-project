@@ -29,6 +29,7 @@ import {
   useVerifiers,
 } from './api'
 import { Checklist } from './Checklist'
+import { IssueCredits } from './IssueCredits'
 import { dueLabel, longDate, overdueLabel } from './format'
 
 type Tab = 'review' | 'evidence' | 'history'
@@ -166,6 +167,7 @@ function ReviewBody({ data }: { data: Review }) {
                     {data.approval.rationale}
                   </Alert>
                 )}
+                <IssueCredits review={data} />
                 {data.decision_block && (
                   <Alert className="mb-4" title="Someone else must decide">
                     {data.decision_block}

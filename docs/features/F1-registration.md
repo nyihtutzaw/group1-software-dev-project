@@ -111,7 +111,7 @@ No PUT/PATCH/DELETE exists for evidence. Ledger actions via `record_action()`: `
 |---|---|---|
 | `/` | all signed-in | Developer: *My projects* (tiles, rows, monitoring slot). Staff/admin: *All projects*. Verifier/buyer: pointer to their page |
 | `/projects/new` | developer | Step 1 of the registration form; creates the draft |
-| `/projects/:id/edit?step=1…4` | developer | Resume a draft; non-editable projects redirect to the project page |
+| `/projects/:id/edit?step=1…4` | developer | Resume a draft; non-editable projects redirect to the project page. Step 4 shows *Add boundary* (or *Fix the boundary*) while the boundary blocks submission; F2's map brings the developer back to step 4 |
 | `/projects/:id` | developer (own), verifier, registry_staff, admin | Read-only project: status, details, additionality, sealed evidence, boundary check |
 
 ## Data model
@@ -140,6 +140,11 @@ Migration: `20261102_47c89f71feec_add_registration_fields_and_evidence.py` (also
   the evidence. Moving them to Cloud KMS would separate the two (ADR 0010).
 
 ## Progress log
+
+### 2026-11-19 · chore/live-demo-flow
+- Step 4 *Add boundary* / *Fix the boundary* button under "Before you can submit", opening F2's
+  map with `&from=submit` (the step 3 link too), so registration hands over to the boundary and
+  comes back. Tests in `SubmitPage.test.tsx`.
 
 ### 2026-11-19 · fix/registration-phone-420px (#21)
 - Goal: run the 4-step registration and evidence upload at 420 px and fix what it finds.

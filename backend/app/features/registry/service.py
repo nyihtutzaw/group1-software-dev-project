@@ -135,9 +135,20 @@ def _visible_credits() -> Select[tuple[RegistryCredit]]:
 
 
 def list_credits(
-    db: Session, *, user: User | None, q: str, page: int, page_size: int
+    db: Session,
+    *,
+    user: User | None,
+    q: str,
+    page: int,
+    page_size: int,
+    include_buffer: bool = False,
 ) -> CreditPage:
     stmt = _visible_credits()
+    if not include_buffer:
+        # A buffer pool is insurance, not for sale: shown on its batch's page, not as a second row
+        stmt = stmt.where(
+            or_(RegistryCredit.status != "buffer", RegistryCredit.serial == q.strip())
+        )
     if user and user.role == Role.BUYER:
         stmt = stmt.where(RegistryCredit.project_reference.in_(_buyer_projects(user)))
     if term := q.strip():

@@ -106,6 +106,15 @@ class ChainEvent(BaseModel):
     note: str | None = None
 
 
+class IssuanceOut(BaseModel):
+    """The credits issued for this review's approval: the sellable batch and its buffer."""
+
+    credit_id: int
+    vintage: int
+    quantity: int
+    buffer_quantity: int
+
+
 class ReviewOut(BaseModel):
     item: QueueItem
     evidence: list[EvidenceLine]
@@ -120,6 +129,10 @@ class ReviewOut(BaseModel):
     report_id: int | None
     approval: ApprovalOut | None
     chain: list[ChainEvent]
+    # Issuing credits after approval (staff): the buffer share comes from the reversal risk
+    buffer_percent: int | None = None
+    can_issue: bool = False
+    issuance: IssuanceOut | None = None
 
 
 class ChainOut(BaseModel):
