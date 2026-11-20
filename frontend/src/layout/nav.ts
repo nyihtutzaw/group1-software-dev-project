@@ -112,6 +112,15 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'system',
   },
   {
+    id: 'assistant',
+    label: 'Assistant',
+    path: '/system/assistant',
+    icon: 'chat',
+    roles: ['admin'],
+    feature: 'F5',
+    group: 'system',
+  },
+  {
     id: 'tutorials',
     label: 'Tutorials',
     path: '/system/tutorials',
