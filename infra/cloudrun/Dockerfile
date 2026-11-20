@@ -28,12 +28,16 @@ RUN uv sync --frozen --no-dev --no-cache
 
 COPY backend/ ./
 COPY --from=web /web/dist /app/static
+# F5 System › Assistant answers from the project's markdown docs (only *.md is in the context).
+COPY README.md AGENTS.md /knowledge/
+COPY docs/ /knowledge/docs/
 
 # Production defaults; secrets and DATABASE_URL come from Cloud Run (Secret Manager).
 ENV APP_ENV=production \
     STATIC_DIR=/app/static \
     STORAGE_DIR=/data/evidence \
     FORWARDED_IP_HOPS=1 \
+    ASSISTANT_DOCS_DIR=/knowledge \
     PORT=8080
 
 EXPOSE 8080

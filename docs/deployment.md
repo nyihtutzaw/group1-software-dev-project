@@ -21,7 +21,8 @@ push to main ─► CI: backend · frontend · agent-skills ─► deploy job (k
 Browser ─► Cloud Run "crvr" (FastAPI: /api/* + the built React app on the same origin)
               ├─► Cloud SQL "crvr-db" (PostgreSQL 17 + PostGIS, db-f1-micro)
               └─► gs://zaw-personal-project-crvr-evidence (mounted at /data/evidence)
-Secrets (Secret Manager): crvr-database-url · crvr-jwt-secret · crvr-demo-password
+Secrets (Secret Manager): crvr-database-url · crvr-jwt-secret · crvr-demo-password ·
+                          crvr-openrouter-api-key (System › Assistant)
 ```
 
 The deploy is the last job of CI (`ci.yml` calls `deploy.yml`), so the commit on `main` is only
@@ -44,7 +45,8 @@ All names are in `infra/gcp/config.sh`.
 
 About **฿300–370 / US$9–11 a month**, almost all Cloud SQL (≈ ฿300 running 17 h/day + ≈ ฿70
 storage). Cloud Run, the bucket, Artifact Registry, Secret Manager and Scheduler stay within
-their free tiers at class-demo traffic. GitHub Actions is free (public repo). A stopped Cloud SQL
+their free tiers at class-demo traffic. The *System › Assistant* page pays OpenRouter per question
+(~US$0.004 each, capped by the key's own spending limit on openrouter.ai). GitHub Actions is free (public repo). A stopped Cloud SQL
 instance may still be billed a little for its IP address — check **Billing → Reports** after the
 first week.
 
@@ -61,6 +63,7 @@ first week.
 | Start the live demo from scratch | In the app as admin: **System › Demo data** → *Reset to live demo start*, type `RESET` | — |
 | Restore clean sample data | **System › Demo data** → *Reset to full sample data* (or Actions → **Reset demo data**, type `reset`) | — |
 | Get the demo password | — | `gcloud secrets versions access latest --secret=crvr-demo-password` |
+| Change the Assistant's OpenRouter key | — | `printf %s "$KEY" \| gcloud secrets versions add crvr-openrouter-api-key --data-file=-`, then redeploy |
 
 - The 06:00 start also undoes a manual `off`; use `hold` to keep it off.
 - While the database is stopped the site still loads but every action shows *"CRVR is closed

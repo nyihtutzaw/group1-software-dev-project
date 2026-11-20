@@ -132,6 +132,11 @@ From WBS 9.x and the design report:
   triggers, so the API exists only where demo accounts do (`demo_enabled`), needs the admin role
   and the typed word `RESET`. The new ledger starts with `demo_data.reset` (who, which start), so
   the wipe is on the record. Evidence files in storage are left, as the GitHub reset does.
+- 2026-11-20 — *System › Assistant* (admin) answers questions about CRVR from the project's markdown
+  docs, all sent with each question through OpenRouter (`deepseek/deepseek-v4-flash`, reasoning
+  off: ~8 s, ~US$0.004 a question). Stateless: the chat lives in the browser tab
+  (`sessionStorage`) and nothing is stored or logged on the server. See
+  [ADR 0011](../decisions/0011-project-assistant-from-docs.md).
 
 ### Cloud Run production configuration
 
@@ -154,6 +159,8 @@ From WBS 9.x and the design report:
 | PATCH | `/api/admin/users/{user_id}` | admin | Change a user's role or active status |
 | GET | `/api/admin/access-matrix` | admin | Every API endpoint with the roles allowed to call it (read-only) |
 | GET | `/api/admin/demo-data` | admin | `enabled` (demo server?) and counts: users, projects, boundaries, credits, ledger entries |
+| GET | `/api/admin/assistant` | admin | `enabled` (OpenRouter key and docs present?), `model`, and the `documents` it answers from |
+| POST | `/api/admin/assistant/chat` | admin | `{messages: [{role: user\|assistant, content}]}`, ending with the question → the answer streamed as `text/plain`. Nothing stored. 503 not set up, 429 over 20/min, 502 model error |
 | POST | `/api/admin/demo-data/reset` | admin, demo servers only | `{start: live\|full, confirm: "RESET"}` → wipe everything and load that start; 403 on a real registry, 409 if the database is busy |
 | GET | `/api/ledger` | verifier, registry_staff, buyer, admin | Paginated ledger entries, newest first. Staff/admin: all. Verifier: assigned projects. Buyer: granted projects, no actor email/ID, traceability payload fields only |
 | GET | `/api/ledger/verify` | verifier, registry_staff, buyer, admin | Verify cryptographic integrity of ledger chain |
@@ -167,6 +174,7 @@ From WBS 9.x and the design report:
 | `/admin/users` | admin | List accounts, create users, change roles, and deactivate or reactivate accounts |
 | `/system/roles-access` | admin | System › Role & Access: roles, page-access and API-access matrices, read-only |
 | `/system/demo-data` | admin | System › Demo data: what the server holds, and *Reset to live demo start* / *Reset to full sample data* behind a type-RESET dialog (disabled outside demo mode) |
+| `/system/assistant` | admin | System › Assistant: chat about CRVR's features and how it was built; example questions, streamed Markdown answers, *Clear chat*. The chat stays in this browser tab only |
 | `/system/tutorials` | admin | System › Tutorials: one walkthrough card per feature (F1–F5) |
 | `/system/tutorials/manual` | admin | Printable user manual (cover, how to read, roles, contents, one page per step), without the app shell. Source of `public/tutorials/CRVR-User-Manual.pdf` |
 | `/system/tutorials/:id?step=N` | admin | One walkthrough: annotated screenshot per step, numbered legend, who does the step, link to the real page, sample data and files |
@@ -192,6 +200,19 @@ From WBS 9.x and the design report:
   initial password out of band.
 
 ## Progress log
+
+### 2026-11-20 · feature/F5-assistant
+- Goal: admins can ask an AI about CRVR's features and technical work, without chat history on
+  the server.
+- Done: `backend/app/features/assistant/` (knowledge loader, OpenRouter streaming over `urllib`,
+  per-admin rate limit, `GET /api/admin/assistant`, `POST /api/admin/assistant/chat`);
+  `frontend/src/features/assistant/` (page, `sessionStorage` chat, Markdown renderer); menu entry
+  and `chat` icon; docs mounted at `/knowledge` in docker-compose and copied into the Cloud Run
+  image; `OPENROUTER_API_KEY` from Secret Manager (`crvr-openrouter-api-key`); ADR 0011.
+- Tested: backend `tests/test_assistant.py` (roles, validation, streaming, errors, rate limit, the
+  real docs are found), frontend `AssistantPage.test.tsx`; one live OpenRouter call per model
+  compared (see ADR 0011).
+- Setup: locally put `OPENROUTER_API_KEY=…` in `backend/.env` (not the root `.env`).
 
 ### 2026-11-19 · chore/live-demo-flow
 - Goal: the team's live demo on the hosted site starts from the same state as the demo video, and

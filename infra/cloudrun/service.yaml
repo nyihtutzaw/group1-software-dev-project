@@ -48,6 +48,10 @@ spec:
             - name: DEMO_PASSWORD
               valueFrom:
                 secretKeyRef: { name: crvr-demo-password, key: latest }
+            # F5 System › Assistant (OpenRouter). Model: OPENROUTER_MODEL, default in config.py.
+            - name: OPENROUTER_API_KEY
+              valueFrom:
+                secretKeyRef: { name: crvr-openrouter-api-key, key: latest }
             # F1 evidence goes to the bucket through the Cloud Storage API (#20), not a
             # gcsfuse mount: the API gives us the "fail if it already exists" write that
             # makes evidence write-once, which a filesystem mount cannot promise.
