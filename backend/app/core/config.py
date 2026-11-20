@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -81,6 +82,21 @@ class Settings(BaseSettings):
     overlap_cap_ha: float = Field(default=2.0, gt=0)
     # F2: largest boundary file accepted for import
     boundary_upload_max_bytes: int = 5 * 1024 * 1024
+
+    # F5 System › Assistant: answers admins' questions from the project docs through OpenRouter.
+    # No key = the page says the assistant is not set up. Locally the key goes in backend/.env;
+    # on Cloud Run it comes from Secret Manager (crvr-openrouter-api-key).
+    openrouter_api_key: str = ""
+    openrouter_model: str = "deepseek/deepseek-v4-flash"
+    # Folder holding README.md, AGENTS.md and docs/ (the assistant's knowledge). Default: the repo
+    # root next to backend/; the containers mount or copy the docs to /knowledge instead.
+    assistant_docs_dir: str = str(Path(__file__).resolve().parents[3])
+    assistant_requests_per_minute: int = Field(default=20, ge=1)
+
+    @field_validator("openrouter_api_key")
+    @classmethod
+    def strip_openrouter_api_key(cls, value: str) -> str:
+        return value.strip()
 
     @property
     def is_production(self) -> bool:

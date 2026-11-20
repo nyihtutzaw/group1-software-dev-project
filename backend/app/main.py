@@ -12,6 +12,7 @@ from app.auth.router import router as auth_router
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.frontend import mount_frontend
+from app.features.assistant.router import router as assistant_router
 from app.features.audit.access_matrix import router as access_matrix_router
 from app.features.audit.demo_data import router as demo_data_router
 from app.features.audit.router import router as audit_router
@@ -80,6 +81,7 @@ api.include_router(registry_router)  # F4
 api.include_router(audit_router)  # F5
 api.include_router(access_matrix_router)  # F5
 api.include_router(demo_data_router)  # F5: admin demo reset (demo servers only)
+api.include_router(assistant_router)  # F5: System › Assistant (questions about CRVR)
 
 app.include_router(api)
 
