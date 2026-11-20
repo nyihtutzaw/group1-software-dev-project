@@ -201,6 +201,23 @@ From WBS 9.x and the design report:
 
 ## Progress log
 
+### 2026-11-20 · fix/assistant-crash-error-page
+- Bug on crvr.zaw27.com: after opening System › Assistant, switching to another page (Demo data,
+  Role & Access, …) or sending a message blanked the whole app with `TypeError: l is not a
+  function`; only a reload helped.
+- Cause: `useEffect(() => bottom.current?.scrollIntoView?.(…))` returned the call's result as the
+  effect's cleanup. Chrome's `scrollIntoView` now returns a Promise, so React called a Promise when
+  the chat updated or the page unmounted. jsdom has no `scrollIntoView`, so the tests never saw it.
+  Fixed with a braced effect body (also `saveChat`'s effect).
+- No error boundary existed, so any crash meant a white screen. Added `layout/ErrorBoundary.tsx`:
+  inside the app shell it wraps the page (outside the keyed `<main>`, so it also catches errors
+  while the previous page unmounts) and shows "Something went wrong on this page" with Try again,
+  Reload and the technical message, keeping the menu usable; it resets when the path changes. A
+  full-screen one wraps the whole app in `main.tsx`.
+- Tests: `AssistantPage.test.tsx` stubs `scrollIntoView` to return a Promise and unmounts (fails
+  with "destroy is not a function" on the old code); `ErrorBoundary.test.tsx` covers the card,
+  Try again and reset on navigation.
+
 ### 2026-11-20 · feature/F5-assistant
 - Goal: admins can ask an AI about CRVR's features and technical work, without chat history on
   the server.

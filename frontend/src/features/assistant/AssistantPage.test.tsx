@@ -30,6 +30,18 @@ beforeEach(() => sessionStorage.clear())
 afterEach(() => vi.restoreAllMocks())
 
 describe('AssistantPage', () => {
+  it('survives leaving the page when scrollIntoView returns a Promise (Chrome)', async () => {
+    // Chrome's scrollIntoView returns a Promise. An effect that returned it handed React a
+    // non-function cleanup, so leaving the page crashed the app ("l is not a function").
+    Element.prototype.scrollIntoView = vi.fn(() => Promise.resolve()) as never
+    mockApi(new Response('ok'))
+    const { unmount } = renderPage()
+    await screen.findByLabelText('Your question')
+
+    expect(() => unmount()).not.toThrow()
+    delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView
+  })
+
   it('asks a question, shows the streamed answer and keeps the chat in this tab', async () => {
     const fetch = mockApi(new Response('Overlaps above **0.5%** block submission.'))
     renderPage()
