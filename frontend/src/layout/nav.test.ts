@@ -42,6 +42,7 @@ describe('menuEntries', () => {
     expect(system).toMatchObject({ kind: 'group', id: 'system', label: 'System' })
     expect(system?.kind === 'group' && system.items.map((i) => i.id)).toEqual([
       'roles-access',
+      'demo-data',
       'tutorials',
     ])
     expect(

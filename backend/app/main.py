@@ -13,6 +13,7 @@ from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.frontend import mount_frontend
 from app.features.audit.access_matrix import router as access_matrix_router
+from app.features.audit.demo_data import router as demo_data_router
 from app.features.audit.router import router as audit_router
 from app.features.audit.security_log import ACCESS_DENIED, client_ip, record_security_event
 from app.features.boundary.router import router as boundary_router
@@ -78,6 +79,7 @@ api.include_router(verification_router)  # F3
 api.include_router(registry_router)  # F4
 api.include_router(audit_router)  # F5
 api.include_router(access_matrix_router)  # F5
+api.include_router(demo_data_router)  # F5: admin demo reset (demo servers only)
 
 app.include_router(api)
 

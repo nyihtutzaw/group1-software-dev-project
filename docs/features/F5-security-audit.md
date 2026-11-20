@@ -125,6 +125,14 @@ From WBS 9.x and the design report:
   themselves; active admin rows are locked while changing an admin account to prevent concurrent
   changes from removing all active admins.
 
+- 2026-11-19 — *System › Demo data* (admin) resets a demo server in place: one `TRUNCATE … RESTART
+  IDENTITY` of every table (schema kept, no migrations, ~0.4 s), then either the **live demo
+  start** (six accounts + the neighbouring project Huai Nam Rin, CRVR-0174, with its boundary) or
+  the **full sample data** (`app.seed` + the registry demo). TRUNCATE skips the append-only
+  triggers, so the API exists only where demo accounts do (`demo_enabled`), needs the admin role
+  and the typed word `RESET`. The new ledger starts with `demo_data.reset` (who, which start), so
+  the wipe is on the record. Evidence files in storage are left, as the GitHub reset does.
+
 ### Cloud Run production configuration
 
 - Set `APP_ENV=production`; the login endpoint then sets the cookie's `Secure` flag.
@@ -145,6 +153,8 @@ From WBS 9.x and the design report:
 | POST | `/api/admin/users` | admin | Create a user with an admin-provided initial password |
 | PATCH | `/api/admin/users/{user_id}` | admin | Change a user's role or active status |
 | GET | `/api/admin/access-matrix` | admin | Every API endpoint with the roles allowed to call it (read-only) |
+| GET | `/api/admin/demo-data` | admin | `enabled` (demo server?) and counts: users, projects, boundaries, credits, ledger entries |
+| POST | `/api/admin/demo-data/reset` | admin, demo servers only | `{start: live\|full, confirm: "RESET"}` → wipe everything and load that start; 403 on a real registry, 409 if the database is busy |
 | GET | `/api/ledger` | verifier, registry_staff, buyer, admin | Paginated ledger entries, newest first. Staff/admin: all. Verifier: assigned projects. Buyer: granted projects, no actor email/ID, traceability payload fields only |
 | GET | `/api/ledger/verify` | verifier, registry_staff, buyer, admin | Verify cryptographic integrity of ledger chain |
 
@@ -156,6 +166,7 @@ From WBS 9.x and the design report:
 | `/ledger` | verifier, registry_staff, buyer, admin | Paginated audit timeline with chain integrity status |
 | `/admin/users` | admin | List accounts, create users, change roles, and deactivate or reactivate accounts |
 | `/system/roles-access` | admin | System › Role & Access: roles, page-access and API-access matrices, read-only |
+| `/system/demo-data` | admin | System › Demo data: what the server holds, and *Reset to live demo start* / *Reset to full sample data* behind a type-RESET dialog (disabled outside demo mode) |
 | `/system/tutorials` | admin | System › Tutorials: one walkthrough card per feature (F1–F5) |
 | `/system/tutorials/manual` | admin | Printable user manual (cover, how to read, roles, contents, one page per step), without the app shell. Source of `public/tutorials/CRVR-User-Manual.pdf` |
 | `/system/tutorials/:id?step=N` | admin | One walkthrough: annotated screenshot per step, numbered legend, who does the step, link to the real page, sample data and files |
@@ -181,6 +192,16 @@ From WBS 9.x and the design report:
   initial password out of band.
 
 ## Progress log
+
+### 2026-11-19 · chore/live-demo-flow
+- Goal: the team's live demo on the hosted site starts from the same state as the demo video, and
+  the admin can get back there with one button.
+- Done: `backend/app/features/audit/demo_data.py` (reset service, live-start content, API),
+  `seed_demo_users`/`seed_demo_data` accept a session, *System › Demo data* page + menu entry.
+  Shared code touched: `app/seed.py`, `app/main.py`, `layout/nav.ts`, `App.tsx`.
+- Validation: backend 10 new tests (roles, refused outside demo mode, typed confirmation, live
+  and full counts, ledger chain intact, project codes restart at CRVR-0200, sample boundaries
+  overlap the neighbour only in the first survey); frontend page tests; tried on a local stack.
 
 ### 2026-11-19 · feature/F5-admin-tutorials
 - Goal: a *Tutorials* page under System (admin) that walks through each feature (F1–F5) step by
