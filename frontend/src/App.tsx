@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router'
 
 import { Guarded } from '@/auth/Guarded'
+import { AssistantPage } from '@/features/assistant/AssistantPage'
 import { DemoDataPage } from '@/features/audit/DemoDataPage'
 import { LedgerPage } from '@/features/audit/LedgerPage'
 import { RolesAccessPage } from '@/features/audit/RolesAccessPage'
@@ -163,6 +164,14 @@ export function App() {
           element={
             <Guarded page="demo-data">
               <DemoDataPage />
+            </Guarded>
+          }
+        />
+        <Route
+          path="/system/assistant"
+          element={
+            <Guarded page="assistant">
+              <AssistantPage />
             </Guarded>
           }
         />

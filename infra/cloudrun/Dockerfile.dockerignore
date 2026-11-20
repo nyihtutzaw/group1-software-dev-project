@@ -3,6 +3,10 @@
 *
 !backend/
 !frontend/
+# F5 Assistant knowledge: the markdown docs only
+!README.md
+!AGENTS.md
+!docs/**/*.md
 backend/.venv
 backend/tests
 backend/**/__pycache__

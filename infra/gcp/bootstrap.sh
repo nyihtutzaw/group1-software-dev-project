@@ -91,6 +91,11 @@ exists gcloud secrets describe crvr-jwt-secret ||
 exists gcloud secrets describe crvr-demo-password ||
   openssl rand -base64 30 | tr -dc 'A-Za-z0-9' | cut -c1-16 | tr -d '\n' |
   gcloud secrets create crvr-demo-password --data-file=- --replication-policy=automatic
+# F5 System › Assistant: an OpenRouter key cannot be generated here. Create it once, by hand:
+#   printf %s "$OPENROUTER_API_KEY" |
+#     gcloud secrets create crvr-openrouter-api-key --data-file=- --replication-policy=automatic
+exists gcloud secrets describe crvr-openrouter-api-key ||
+  echo "  WARNING: crvr-openrouter-api-key is missing; the deploy needs it (see comment above)"
 
 step "Evidence bucket: gs://${BUCKET} (private, 7-year retention)"
 exists gcloud storage buckets describe "gs://${BUCKET}" ||
@@ -123,9 +128,9 @@ project_role() {
     --member="serviceAccount:$1" --role="$2" --condition=None --quiet
   echo "  $2 → ${1%%@*}"
 }
-# The app: connect to Cloud SQL, read its three secrets, read/write evidence files.
+# The app: connect to Cloud SQL, read its four secrets, read/write evidence files.
 project_role "$RUN_SA" roles/cloudsql.client
-for secret in crvr-database-url crvr-jwt-secret crvr-demo-password; do
+for secret in crvr-database-url crvr-jwt-secret crvr-demo-password crvr-openrouter-api-key; do
   retry gcloud secrets add-iam-policy-binding "$secret" \
     --member="serviceAccount:${RUN_SA}" --role=roles/secretmanager.secretAccessor
 done

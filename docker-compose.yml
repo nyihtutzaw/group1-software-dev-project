@@ -38,10 +38,16 @@ services:
       CLAMAV_HOST: clamav
       CLAMAV_PORT: "3310"
       WATCHFILES_FORCE_POLLING: ${WATCHFILES_FORCE_POLLING:-false}
+      # F5 System › Assistant answers from these docs (mounted below). Its OPENROUTER_API_KEY
+      # goes in backend/.env, which the backend reads itself; it is not set here.
+      ASSISTANT_DOCS_DIR: /knowledge
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./backend:/app
+      - ./docs:/knowledge/docs:ro
+      - ./README.md:/knowledge/README.md:ro
+      - ./AGENTS.md:/knowledge/AGENTS.md:ro
       - evidence:/data/evidence
     depends_on:
       db:

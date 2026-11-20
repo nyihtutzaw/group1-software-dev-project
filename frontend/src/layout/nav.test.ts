@@ -27,6 +27,13 @@ describe('navFor', () => {
     expect(ids('admin')).toContain('users')
   })
 
+  it('gives only admins the System › Assistant page', () => {
+    expect(ids('admin')).toContain('assistant')
+    for (const role of ['developer', 'verifier', 'registry_staff', 'buyer'] as const) {
+      expect(ids(role)).not.toContain('assistant')
+    }
+  })
+
   it('gives only admins the System › Role & Access page', () => {
     expect(ids('admin')).toContain('roles-access')
     for (const role of ['developer', 'verifier', 'registry_staff', 'buyer'] as const) {
@@ -43,6 +50,7 @@ describe('menuEntries', () => {
     expect(system?.kind === 'group' && system.items.map((i) => i.id)).toEqual([
       'roles-access',
       'demo-data',
+      'assistant',
       'tutorials',
     ])
     expect(
