@@ -34,10 +34,11 @@ app/core/db.py         engine, SessionLocal, get_db, Base, TimestampMixin
 app/core/security.py   bcrypt hashing, JWT create/decode
 app/core/models_registry.py   imports every */models.py for Alembic + tests
 app/auth/              User + Role, login/logout/me, get_current_user, require_roles
-app/features/<name>/   one package per feature: router, models, schemas, service
+app/features/<name>/   one package per feature: router, models, schemas, service, tests/
 app/seed.py            demo users (dev only)
 migrations/            Alembic; autogenerate understands PostGIS via geoalchemy2 helpers
-tests/                 pytest against crvr_test; each test runs in a rolled-back transaction
+conftest.py            pytest fixtures: crvr_test, each test in a rolled-back transaction
+tests/                 tests of shared code (auth, config, deployment) and shared test helpers
 ```
 
 - Sync SQLAlchemy 2 sessions (simpler than async; enough for this load).

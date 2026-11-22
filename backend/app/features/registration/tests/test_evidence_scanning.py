@@ -1,4 +1,4 @@
-"""F1 upload checks — one test (or more) per acceptance criterion of issue #22.
+"""Upload checks — one test (or more) per acceptance criterion of issue #22.
 
 The virus-scanner tests talk the real clamd INSTREAM protocol to a fake clamd running in a
 thread, so the EICAR case is exercised without the 1 GB container. A second test runs against

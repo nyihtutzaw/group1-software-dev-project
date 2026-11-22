@@ -9,6 +9,8 @@
 !docs/**/*.md
 backend/.venv
 backend/tests
+backend/conftest.py
+backend/app/**/tests
 backend/**/__pycache__
 backend/.pytest_cache
 backend/.ruff_cache

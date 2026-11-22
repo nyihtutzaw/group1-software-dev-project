@@ -1,4 +1,4 @@
-"""F3 verification queue, structured report, and maker-checker."""
+"""Verification queue, structured report, and maker-checker."""
 
 from datetime import date, timedelta
 
@@ -7,14 +7,14 @@ import pytest
 from app.auth.models import Role
 from app.features.registration.models import EvidenceFile, EvidenceKind, ProjectStatus
 from app.features.verification.models import CHECKLIST, VerificationReport
-from tests.conftest import PASSWORD
+from tests.support import PASSWORD
 
 DUE = date.today() + timedelta(days=10)
 
 
 @pytest.fixture
 def make_project(db, make_project):
-    """Verification starts from a submitted project (F1); pass status="draft" to test refusals."""
+    """Verification starts from a submitted project; pass status="draft" to test refusals."""
 
     def _make(*args, status=ProjectStatus.SUBMITTED, **kwargs):
         project = make_project(*args, **kwargs)
@@ -237,7 +237,7 @@ def test_request_changes_reaches_the_project_owner(client, login, db, make_user,
     assert early.status_code == 409
     assert "resubmitted" in early.json()["detail"]
 
-    project.status = ProjectStatus.SUBMITTED  # the developer resubmits through F1
+    project.status = ProjectStatus.SUBMITTED  # the developer resubmits through registration
     db.flush()
     sign_in(client, owner)
     assert client.get("/api/verifications/notes").json() == []
@@ -394,7 +394,9 @@ def test_rejection_sends_the_project_back_for_another_round(
     )
     assert waiting.status_code == 409
 
-    project.status = ProjectStatus.SUBMITTED  # the developer fixes it and resubmits through F1
+    project.status = (
+        ProjectStatus.SUBMITTED
+    )  # the developer fixes it and resubmits through registration
     db.flush()
     sign_in(client, owner)
     assert client.get("/api/verifications/notes").json() == []

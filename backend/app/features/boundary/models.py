@@ -1,4 +1,4 @@
-"""F2 Geospatial boundary & overlap detection — database tables."""
+"""Geospatial boundary & overlap detection — database tables."""
 
 import enum
 from datetime import datetime

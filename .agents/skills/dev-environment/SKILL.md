@@ -63,7 +63,8 @@ docker compose exec frontend npm run typecheck
 docker compose exec frontend npm test
 ```
 
-Run one backend test: `docker compose exec backend pytest tests/test_auth.py -k logout`.
+Run one backend test: `docker compose exec backend pytest tests/test_auth.py -k logout`; one
+feature's tests: `docker compose exec backend pytest app/features/boundary`.
 
 ## Add a dependency
 

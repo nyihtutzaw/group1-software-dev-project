@@ -1,4 +1,5 @@
-"""F4 publication records; source project, approval and ledger remain owned by F1/F3/F5."""
+"""Public registry records; the source project, approval and ledger stay owned by
+registration, verification and audit."""
 
 from datetime import datetime
 
@@ -33,7 +34,8 @@ class RegistryCredit(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # Source links are internal; F3 owns approval and F4 reuses this row as its issued batch.
+    # Source links are internal; verification owns the approval and the registry reuses this row
+    # as its issued batch.
     source_project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), index=True)
     source_approval_id: Mapped[int | None] = mapped_column(ForeignKey("approvals.id"))
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())

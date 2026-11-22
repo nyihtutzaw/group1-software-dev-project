@@ -189,7 +189,7 @@ Migration: `20261102_47c89f71feec_add_registration_fields_and_evidence.py` (also
   file an `evidence_keys` row with `key`/`nonce` NULL, so it still downloads (and "no row" still
   means a lost key). Erasing one stops the app serving it, but its plaintext stays in storage
   until removed there; the ledger entry records `plaintext_in_storage: true`.
-- Test: `tests/test_evidence_erasure.py` — 25 tests, including that the write-once rule and the
+- Test: `app/features/registration/tests/test_evidence_erasure.py` — 25 tests, including that the write-once rule and the
   ledger survive an erasure, that erasing one file leaves the others readable, and that no new
   route can delete sealed evidence.
 - Changed two existing assertions: the sealed object is ciphertext now, so tests that compared
@@ -210,7 +210,7 @@ Migration: `20261102_47c89f71feec_add_registration_fields_and_evidence.py` (also
 - ClamAV is a compose profile (`docker compose --profile scan up -d clamav`) and off by default,
   so `sh scripts/start.sh` stays fast. The image is amd64 only — on Apple Silicon it runs
   emulated (still starts in ~20 s).
-- Test: `tests/test_evidence_scanning.py` — 30 tests. The EICAR case runs against a fake clamd
+- Test: `app/features/registration/tests/test_evidence_scanning.py` — 30 tests. The EICAR case runs against a fake clamd
   in a thread that speaks the real protocol, so it needs no container; a second test runs
   against a real clamd and skips when there is none.
 - Changed an existing test: `test_accepted_evidence_formats` uploaded `b"evidence bytes"` under
@@ -227,7 +227,7 @@ Migration: `20261102_47c89f71feec_add_registration_fields_and_evidence.py` (also
 - Why the mount went: gcsfuse cannot give an atomic "fail if it exists" write, `chmod 444` means
   nothing on an object store, and deleting a part-written reject fails once retention is locked.
   ADR 0009.
-- Test: `tests/test_evidence_storage.py` — 19 tests covering the backend switch, both backends
+- Test: `app/features/registration/tests/test_evidence_storage.py` — 19 tests covering the backend switch, both backends
   (bucket faked, no network), rejected uploads leaving nothing behind, overwrite refused on both,
   and the full upload/download route running on the bucket backend.
 - Follow-up: `LOCK_RETENTION=true` has to be run once against the real bucket.
