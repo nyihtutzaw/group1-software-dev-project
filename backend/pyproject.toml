@@ -41,5 +41,5 @@ select = ["E", "F", "I", "B", "UP", "SIM", "N"]
 ignore = ["B008"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "app"]
 addopts = "-q"

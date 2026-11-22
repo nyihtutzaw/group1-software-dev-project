@@ -75,9 +75,10 @@ backend/
   app/main.py                 API app; every router is mounted under /api
   app/core/                   config, db session + Base, security (hash/JWT), model discovery
   app/auth/                   users, login/logout/me, require_roles() dependency
-  app/features/<feature>/     router.py, models.py (+ schemas.py, service.py as needed)
+  app/features/<feature>/     router.py, models.py (+ schemas.py, service.py as needed), tests/
   migrations/versions/        Alembic migrations
-  tests/                      pytest — real PostGIS test DB, rolled back per test
+  conftest.py                 pytest fixtures — real PostGIS test DB, rolled back per test
+  tests/                      tests of shared code (auth, config, deployment) + test helpers
 frontend/
   src/App.tsx                 routes (each guarded by its entry in layout/nav.ts)
   src/layout/                 AppShell, Sidebar, MobileMenu, TopBar, nav.ts (menus + roles)

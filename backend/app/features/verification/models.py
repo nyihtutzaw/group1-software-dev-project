@@ -1,4 +1,4 @@
-"""F3 Verification workflow — database tables."""
+"""Verification workflow — database tables."""
 
 import enum
 from datetime import date, datetime
@@ -10,7 +10,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.db import Base, TimestampMixin
 
 # Fixed checklist from the Verify mock-up. The source line for each item is filled in
-# when a review is opened (overlap text comes from F2; evidence files wait on F1).
+# when a review is opened (overlap text comes from the boundary module; evidence files from
+# registration).
 CHECKLIST: tuple[tuple[str, str], ...] = (
     ("land_title", "Land title matches applicant"),
     ("boundary_overlap", "Boundary has no overlap"),

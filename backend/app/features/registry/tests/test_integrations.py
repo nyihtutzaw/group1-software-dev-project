@@ -1,4 +1,4 @@
-"""Real F1 → F3 approval → issuance → F4 reads, including privacy and atomicity."""
+"""Real registration → approval → issuance → registry reads, including privacy and atomicity."""
 
 import hashlib
 import json
@@ -18,8 +18,8 @@ from app.features.registration.service import buyer_evidence_summaries
 from app.features.registry.models import RegistryCredit, RegistryCreditEvent, RegistryProjectAccess
 from app.features.registry.service import snapshot_digest
 from app.features.verification.models import CHECKLIST
-from tests.conftest import PASSWORD
 from tests.geo import BASE, square
+from tests.support import PASSWORD
 
 ISSUE = {"country": "Thailand", "vintage": datetime.now(UTC).year, "quantity": 73}
 PRIVATE = "CONFIDENTIAL-OWNER-PHONE-1234"

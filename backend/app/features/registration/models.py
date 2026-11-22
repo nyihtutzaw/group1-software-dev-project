@@ -1,8 +1,9 @@
-"""F1 Project registration & evidence — database tables.
+"""Project registration & evidence — database tables.
 
-`projects` started as a minimal stub added by F2; `id`, `code`, `name`, `owner_id` and
-`created_at` are relied on by F2/F3/F4 — keep them. Registration fields are nullable because a
-draft may be saved half-filled; `service.missing_for_submission()` decides what is complete.
+`projects` started as a minimal stub added by the boundary module; `id`, `code`, `name`,
+`owner_id` and `created_at` are relied on by boundary, verification and registry — keep them.
+Registration fields are nullable because a draft may be saved half-filled;
+`service.missing_for_submission()` decides what is complete.
 """
 
 import enum
@@ -27,9 +28,9 @@ from app.core.db import Base, TimestampMixin
 
 class ProjectStatus(enum.StrEnum):
     DRAFT = "draft"  # being filled in by the developer; evidence can still be added
-    SUBMITTED = "submitted"  # sealed and waiting for verification (F3)
-    VERIFIED = "verified"  # set by F3
-    ISSUED = "issued"  # set by F3 issuance; the batch is published through F4
+    SUBMITTED = "submitted"  # sealed and waiting for verification
+    VERIFIED = "verified"  # set by verification
+    ISSUED = "issued"  # set when credits are issued; the batch is published in the registry
 
 
 class EvidenceKind(enum.StrEnum):
@@ -50,13 +51,14 @@ class Project(TimestampMixin, Base):
     code: Mapped[str] = mapped_column(String(20), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(200))
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    # Plain string (not an Enum column) so F3/F4 can add states without a migration here
+    # Plain string (not an Enum column) so verification and the registry can add states
+    # without a migration here
     status: Mapped[str] = mapped_column(String(20), default="draft", server_default="draft")
 
     methodology: Mapped[str | None] = mapped_column(String(20))
     crediting_start_year: Mapped[int | None] = mapped_column(Integer)
     crediting_end_year: Mapped[int | None] = mapped_column(Integer)
-    # As claimed by the developer; F2 computes the real area from the boundary
+    # As claimed by the developer; the boundary module computes the real area
     area_ha: Mapped[float | None] = mapped_column(Float)
     est_removal_tco2e: Mapped[int | None] = mapped_column(Integer)
     baseline_summary: Mapped[str | None] = mapped_column(Text)

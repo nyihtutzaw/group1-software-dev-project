@@ -1,4 +1,5 @@
-"""Test setup: a real PostGIS database (crvr_test), migrated once, rolled back after every test."""
+"""Test setup for every test folder (tests/ and app/**/tests/): a real PostGIS database
+(crvr_test), migrated once, rolled back after every test."""
 
 import os
 
@@ -21,8 +22,7 @@ from app.core.db import engine, get_db  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
 from app.features.registration.models import Project  # noqa: E402
 from app.main import app  # noqa: E402
-
-PASSWORD = "test-password"
+from tests.support import PASSWORD  # noqa: E402
 
 
 @pytest.fixture(scope="session", autouse=True)

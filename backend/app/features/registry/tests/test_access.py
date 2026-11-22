@@ -11,7 +11,7 @@ from app.features.audit.models import LedgerEntry
 from app.features.registry.models import RegistryProjectAccess
 from app.features.registry.schemas import PublicationIn
 from app.features.registry.service import publish_credit
-from tests.conftest import PASSWORD
+from tests.support import PASSWORD
 
 URL = "/api/registry/access"
 

@@ -146,7 +146,7 @@ None at the moment.
 ### 2026-11-19 · chore/live-demo-flow
 - *Back to submission* after saving when opened from registration; project detail refreshed on
   save; the draft and neighbour sample boundaries for the live demo (overlap measured in PostGIS
-  and covered by `tests/test_demo_data.py`).
+  and covered by `app/features/audit/tests/test_demo_data.py`).
 
 ### 2026-10-28 · feature/F2-boundary-overlap
 - Goal: the whole of F2 (issue #4) on one branch, one PR.

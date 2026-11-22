@@ -1,4 +1,4 @@
-"""F5 System › Demo data: an admin resets the demo server to the live-demo start or full data."""
+"""System › Demo data: an admin resets the demo server to the live-demo start or full data."""
 
 from sqlalchemy import select
 

@@ -13,7 +13,7 @@ from app.features.registry.holdings import serial_block
 from app.features.registry.models import RegistryHolding, RegistryProjectAccess
 from app.features.registry.schemas import PublicationIn
 from app.features.registry.service import change_status, publish_credit
-from tests.conftest import PASSWORD
+from tests.support import PASSWORD
 
 SERIAL = "CRVR-0147-2026-A00000001-000000001-000000100"
 PREFIX = "CRVR-0147-2026-A00000001"

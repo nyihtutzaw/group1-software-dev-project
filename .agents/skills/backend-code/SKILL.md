@@ -97,8 +97,11 @@ is already on `main` — add a new one.
 
 ## Tests
 
-`backend/tests/`, one file per area (`test_<feature>_<thing>.py`). The fixtures in `conftest.py`
-give you a real migrated PostGIS database that is rolled back after each test:
+Each feature keeps its tests next to its code, in `app/features/<feature>/tests/`, one file per
+area, named without the feature (`boundary/tests/test_api.py`, not `test_boundary_api.py`).
+Shared code (auth, config, deployment) is tested in `backend/tests/`, which also holds the shared
+helpers (`tests/support.py`, `tests/geo.py`). The fixtures in `backend/conftest.py` give every
+test folder a real migrated PostGIS database that is rolled back after each test:
 
 - `client` — FastAPI TestClient
 - `db` — the session the app uses during the test

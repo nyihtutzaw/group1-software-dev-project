@@ -226,7 +226,7 @@ From WBS 9.x and the design report:
   `frontend/src/features/assistant/` (page, `sessionStorage` chat, Markdown renderer); menu entry
   and `chat` icon; docs mounted at `/knowledge` in docker-compose and copied into the Cloud Run
   image; `OPENROUTER_API_KEY` from Secret Manager (`crvr-openrouter-api-key`); ADR 0011.
-- Tested: backend `tests/test_assistant.py` (roles, validation, streaming, errors, rate limit, the
+- Tested: backend `app/features/assistant/tests/test_api.py` (roles, validation, streaming, errors, rate limit, the
   real docs are found), frontend `AssistantPage.test.tsx`; one live OpenRouter call per model
   compared (see ADR 0011).
 - Setup: locally put `OPENROUTER_API_KEY=…` in `backend/.env` (not the root `.env`).
@@ -290,14 +290,14 @@ From WBS 9.x and the design report:
 ### 2026-11-19 · fix/F5-security-event-retention
 - Done: `backend/app/features/audit/retention.py` deletes security events older than 90 days;
   called on every new security event and runnable as a command. Tests in
-  `tests/test_security_retention.py` (boundary at exactly 90 days, deletion on record, ledger
+  `app/features/audit/tests/test_security_retention.py` (boundary at exactly 90 days, deletion on record, ledger
   untouched).
 
 ### 2026-11-19 · fix/F5-ledger-scope
 - Fix: buyers could read the whole ledger (all user emails, evidence file names, other projects'
   entries) and verifiers every project's entries. `/api/ledger` is now scoped per role (see the
   2026-11-19 decision). The ledger page shows the role alone when the email is hidden.
-- Tests: `tests/test_ledger_scope.py` (staff all, verifier assigned only, buyer granted only and
+- Tests: `app/features/audit/tests/test_ledger_scope.py` (staff all, verifier assigned only, buyer granted only and
   redacted, no-grant buyer sees nothing); `test_audit.py` updated; frontend actor label tests.
 
 ### 2026-11-15 · fix/admin-user-local-email
@@ -350,7 +350,7 @@ From WBS 9.x and the design report:
   - Implemented `record_action()` in `backend/app/features/audit/ledger.py` with transaction advisory lock and deterministic canonical JSON hash calculation `sha256(prev_hash || canonical_json(entry))`.
   - Added `verify_ledger_chain(db)` utility to detect tampering, gap deletion, or link breakage.
   - Added `GET /api/ledger` and `GET /api/ledger/verify` with role checks.
-  - Tests: 9 backend tests in `backend/tests/test_audit.py` covering hash chaining, canonical JSON determinism, tampering detection, deletion gap detection, DB trigger enforcement, rollback on caller error, and RBAC; all 24 boundary tests pass with live ledger writes.
+  - Tests: 9 backend tests in `backend/app/features/audit/tests/test_ledger.py` covering hash chaining, canonical JSON determinism, tampering detection, deletion gap detection, DB trigger enforcement, rollback on caller error, and RBAC; all 24 boundary tests pass with live ledger writes.
 - Next: frontend LedgerPage UI from mock-up, admin user management endpoints & UI, separation-of-duties helper.
 
 ### 2026-10-27 · main (initial setup)

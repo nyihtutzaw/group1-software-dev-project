@@ -10,7 +10,7 @@ from app.features.registry.models import RegistryProjectAccess
 from app.features.registry.schemas import PublicationIn
 from app.features.registry.service import publish_credit
 from app.features.verification.models import VerificationAssignment
-from tests.conftest import PASSWORD
+from tests.support import PASSWORD
 
 
 def sign_in(client, user):

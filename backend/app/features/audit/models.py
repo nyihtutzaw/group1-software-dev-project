@@ -1,4 +1,4 @@
-"""F5 Security & auditability — database tables."""
+"""Security and audit log — database tables."""
 
 from datetime import datetime
 from typing import Any

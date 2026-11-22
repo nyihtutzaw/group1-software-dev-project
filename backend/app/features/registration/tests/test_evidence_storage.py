@@ -1,4 +1,4 @@
-"""F1 evidence storage backends — one test (or more) per acceptance criterion of issue #20.
+"""Evidence storage backends — one test (or more) per acceptance criterion of issue #20.
 
 The bucket backend is exercised against a fake Cloud Storage client: the tests never reach the
 network and never need `google-cloud-storage` installed.

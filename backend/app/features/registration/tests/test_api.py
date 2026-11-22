@@ -1,4 +1,4 @@
-"""F1 registration and evidence — one test (or more) per acceptance criterion of issue #3."""
+"""Registration and evidence — one test (or more) per acceptance criterion of issue #3."""
 
 import hashlib
 import stat

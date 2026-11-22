@@ -1,4 +1,4 @@
-"""F1 crypto-erasure — one test (or more) per acceptance criterion of change request #45.
+"""Crypto-erasure — one test (or more) per acceptance criterion of change request #45.
 
 The landowner's case: a sealed land-title scan shows a national ID number. Destroying the
 file is impossible by design, so the key is destroyed instead. These tests check that the

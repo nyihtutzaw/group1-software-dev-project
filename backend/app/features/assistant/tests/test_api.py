@@ -1,4 +1,4 @@
-"""F5 System › Assistant: admin-only, stateless, answers from the docs through OpenRouter."""
+"""System › Assistant: admin-only, stateless, answers from the docs through OpenRouter."""
 
 import io
 import json

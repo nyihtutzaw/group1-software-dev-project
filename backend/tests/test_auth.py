@@ -11,7 +11,7 @@ from app.features.audit.security_log import (
     SIGN_IN_RATE_LIMITED,
     hash_login_subject,
 )
-from tests.conftest import PASSWORD
+from tests.support import PASSWORD
 
 
 def test_health(client):
