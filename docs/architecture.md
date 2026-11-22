@@ -42,6 +42,9 @@ tests/                 pytest against crvr_test; each test runs in a rolled-back
 
 - Sync SQLAlchemy 2 sessions (simpler than async; enough for this load).
 - All routes live under `/api`. Each feature router declares its own prefix.
+- Swagger (`/api/docs`, also on production) groups routes by feature tag. `OPENAPI_TAGS` in
+  `app/main.py` fixes the order and names each group's owner; a route with an undeclared tag fails
+  `tests/test_openapi.py`.
 
 ## Authentication and roles
 

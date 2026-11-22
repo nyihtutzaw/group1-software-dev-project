@@ -43,6 +43,7 @@ Then open:
 |---|---|
 | App | http://localhost:5173 |
 | API docs | http://localhost:8000/api/docs |
+| Production | https://crvr.zaw27.com · API docs https://crvr.zaw27.com/api/docs |
 
 Sign in with a demo account (password **`crvr-demo`**), or click one on the sign-in page:
 
