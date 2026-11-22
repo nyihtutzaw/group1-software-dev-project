@@ -22,9 +22,53 @@ from app.features.registration.router import router as registration_router
 from app.features.registry.router import router as registry_router
 from app.features.verification.router import router as verification_router
 
+# Swagger lists the groups in this order, each with its owner. Every tag a route uses must be here
+# (tests/test_openapi.py checks it), so a new group cannot drop to the bottom unannounced.
+OPENAPI_TAGS = [
+    {"name": "auth", "description": "Shared: sign in and out. The session is an httpOnly cookie."},
+    {
+        "name": "F1 registration",
+        "description": "F1 · Jingqing: register projects and seal their evidence.",
+    },
+    {
+        "name": "F2 boundary",
+        "description": "F2 · Nyi Htut Zaw: land boundaries and overlap detection.",
+    },
+    {
+        "name": "F3 verification",
+        "description": "F3 · Pyae Phyo Hein: verifier review, approval and issuing credits.",
+    },
+    {
+        "name": "F4 registry",
+        "description": "F4 · Zay Yar Phyo: public registry, buyers, allocation, retirement.",
+    },
+    {"name": "F5 audit", "description": "F5 · Put Thitisawat: the hash-chained audit log."},
+    {
+        "name": "F5 user management",
+        "description": "F5 · Put Thitisawat: admin adds and removes accounts.",
+    },
+    {
+        "name": "F5 access control",
+        "description": "F5 · Put Thitisawat: what each role may call, read from the code.",
+    },
+    {
+        "name": "F5 demo data",
+        "description": "F5 · Put Thitisawat: reset the demo server's data (demo servers only).",
+    },
+    {
+        "name": "F5 assistant",
+        "description": "F5 · Put Thitisawat: System › Assistant, questions about CRVR.",
+    },
+    {"name": "system", "description": "Health check for the load balancer and the deploy."},
+]
+
 app = FastAPI(
     title="CRVR API",
-    description="Carbon Removal Verification Registry",
+    description=(
+        "Carbon Removal Verification Registry. Grouped by feature, each with its owner. "
+        "To try a call, first sign in with `POST /api/auth/login`; the browser keeps the cookie."
+    ),
+    openapi_tags=OPENAPI_TAGS,
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
 )
