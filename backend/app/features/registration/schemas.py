@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
+from app.features.registration.media import viewable_type
 from app.features.registration.models import EvidenceKind
 
 # Methodologies offered in the form (mock-up + the mangrove demo project)
@@ -34,6 +35,12 @@ class EvidenceOut(BaseModel):
     size_bytes: int
     sha256: str
     sealed_at: datetime
+
+    @computed_field
+    @property
+    def viewable(self) -> bool:
+        """PDF or photo the browser can show (View); everything can be downloaded."""
+        return viewable_type(self.filename) is not None
 
 
 class EvidenceErasureIn(BaseModel):

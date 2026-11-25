@@ -11,7 +11,14 @@ from app.auth.models import Role, User
 from app.features.audit.ledger import record_action
 from app.features.boundary.geometry import count_other_boundaries
 from app.features.boundary.service import issuance_blocked
-from app.features.registration.models import EvidenceFile, EvidenceKind, Project, ProjectStatus
+from app.features.registration.media import viewable_type
+from app.features.registration.models import (
+    EvidenceErasure,
+    EvidenceFile,
+    EvidenceKind,
+    Project,
+    ProjectStatus,
+)
 from app.features.registry.models import RegistryCredit
 from app.features.verification.models import (
     BUFFER_PERCENT,
@@ -315,10 +322,20 @@ def _evidence_lines(db: Session, project_id: int) -> list[EvidenceLine]:
     ).all()
     if not files:
         return [EvidenceLine(title="Evidence files", detail="No files uploaded yet.")]
+    erased = set(
+        db.scalars(
+            select(EvidenceErasure.evidence_id).where(
+                EvidenceErasure.evidence_id.in_([f.id for f in files])
+            )
+        )
+    )
     return [
         EvidenceLine(
             title=f"{f.kind.value.replace('_', ' ').capitalize()} · {f.filename}",
             detail=f"sealed {f.sealed_at:%d %b %Y} · SHA-256 {f.sha256[:12]}…",
+            evidence_id=f.id,
+            viewable=viewable_type(f.filename) is not None,
+            erased=f.id in erased,
         )
         for f in files
     ]
