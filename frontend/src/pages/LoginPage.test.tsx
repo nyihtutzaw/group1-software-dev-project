@@ -29,7 +29,7 @@ describe('LoginPage demo accounts', () => {
     })
   })
 
-  it('shows no demo accounts when the server lists none (hosted demo)', async () => {
+  it('shows no demo accounts when the server lists none (production without demo mode)', async () => {
     const fetch = mockFetch([])
     renderWithProviders(<LoginPage />)
 

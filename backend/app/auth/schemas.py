@@ -91,5 +91,5 @@ class DemoAccount(BaseModel):
     email: str
     full_name: str
     role: Role
-    # The public development password (the list is empty when the password is private).
+    # The demo password: public `crvr-demo` locally, the private one on the hosted demo.
     password: str

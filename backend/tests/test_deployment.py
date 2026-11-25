@@ -86,13 +86,16 @@ def test_demo_accounts_include_the_public_password_in_development(client):
     assert {account["password"] for account in accounts} == {DEVELOPMENT_DEMO_PASSWORD}
 
 
-def test_demo_accounts_are_not_listed_on_the_hosted_demo(client, monkeypatch):
+def test_demo_accounts_are_listed_for_one_click_sign_in_on_the_hosted_demo(client, monkeypatch):
     settings = get_settings()
     monkeypatch.setattr(settings, "app_env", "production")
     monkeypatch.setattr(settings, "demo_mode", True)
     monkeypatch.setattr(settings, "demo_password", "a-private-demo-pw")
 
-    assert client.get("/api/auth/demo-accounts").json() == []
+    accounts = client.get("/api/auth/demo-accounts").json()
+
+    assert {account["email"] for account in accounts} >= {"admin@crvr.local", "buyer@crvr.local"}
+    assert {account["password"] for account in accounts} == {"a-private-demo-pw"}
 
 
 def test_demo_accounts_are_empty_in_production_without_demo_mode(client, monkeypatch):

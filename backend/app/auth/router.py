@@ -129,12 +129,13 @@ def me(user: User = Depends(get_current_user)) -> User:
 
 @router.get("/demo-accounts", response_model=list[DemoAccount])
 def demo_accounts() -> list[dict]:
-    """One-click sign-in list for the sign-in page — local development only.
+    """One-click sign-in list for the sign-in page, wherever demo accounts exist.
 
-    Empty whenever the demo password is private (the hosted demo): there the accounts are not
-    advertised on the public sign-in page, and the password is handed out separately.
+    Also on the hosted class demo (private password): the team chose easy sign-in for the
+    presentation over hiding the accounts, since the hosted data is demo data only (ADR 0008).
+    Empty where there are no demo accounts (production without DEMO_MODE).
     """
     settings = get_settings()
-    if not settings.demo_enabled or not settings.demo_password_is_public:
+    if not settings.demo_enabled:
         return []
     return [{**account, "password": settings.demo_password} for account in DEMO_USERS]

@@ -73,10 +73,9 @@ first week.
 
 ## Giving the professor access
 
-Send the URL, the demo account e-mails and the demo password privately (not in GitHub). The
-hosted sign-in page does not list the accounts, so include them: `developer@`, `developer2@`,
-`verifier@`, `staff@`, `buyer@` and `admin@crvr.local`. Mention the 23:00–06:00 closed hours, or
-run `hold` during the grading week.
+Send the URL. The hosted sign-in page lists the demo accounts (`developer@`, `developer2@`,
+`verifier@`, `staff@`, `buyer@`, `admin@crvr.local`) with one-click sign-in, so no password needs
+to be handed out. Mention the 23:00–06:00 closed hours, or run `hold` during the grading week.
 
 Changing the password: add a new version of `crvr-demo-password` in Secret Manager, then run
 **Reset demo data** (existing accounts keep the password they were created with).
@@ -124,7 +123,7 @@ curl -X POST -H "Authorization: Bearer $(gcloud auth print-access-token)" \
 | Site says "closed" in the daytime | database starting (wait 2 min) or stopped: **Demo power** → `status` / `on` |
 | Deploy fails at "Job crvr-tasks" | Cloud Run → Jobs → crvr-tasks → logs (usually a migration) |
 | Deploy fails at sign-in to Google | repository variables missing/wrong, or the run was not on `main` |
-| Can't sign in with a demo account | use the private password, not `crvr-demo`; after 5 failures wait 15 min |
+| Can't sign in with a demo account | click the account on the sign-in page (the password is the private one, not `crvr-demo`); after 5 failures wait 15 min |
 
 ## Progress log
 

@@ -17,5 +17,5 @@ export type User = {
   role: Role
 }
 
-/** Local development only (the hosted demo lists none); `password` is the public dev one. */
+/** Listed wherever demo accounts exist; `password` is that environment's demo password. */
 export type DemoAccount = Pick<User, 'email' | 'full_name' | 'role'> & { password: string }
