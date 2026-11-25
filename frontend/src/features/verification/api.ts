@@ -28,11 +28,20 @@ export type Queue = {
   signed_off_this_year: number
 }
 
+/** `evidence_id` is set for a sealed F1 file (View / Download); the project record has none. */
+export type EvidenceLine = {
+  title: string
+  detail: string
+  evidence_id: number | null
+  viewable: boolean
+  erased: boolean
+}
+
 export type CheckLine = { key: string; label: string; source: string; checked: boolean }
 
 export type Review = {
   item: QueueItem
-  evidence: { title: string; detail: string }[]
+  evidence: EvidenceLine[]
   automatic_checks: { name: string; passed: boolean; detail: string }[]
   checklist: CheckLine[]
   note: string

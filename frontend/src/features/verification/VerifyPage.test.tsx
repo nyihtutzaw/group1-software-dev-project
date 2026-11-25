@@ -44,7 +44,15 @@ const queue: Queue = {
 
 const review: Review = {
   item,
-  evidence: [{ title: 'Evidence files', detail: 'No files yet.' }],
+  evidence: [
+    {
+      title: 'Evidence files',
+      detail: 'No files yet.',
+      evidence_id: null,
+      viewable: false,
+      erased: false,
+    },
+  ],
   automatic_checks: [
     { name: 'Boundary overlap', passed: false, detail: 'Auto-checked · overlap not resolved' },
   ],
@@ -193,6 +201,39 @@ describe('Verification queue', () => {
     expect(
       within(panel).getByText('Assigned to Dr. Anna Weber · due 2026-09-26'),
     ).toBeInTheDocument()
+  })
+
+  it('lets the verifier view and download each sealed file before signing off', async () => {
+    const line = { detail: 'sealed 02 Nov 2026 · SHA-256 abababababab…', erased: false }
+    mockApi({
+      review: {
+        ...review,
+        evidence: [
+          { ...line, title: 'Land title · deed.pdf', evidence_id: 31, viewable: true },
+          { ...line, title: 'Gps · plots.gpx', evidence_id: 32, viewable: false },
+          { ...line, title: 'Photo · id-card.jpg', evidence_id: 33, viewable: true, erased: true },
+        ],
+      },
+    })
+    renderVerify('/verify/4', makeUser('verifier'))
+
+    const panel = await screen.findByRole('region', { name: 'Open review CRVR-0147' })
+    await userEvent.click(within(panel).getByRole('tab', { name: /Evidence & checks/ }))
+
+    const view = within(panel).getByRole('link', { name: 'View Land title · deed.pdf' })
+    expect(view).toHaveAttribute('href', '/api/projects/9/evidence/31/file?inline=true')
+    expect(view).toHaveAttribute('target', '_blank')
+    expect(
+      within(panel).getByRole('link', { name: 'Download Land title · deed.pdf' }),
+    ).toHaveAttribute('href', '/api/projects/9/evidence/31/file')
+    // A GPS file can't be shown by the browser: download only
+    expect(within(panel).queryByRole('link', { name: 'View Gps · plots.gpx' })).toBeNull()
+    expect(
+      within(panel).getByRole('link', { name: 'Download Gps · plots.gpx' }),
+    ).toBeInTheDocument()
+    // Erased content: nothing to open
+    expect(within(panel).getByText('ERASED')).toBeInTheDocument()
+    expect(within(panel).queryByRole('link', { name: /id-card/ })).toBeNull()
   })
 
   it('submits a sign-off with the checklist and note', async () => {

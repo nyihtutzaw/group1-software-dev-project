@@ -6,8 +6,9 @@ There is deliberately no PUT/PATCH/DELETE for evidence: uploaded files are write
 from collections.abc import Iterator
 from contextlib import closing
 from typing import BinaryIO
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -15,6 +16,7 @@ from app.auth.deps import require_roles
 from app.auth.models import Role, User
 from app.core.db import get_db
 from app.features.registration import service
+from app.features.registration.media import viewable_type
 from app.features.registration.models import EvidenceErasure, EvidenceFile, EvidenceKind
 from app.features.registration.schemas import (
     EvidenceErasureIn,
@@ -141,20 +143,36 @@ def erase_evidence(
 def download_evidence(
     project_id: int,
     evidence_id: int,
+    inline: bool = Query(False, description="Show a PDF or photo in the browser (View)"),
     db: Session = Depends(get_db),
     user: User = Depends(require_roles(*READ_ROLES)),
 ) -> StreamingResponse:
-    """Stream the sealed bytes, from the local volume or the bucket — the route is the same."""
+    """Stream the sealed bytes, from the local volume or the bucket — the route is the same.
+
+    `inline=true` lets the browser show the file (a verifier reads it before signing off), but
+    only for PDFs and photos, served with the type of their extension and `nosniff`; any other
+    file is still sent as a download.
+    """
     project = service.get_project(db, project_id, user)
     evidence, stream = service.get_evidence(db, project, evidence_id)
+    shown_as = viewable_type(evidence.filename) if inline else None
     return StreamingResponse(
         _chunks(stream),
-        media_type=evidence.content_type,
+        media_type=shown_as or evidence.content_type,
         headers={
-            "content-disposition": f'attachment; filename="{evidence.filename}"',
+            "content-disposition": _disposition(
+                "inline" if shown_as else "attachment", evidence.filename
+            ),
             "content-length": str(evidence.size_bytes),
+            "x-content-type-options": "nosniff",
         },
     )
+
+
+def _disposition(kind: str, filename: str) -> str:
+    """Content-Disposition that keeps non-ASCII names (e.g. Thai) intact (RFC 6266)."""
+    fallback = filename.encode("ascii", "replace").decode().replace('"', "")
+    return f"{kind}; filename=\"{fallback}\"; filename*=UTF-8''{quote(filename)}"
 
 
 def _chunks(stream: BinaryIO) -> Iterator[bytes]:

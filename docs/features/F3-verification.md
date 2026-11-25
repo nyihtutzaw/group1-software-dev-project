@@ -85,7 +85,7 @@ From WBS 7.x and the design report:
 | GET | `/api/verifications/verifiers` | registry_staff, admin | Active verifiers for the assign form |
 | POST | `/api/verifications/assignments` | registry_staff, admin | Assign a verifier and a due date |
 | PATCH | `/api/verifications/assignments/{id}` | registry_staff, admin | Reassign verifier or due date after rejection or request-changes |
-| GET | `/api/verifications/assignments/{id}` | assigned verifier, registry_staff, admin | Evidence summary, F2 overlap check, checklist, chain |
+| GET | `/api/verifications/assignments/{id}` | assigned verifier, registry_staff, admin | Evidence summary (each file with `evidence_id`, `viewable`, `erased`), F2 overlap check, checklist, chain |
 | POST | `/api/verifications/assignments/{id}/report` | assigned verifier | Checklist + note: `sign_off` or `request_changes` |
 | POST | `/api/verifications/reports/{id}/decision` | registry_staff, admin, not the maker or owner | Approve or reject a sign-off with a rationale |
 | POST | `/api/verifications/projects/{id}/issue` | registry_staff, admin (independent of maker/owner) | Explicit post-approval issuance; returns the F4 credit batch (201) |
@@ -97,7 +97,7 @@ From WBS 7.x and the design report:
 | Route | Roles | Shows |
 |---|---|---|
 | `/verify` | verifier, registry_staff, admin | Queue in tabs (In progress · Awaiting approval · Approved), and for staff/admin an Assign verifier tab; each row opens its review |
-| `/verify/:id` | verifier, registry_staff, admin | One review: tabs for Review (checklist, note, sign-off or the staff decision), Evidence & checks, and History; summary panel on the side. After approval, staff see **Issue credits** (country, vintage, verified tonnes, with the buffer split shown live); once issued, the card shows the batch and links to the public registry |
+| `/verify/:id` | verifier, registry_staff, admin | One review: tabs for Review (checklist, note, sign-off or the staff decision), Evidence & checks (View / Download per sealed file, ERASED where the content was destroyed), and History; summary panel on the side. After approval, staff see **Issue credits** (country, vintage, verified tonnes, with the buffer split shown live); once issued, the card shows the batch and links to the public registry |
 | `/` | developer | Verifier note when changes were requested, above the F1 placeholder |
 
 ## Data model
@@ -121,6 +121,13 @@ None for assignment or the buffer split. A later vintage or a second tradable ba
 approval is still out of scope (see the 2026-11-16 issuance note).
 
 ## Progress log
+
+### 2026-11-25 · fix/evidence-view-and-wizard-back
+- Fix: *Evidence & checks* listed files as text only, so a verifier signed off without opening
+  them. Each sealed file now has View (PDFs, photos; new tab) and Download, via F1's
+  `EvidenceActions` and file route; erased files show ERASED. `EvidenceLine` gains `evidence_id`,
+  `viewable` and `erased`. Tests: `test_review_marks_erased_evidence`, evidence assertions in
+  `test_review_lists_the_sealed_evidence_files`, and a `VerifyPage.test.tsx` case.
 
 ### 2026-11-19 · chore/live-demo-flow
 - Issue credits from the review page instead of the API docs: `ReviewOut` gains `buffer_percent`,

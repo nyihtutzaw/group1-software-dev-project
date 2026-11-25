@@ -277,6 +277,56 @@ def test_owner_downloads_the_exact_bytes(client, draft):
 
     assert res.status_code == 200
     assert res.content == PDF
+    assert res.headers["content-disposition"].startswith("attachment;")
+
+
+def test_a_pdf_can_be_viewed_in_the_browser(client, draft):
+    _, project = draft
+    evidence = upload(client, project["id"]).json()
+
+    res = client.get(f"/api/projects/{project['id']}/evidence/{evidence['id']}/file?inline=true")
+
+    assert evidence["viewable"] is True
+    assert res.status_code == 200
+    assert res.content == PDF
+    assert res.headers["content-type"] == "application/pdf"
+    assert res.headers["content-disposition"].startswith("inline;")
+    assert res.headers["x-content-type-options"] == "nosniff"
+
+
+def test_view_uses_the_extension_not_the_claimed_type(client, draft):
+    _, project = draft
+    res = client.post(
+        f"/api/projects/{project['id']}/evidence",
+        files={"file": ("title.pdf", PDF, "text/html")},
+        data={"kind": "land_title"},
+    )
+    evidence = res.json()
+
+    shown = client.get(f"/api/projects/{project['id']}/evidence/{evidence['id']}/file?inline=true")
+
+    assert shown.headers["content-type"] == "application/pdf"
+
+
+def test_a_spreadsheet_is_only_downloaded_even_when_view_is_asked(client, draft):
+    _, project = draft
+    evidence = upload(client, project["id"], name="plots.csv", data=b"plot,trees\n1,40\n").json()
+
+    res = client.get(f"/api/projects/{project['id']}/evidence/{evidence['id']}/file?inline=true")
+
+    assert evidence["viewable"] is False
+    assert res.status_code == 200
+    assert res.headers["content-disposition"].startswith("attachment;")
+
+
+def test_a_thai_file_name_downloads(client, draft):
+    _, project = draft
+    evidence = upload(client, project["id"], name="โฉนดที่ดิน.pdf").json()
+
+    res = client.get(f"/api/projects/{project['id']}/evidence/{evidence['id']}/file")
+
+    assert res.status_code == 200
+    assert "filename*=UTF-8''" in res.headers["content-disposition"]
 
 
 # --- submission ------------------------------------------------------------------------

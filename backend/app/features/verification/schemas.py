@@ -72,6 +72,11 @@ class QueueOut(BaseModel):
 class EvidenceLine(BaseModel):
     title: str
     detail: str
+    # Set for a sealed file: the page links it to F1's download (and View for PDFs and photos).
+    evidence_id: int | None = None
+    viewable: bool = False
+    # Content destroyed to remove personal data (#45): nothing left to open.
+    erased: bool = False
 
 
 class AutoCheck(BaseModel):

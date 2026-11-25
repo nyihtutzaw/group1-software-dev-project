@@ -128,6 +128,53 @@ describe('SubmitPage', () => {
     expect(save).toHaveBeenCalledTimes(1)
   })
 
+  it('goes back a step from additionality and evidence, saving the draft first', async () => {
+    const save = vi.fn(() => draft)
+    server({
+      'GET /api/projects/200': draft,
+      'PUT /api/projects/200': save,
+      'GET /api/projects': [],
+      'GET /api/boundaries/200': NO_BOUNDARY,
+    })
+    renderAt('/projects/200/edit?step=3')
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Back' }))
+    expect(await screen.findByText(/Step 2 of 4/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }))
+    expect(await screen.findByText(/Step 1 of 4/)).toBeInTheDocument()
+
+    expect(save).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
+  })
+
+  it('lets the developer view and download an uploaded file', async () => {
+    const file = {
+      id: 7,
+      kind: 'land_title' as const,
+      filename: 'deed.pdf',
+      content_type: 'application/pdf',
+      size_bytes: 2048,
+      sha256: 'ab'.repeat(32),
+      sealed_at: '2026-11-02T00:00:00Z',
+      viewable: true,
+    }
+    server({
+      'GET /api/projects/200': { ...draft, evidence: [file] },
+      'GET /api/projects': [],
+      'GET /api/boundaries/200': NO_BOUNDARY,
+    })
+    renderAt('/projects/200/edit?step=3')
+
+    expect(await screen.findByRole('link', { name: 'View deed.pdf' })).toHaveAttribute(
+      'href',
+      '/api/projects/200/evidence/7/file?inline=true',
+    )
+    expect(screen.getByRole('link', { name: 'Download deed.pdf' })).toHaveAttribute(
+      'href',
+      '/api/projects/200/evidence/7/file',
+    )
+  })
+
   it('uploads additionality proof as a sealed file of that kind', async () => {
     let sent: FormData | undefined
     server({

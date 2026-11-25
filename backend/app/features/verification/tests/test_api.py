@@ -5,7 +5,12 @@ from datetime import date, timedelta
 import pytest
 
 from app.auth.models import Role
-from app.features.registration.models import EvidenceFile, EvidenceKind, ProjectStatus
+from app.features.registration.models import (
+    EvidenceErasure,
+    EvidenceFile,
+    EvidenceKind,
+    ProjectStatus,
+)
 from app.features.verification.models import CHECKLIST, VerificationReport
 from tests.support import PASSWORD
 
@@ -427,6 +432,35 @@ def test_rejection_sends_the_project_back_for_another_round(
     ]
 
 
+def test_review_marks_erased_evidence(client, login, db, make_user, make_project):
+    login(Role.REGISTRY_STAFF)
+    verifier = make_user(Role.VERIFIER, email="v@test.local")
+    admin = make_user(Role.ADMIN, email="a@test.local")
+    project = make_project()
+    photo = EvidenceFile(
+        project_id=project.id,
+        kind=EvidenceKind.PHOTO,
+        filename="owner-id-card.heic",
+        content_type="image/heic",
+        size_bytes=2048,
+        sha256="cd" * 32,
+        storage_key=f"test/{project.id}/owner-id-card.heic",
+        uploaded_by_id=project.owner_id,
+    )
+    db.add(photo)
+    db.flush()
+    db.add(EvidenceErasure(evidence_id=photo.id, reason="Landowner asked", erased_by_id=admin.id))
+    db.flush()
+    created = assign(client, project, verifier)
+
+    sign_in(client, verifier)
+    line = client.get(f"/api/verifications/assignments/{created['id']}").json()["evidence"][1]
+
+    assert line["evidence_id"] == photo.id
+    assert line["erased"] is True
+    assert line["viewable"] is False  # HEIC: browsers can't show it, so download only
+
+
 def test_review_lists_the_sealed_evidence_files(client, login, db, make_user, make_project):
     login(Role.REGISTRY_STAFF)
     verifier = make_user(Role.VERIFIER, email="v@test.local")
@@ -451,6 +485,10 @@ def test_review_lists_the_sealed_evidence_files(client, login, db, make_user, ma
 
     assert evidence[1]["title"] == "Land title · title-deed.pdf"
     assert "SHA-256 abababababab" in evidence[1]["detail"]
+    assert evidence[1]["evidence_id"] is not None
+    assert evidence[1]["viewable"] is True
+    assert evidence[1]["erased"] is False
+    assert evidence[0]["evidence_id"] is None  # the project record line is not a file
     baseline = next(
         line
         for line in client.get(f"/api/verifications/assignments/{created['id']}").json()[

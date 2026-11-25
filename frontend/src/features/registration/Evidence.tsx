@@ -117,7 +117,54 @@ export function EvidenceDrop({ projectId, kind }: { projectId: number; kind?: Ev
   )
 }
 
-/** Sealed files with size and the SEALED chip (mock-up `.file`); names link to the download. */
+const ACTION =
+  'inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3 text-[12.5px] font-semibold text-ink shadow-card transition-colors hover:bg-surface-2 desk:min-h-8'
+
+/**
+ * View (PDFs and photos, in a new tab) and Download for one sealed file. Used by the evidence
+ * list here and by F3's review, where the verifier must read the files before signing off.
+ */
+export function EvidenceActions({
+  projectId,
+  evidenceId,
+  filename,
+  viewable,
+  className,
+}: {
+  projectId: number
+  evidenceId: number
+  filename: string
+  viewable: boolean
+  className?: string
+}) {
+  return (
+    <span className={cn('flex flex-none gap-2', className)}>
+      {viewable && (
+        <a
+          href={evidenceUrl(projectId, evidenceId, true)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={ACTION}
+          aria-label={`View ${filename}`}
+        >
+          <Icon name="search" strokeWidth={2} className="size-3.5" />
+          View
+        </a>
+      )}
+      <a
+        href={evidenceUrl(projectId, evidenceId)}
+        download
+        className={ACTION}
+        aria-label={`Download ${filename}`}
+      >
+        <Icon name="download" strokeWidth={2} className="size-3.5" />
+        Download
+      </a>
+    </span>
+  )
+}
+
+/** Sealed files with size and the SEALED chip (mock-up `.file`), each with View / Download. */
 export function EvidenceList({
   projectId,
   files,
@@ -136,23 +183,27 @@ export function EvidenceList({
         {files.map((f) => (
           <li
             key={f.id}
-            className="flex items-center gap-[11px] border-b border-line px-3.5 py-[11px] text-[13.5px] last:border-b-0"
+            className="flex flex-wrap items-center gap-x-[11px] gap-y-2 border-b border-line px-3.5 py-[11px] text-[13.5px] last:border-b-0"
           >
             <Icon name="file" strokeWidth={2} className="size-[18px] flex-none text-faint" />
             <span className="min-w-0 flex-1">
-              <a
-                href={evidenceUrl(projectId, f.id)}
-                className="block truncate hover:text-accent hover:underline"
-                title={`${f.filename} · sha256 ${f.sha256}`}
-              >
+              <span className="block truncate" title={`${f.filename} · sha256 ${f.sha256}`}>
                 {f.filename}
-              </a>
-              <span className="block text-[11.5px] text-faint">{EVIDENCE_KINDS[f.kind]}</span>
-            </span>
-            <span className="flex-none font-mono text-[11.5px] text-faint">
-              {formatBytes(f.size_bytes)}
+              </span>
+              <span className="block text-[11.5px] text-faint">
+                {EVIDENCE_KINDS[f.kind]} ·{' '}
+                <span className="font-mono">{formatBytes(f.size_bytes)}</span>
+              </span>
             </span>
             <StatusChip tone="ok">SEALED</StatusChip>
+            {/* Own line on phones, beside the chip from desk width up */}
+            <EvidenceActions
+              projectId={projectId}
+              evidenceId={f.id}
+              filename={f.filename}
+              viewable={f.viewable}
+              className="w-full justify-end desk:w-auto"
+            />
           </li>
         ))}
       </ul>

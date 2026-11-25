@@ -99,7 +99,7 @@ From WBS 4.x and the design report:
 | PUT | `/api/projects/{id}` | developer (own draft) | Save the draft's fields; 409 once submitted |
 | POST | `/api/projects/{id}/submit` | developer (own draft) | Submit; 422 "Still needed: …" if incomplete |
 | POST | `/api/projects/{id}/evidence` | developer (own draft) | Multipart `file` + `kind` → sealed `EvidenceOut` (sha256, size); 415 bad format, 413 too large |
-| GET | `/api/projects/{id}/evidence/{eid}/file` | as GET project | Download the stored bytes |
+| GET | `/api/projects/{id}/evidence/{eid}/file` | as GET project | Download the stored bytes. `?inline=true` shows a PDF/JPG/PNG/WebP in the browser (type from the extension, `nosniff`); other files still download. `EvidenceOut.viewable` says which |
 | POST | `/api/projects/{id}/evidence/{eid}/erasure` | admin | Destroy the file's encryption key so its content can no longer be read (#45). Body: `reason` (≥ 10 chars), optional `replacement_id`. The sealed object and its row stay; downloads then answer 410 |
 
 No PUT/PATCH/DELETE exists for evidence. Ledger actions via `record_action()`: `project.created`,
@@ -140,6 +140,16 @@ Migration: `20261102_47c89f71feec_add_registration_fields_and_evidence.py` (also
   the evidence. Moving them to Cloud KMS would separate the two (ADR 0010).
 
 ## Progress log
+
+### 2026-11-25 · fix/evidence-view-and-wizard-back
+- Fix: nobody could *see* evidence in the browser, only download it from the developer's list, and
+  F3's review had no link at all. New `EvidenceActions` (View + Download) on every evidence list,
+  also used by F3's review. `?inline=true` on the file route; the media type comes from the
+  extension (`media.py`), never the uploader's claim, with `nosniff`, so a disguised HTML file is
+  never rendered on our origin. Thai/non-ASCII file names no longer break the download header.
+- Fix: the wizard had *Back* only on step 4; steps 2 and 3 now have Back (saves the draft first).
+- Tests: `test_api.py` (inline PDF, claimed type ignored, CSV stays a download, Thai name);
+  `SubmitPage.test.tsx` (Back on steps 3 → 2 → 1, View/Download links).
 
 ### 2026-11-19 · chore/live-demo-flow
 - Step 4 *Add boundary* / *Fix the boundary* button under "Before you can submit", opening F2's

@@ -212,30 +212,43 @@ function Wizard({ project }: { project: ProjectDetail | null }) {
         </p>
       )}
 
-      <ButtonRow>
-        {step < 4 ? (
-          <>
-            <Button variant="ghost" disabled={saving} onClick={() => void save()}>
-              Save draft
-            </Button>
-            <Button disabled={saving} onClick={() => void save(step + 1)}>
-              {saving ? 'Saving…' : 'Continue'}
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button variant="ghost" onClick={() => setParams({ step: '3' })}>
-              Back
-            </Button>
-            <Button
-              disabled={submit.isPending || (project?.missing.length ?? 1) > 0}
-              onClick={() => void onSubmit()}
-            >
-              {submit.isPending ? 'Submitting…' : 'Submit project'}
-            </Button>
-          </>
-        )}
-      </ButtonRow>
+      {step === 1 && (
+        <ButtonRow>
+          <Button variant="ghost" disabled={saving} onClick={() => void save()}>
+            Save draft
+          </Button>
+          <Button disabled={saving} onClick={() => void save(2)}>
+            {saving ? 'Saving…' : 'Continue'}
+          </Button>
+        </ButtonRow>
+      )}
+      {/* Steps 2–3: Back saves the draft too, like every step change. Three across from 421 px. */}
+      {(step === 2 || step === 3) && (
+        <div className="mt-4 grid grid-cols-1 gap-2.5 min-[421px]:grid-cols-3">
+          <Button variant="ghost" disabled={saving} onClick={() => void save(step - 1)}>
+            Back
+          </Button>
+          <Button variant="ghost" disabled={saving} onClick={() => void save()}>
+            Save draft
+          </Button>
+          <Button disabled={saving} onClick={() => void save(step + 1)}>
+            {saving ? 'Saving…' : 'Continue'}
+          </Button>
+        </div>
+      )}
+      {step === 4 && (
+        <ButtonRow>
+          <Button variant="ghost" onClick={() => setParams({ step: '3' })}>
+            Back
+          </Button>
+          <Button
+            disabled={submit.isPending || (project?.missing.length ?? 1) > 0}
+            onClick={() => void onSubmit()}
+          >
+            {submit.isPending ? 'Submitting…' : 'Submit project'}
+          </Button>
+        </ButtonRow>
+      )}
     </>
   )
 }
