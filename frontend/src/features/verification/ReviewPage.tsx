@@ -18,6 +18,7 @@ import {
   Tabs,
   Textarea,
 } from '@/components/ui'
+import { EvidenceActions } from '@/features/registration/Evidence'
 import { cn } from '@/lib/cn'
 
 import {
@@ -315,15 +316,27 @@ function ReviewBody({ data }: { data: Review }) {
                     {data.evidence.map((line, index) => (
                       <li
                         key={`${index}-${line.title}`}
-                        className="flex gap-3 border-b border-line px-4 py-3 last:border-b-0"
+                        className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-4 py-3 last:border-b-0"
                       >
-                        <Icon name="file" className="mt-0.5 size-4 flex-none text-faint" />
-                        <span className="min-w-0">
+                        <Icon name="file" className="size-4 flex-none self-start text-faint" />
+                        <span className="min-w-0 flex-1">
                           <b className="block text-sm font-medium">{line.title}</b>
                           <span className="mt-0.5 block text-[13px] wrap-anywhere text-faint">
                             {line.detail}
                           </span>
                         </span>
+                        {line.evidence_id !== null &&
+                          (line.erased ? (
+                            <StatusChip tone="warn">ERASED</StatusChip>
+                          ) : (
+                            <EvidenceActions
+                              projectId={data.item.project_id}
+                              evidenceId={line.evidence_id}
+                              filename={line.title}
+                              viewable={line.viewable}
+                              className="w-full justify-end desk:w-auto"
+                            />
+                          ))}
                       </li>
                     ))}
                   </ul>

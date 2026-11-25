@@ -64,5 +64,6 @@ export function useUploadEvidence(projectId: number) {
   })
 }
 
-export const evidenceUrl = (projectId: number, evidenceId: number) =>
-  `/api/projects/${projectId}/evidence/${evidenceId}/file`
+/** Download a sealed file, or with `view` show a PDF or photo in a new browser tab. */
+export const evidenceUrl = (projectId: number, evidenceId: number, view = false) =>
+  `/api/projects/${projectId}/evidence/${evidenceId}/file${view ? '?inline=true' : ''}`

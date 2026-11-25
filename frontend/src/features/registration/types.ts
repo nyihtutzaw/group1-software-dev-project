@@ -27,6 +27,8 @@ export type EvidenceOut = {
   size_bytes: number
   sha256: string
   sealed_at: string
+  /** A PDF or photo the browser can show (View); every file can be downloaded. */
+  viewable: boolean
 }
 
 export type ProjectOut = {
