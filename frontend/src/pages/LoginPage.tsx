@@ -124,7 +124,7 @@ export function LoginPage() {
             </Button>
           </form>
 
-          {/* Local development only: the server lists no accounts on the hosted demo. */}
+          {/* Wherever demo accounts exist (local and the hosted class demo): one click signs in. */}
           {demo.data && demo.data.length > 0 && (
             <section className="mt-8">
               <SectionHeader

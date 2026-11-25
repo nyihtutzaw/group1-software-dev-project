@@ -153,7 +153,7 @@ From WBS 9.x and the design report:
 | POST | `/api/auth/login` | public | Sign in; sets cookie, records failures, and rate-limits repeated failures |
 | POST | `/api/auth/logout` | any | Clear the session cookie |
 | GET | `/api/auth/me` | signed-in | Current user |
-| GET | `/api/auth/demo-accounts` | public (dev only) | Demo accounts for one-click sign-in; empty on the hosted demo |
+| GET | `/api/auth/demo-accounts` | public (where demo accounts exist) | Demo accounts for one-click sign-in, locally and on the hosted demo |
 | GET | `/api/admin/users` | admin | List users without credential data |
 | POST | `/api/admin/users` | admin | Create a user with an admin-provided initial password |
 | PATCH | `/api/admin/users/{user_id}` | admin | Change a user's role or active status |
@@ -169,7 +169,7 @@ From WBS 9.x and the design report:
 
 | Route | Roles | Shows |
 |---|---|---|
-| `/login` | public | Sign-in + demo accounts (dev) |
+| `/login` | public | Sign-in + one-click demo accounts |
 | `/ledger` | verifier, registry_staff, buyer, admin | Paginated audit timeline with chain integrity status |
 | `/admin/users` | admin | List accounts, create users, change roles, and deactivate or reactivate accounts |
 | `/system/roles-access` | admin | System › Role & Access: roles, page-access and API-access matrices, read-only |
@@ -200,6 +200,14 @@ From WBS 9.x and the design report:
   initial password out of band.
 
 ## Progress log
+
+### 2026-11-25 · feature/F5-demo-login-and-diagrams
+- Change: the hosted demo's sign-in page lists the demo accounts again with one-click sign-in
+  (reverses the 2026-11-19 `fix/hide-hosted-demo-accounts`), so presenters and the professor can
+  switch roles quickly. `/api/auth/demo-accounts` now returns the accounts wherever demo accounts
+  exist (`demo_enabled`). ADR 0008 and `docs/deployment.md` amended. Tests updated in
+  `test_deployment.py` and `LoginPage.test.tsx`.
+- Also: presentation diagrams in `docs/diagrams/` (Mermaid, rendered on GitHub).
 
 ### 2026-11-20 · fix/assistant-crash-error-page
 - Bug on crvr.zaw27.com: after opening System › Assistant, switching to another page (Demo data,
